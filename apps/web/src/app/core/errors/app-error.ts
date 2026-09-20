@@ -48,11 +48,25 @@ export interface RateLimitedError extends AppErrorBase {
   readonly retryAfterSeconds?: number;
 }
 
-export interface SimpleAppError extends AppErrorBase {
-  readonly kind: Exclude<AppErrorKind, 'validation' | 'rate-limited'>;
+/**
+ * A write that lost a race.
+ *
+ * `currentVersion` is the discriminator between the two things a 409 means on
+ * this API, and carrying it is what lets a caller tell them apart: present
+ * means "someone saved while your form was open", absent means the payload
+ * collided with a record that already exists - a duplicate email. Without it
+ * both arrive as an unhelpful "there was a conflict".
+ */
+export interface ConflictError extends AppErrorBase {
+  readonly kind: 'conflict';
+  readonly currentVersion?: number;
 }
 
-export type AppError = ValidationError | RateLimitedError | SimpleAppError;
+export interface SimpleAppError extends AppErrorBase {
+  readonly kind: Exclude<AppErrorKind, 'validation' | 'rate-limited' | 'conflict'>;
+}
+
+export type AppError = ValidationError | RateLimitedError | ConflictError | SimpleAppError;
 
 /** Default translation key per kind. A caller may override for context. */
 export const DEFAULT_ERROR_MESSAGE_KEYS: Readonly<Record<AppErrorKind, string>> = {
@@ -93,4 +107,16 @@ export function appError(
 ): SimpleAppError {
   const { messageKey, ...rest } = details;
   return { kind, messageKey: messageKey ?? DEFAULT_ERROR_MESSAGE_KEYS[kind], ...rest };
+}
+
+/**
+ * The translation key for whatever went wrong.
+ *
+ * Feature code catches `unknown` - that is what `catch` and RxJS hand it - and
+ * every one of those call sites needs the same two lines. Centralising them
+ * means a value that somehow reached a component without passing the HTTP
+ * layer still renders a sentence rather than `[object Object]`.
+ */
+export function messageKeyOf(error: unknown): string {
+  return isAppError(error) ? error.messageKey : DEFAULT_ERROR_MESSAGE_KEYS.unknown;
 }

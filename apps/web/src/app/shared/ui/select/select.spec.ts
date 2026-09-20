@@ -80,6 +80,19 @@ describe('Select', () => {
     expect(fixture.componentInstance.control.value).toBe('INACTIVE');
   });
 
+  it('shows a value the form already had before the first render', async () => {
+    // The case a select gets wrong: the value arrives from a bookmarked URL or
+    // a loaded record, so it is set before any option exists. Binding the
+    // select's `value` property would silently drop it and render an empty
+    // field that says the filter is not applied.
+    await TestBed.configureTestingModule({ imports: [SelectHost] }).compileComponents();
+    const fixture = TestBed.createComponent(SelectHost);
+    fixture.componentInstance.control.setValue('INACTIVE');
+    fixture.detectChanges();
+
+    expect(select(fixture).value).toBe('INACTIVE');
+  });
+
   it('shows a value written by the form', async () => {
     const fixture = await render();
     fixture.componentInstance.control.setValue('ARCHIVED');

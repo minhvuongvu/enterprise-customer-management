@@ -117,12 +117,26 @@ module.exports = defineConfig([
             // SVG presentation attributes.
             'stroke-linecap',
             'stroke-linejoin',
+            // Structural form wiring. A control name is an identifier the
+            // template shares with the TypeScript, never something a user
+            // reads, and it is never a binding.
+            'formControlName',
+            'formGroupName',
+            // Table semantics.
+            'scope',
             // Component inputs whose values are enum members, scoped to the
             // component that declares them so a same-named attribute
             // elsewhere is still checked.
             'app-badge[tone]',
             'app-button[variant]',
             'app-button[link]',
+            'app-button[size]',
+            'app-button[type]',
+            'app-select[name]',
+            'app-text-input[type]',
+            'app-text-input[name]',
+            'app-text-input[autocomplete]',
+            'input[type]',
           ],
         },
       ],

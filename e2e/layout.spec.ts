@@ -1,5 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
-import { expect, test, type Page } from '@playwright/test';
+import type { APIRequestContext, Page } from '@playwright/test';
+import { anyCustomer, expect, test } from './fixtures';
 
 /**
  * The layout, at the three widths it is designed for, plus the behaviour that
@@ -127,10 +128,27 @@ test.describe('responsive layout', () => {
 });
 
 test.describe('dialog focus management', () => {
-  test('focus enters the dialog, stays in it, and returns to the trigger', async ({ page }) => {
-    await page.goto('/customers/c-000042');
+  /**
+   * Opens a customer that really exists.
+   *
+   * The delete control only appears once the record has loaded, so the test
+   * waits for the heading rather than for a timeout.
+   */
+  async function openACustomer(page: Page, api: APIRequestContext, baseURL: string) {
+    const customer = await anyCustomer(api, baseURL, 2);
+    await page.goto(`/customers/${customer.id}`);
+    await expect(page.getByRole('heading', { level: 1, name: customer.fullName })).toBeVisible();
+    return customer;
+  }
 
-    const trigger = page.getByRole('button', { name: 'Delete' }).first();
+  test('focus enters the dialog, stays in it, and returns to the trigger', async ({
+    page,
+    api,
+    baseURL,
+  }) => {
+    await openACustomer(page, api, baseURL ?? '');
+
+    const trigger = page.getByRole('button', { name: 'Delete', exact: true }).first();
     await trigger.click();
 
     const dialog = page.getByRole('dialog', { name: 'Delete this customer?' });
@@ -155,9 +173,13 @@ test.describe('dialog focus management', () => {
     await expect(trigger).toBeFocused();
   });
 
-  test('has no detectable accessibility violations while a dialog is open', async ({ page }) => {
-    await page.goto('/customers/c-000042');
-    await page.getByRole('button', { name: 'Delete' }).first().click();
+  test('has no detectable accessibility violations while a dialog is open', async ({
+    page,
+    api,
+    baseURL,
+  }) => {
+    await openACustomer(page, api, baseURL ?? '');
+    await page.getByRole('button', { name: 'Delete', exact: true }).first().click();
     await expect(page.getByRole('dialog')).toBeVisible();
 
     const results = await new AxeBuilder({ page })

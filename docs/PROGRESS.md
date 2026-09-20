@@ -16,7 +16,7 @@ skipped, or broke.
 | 0     | Foundation & Architecture                       | **Done**    | `phase-0`    | 2026-09-20 |
 | 0.5   | Mock API & Contracts                            | **Done**    | `phase-0.5`  | 2026-09-20 |
 | 1     | Routing, Layout & Design System                 | **Done**    | `phase-1`    | 2026-09-20 |
-| 2     | Customer CRUD, Forms & Server State             | Not started | `phase-2`    | —          |
+| 2     | Customer CRUD, Forms & Server State             | **Done**    | `phase-2`    | 2026-09-20 |
 | 3     | Authentication, Authorization & Security        | Not started | `phase-3`    | —          |
 | 4     | Enterprise UX, Files, Notifications & Realtime  | Not started | `phase-4`    | —          |
 | 5     | Performance, Rendering, Offline & Browser APIs  | Not started | `phase-5`    | —          |
@@ -62,6 +62,145 @@ Two things were fixed on 2026-09-20 and will look confusing if rediscovered late
 ## Phase log
 
 Newest entry first. One entry per phase, appended at the end of that phase.
+
+### Phase 2 - Customer CRUD, Forms & Server State
+
+**Completed:** 2026-09-20 - **Tag:** `phase-2-complete`
+
+**Built**
+
+- The customer list: server-side paging, sorting, keyword search, status, gender and
+  created-date filters, reset, refresh, page size, selection and bulk actions - with
+  **all eight list parameters in the URL**, normalised once by `readCriteria` and
+  validated against the contract's own schemas, so a hand-edited `?status=DELETED`
+  renders the unfiltered list rather than a 422.
+- `CustomerStore`: one signal store for the feature, provided by the feature's route,
+  over an explicit cache keyed by the normalised query (ADR-0013). Requests run
+  through `switchMap`, so a superseded one is cancelled rather than raced.
+- `RemoteData<T>` - `idle | loading | refreshing | success | error` - with "empty"
+  derived rather than stored. `refreshing` carries the value for that same request,
+  which is what keeps a revisited page on screen instead of flickering.
+- `CustomerApi`: every call validated against `@ecm/contracts`, with a timeout and
+  retry policy chosen per endpoint - reads retried on network failures, writes never.
+- Create and edit as one page told which it is by route metadata: typed reactive
+  forms, required/format/length validation, two cross-field rules, an asynchronous
+  email-uniqueness check, server field errors merged onto the right controls, dirty
+  state, reset, and a `CanDeactivate` guard for unsaved changes.
+- Delete with a real confirmation, and bulk activate/deactivate/delete that report
+  **per item** - failures grouped by reason and left selected so they can be retried.
+- The audit trail, reading the trail endpoint and rendering actions as sentences
+  rather than enum members.
+- The 409 path, both of them: a stale write offers to reload and keeps the user's
+  typing (ADR-0015); a duplicate email on create is marked on the email field.
+- A placeholder sign-in and a CSRF interceptor - the minimum needed to reach an API
+  that is behind authentication, with the line to Phase 3 stated in ADR-0012.
+- `auditListResponseSchema` in the contracts package, so the audit envelope has one
+  definition instead of living only in the mock API.
+
+**Architectural decisions**
+
+- [ADR-0012](decisions/0012-phase-2-session-boundary.md) - what Phase 2 borrowed from
+  Phase 3 to be able to make a request at all, and what it deliberately did not.
+- [ADR-0013](decisions/0013-customer-server-state.md) - one feature store, an explicit
+  cache, cancellation by switching, and the invalidation rules.
+- [ADR-0014](decisions/0014-no-dto-to-domain-mapping.md) - the contract type is the
+  domain type. Answers open question 6.
+- [ADR-0015](decisions/0015-losing-write-keeps-both-edits.md) - a losing write reloads
+  and resubmits only this user's fields.
+
+**Deviated from the plan**
+
+- **Phase 2 touched authentication.** It had to: every customer endpoint is behind
+  `requireAuth`. Three things were added - `SessionApi`, `SessionService.signIn()` and
+  `csrfInterceptor` - and nothing else. ADR-0012 is the record.
+- **Two Phase 1 files were changed rather than only extended.** `app-select` had a
+  real defect (below), and `core/time/instant.ts` gained `formatDateOnly`, which is
+  the operation its own documentation already described but had not written.
+- **`ConflictError` gained `currentVersion`.** The error taxonomy could not otherwise
+  distinguish the two things 409 means on this API, and the form needs to.
+- **`RemoteData` and `request-policy` live in the customer feature**, not in `core/`.
+  They are generic, and there is exactly one caller; moving them when a second
+  appears is a rename, which is the cheap direction.
+- The i18n lint rule's `ignoreAttributes` grew from 8 entries to 16 (form wiring,
+  `scope`, component inputs). The Phase 1 note said to watch this; it is now debt
+  row 16.
+
+**Deliberately not done**
+
+- No authorization in the UI. The server enforces the role matrix; the client does
+  not yet hide what it would refuse - Phase 3.
+- No avatar upload, no CSV import, no notifications, no realtime - Phase 4. The API
+  and the contracts for all of them already exist.
+- No virtual scrolling and no `@defer`. Phase 5 measures first.
+- No optimistic updates. Every mutation waits for the server, which is the honest
+  default until Phase 4 decides the cache can survive them.
+
+**Checks**
+
+| Check                  | Result                                                   |
+| ---------------------- | -------------------------------------------------------- |
+| `npm run format:check` | clean                                                    |
+| `npm run lint`         | clean - root + workspaces, 0 errors, 0 warnings          |
+| `npm run typecheck`    | clean across all three packages                          |
+| `npm test`             | 376 passed - 248 web, 101 mock-api, 27 contracts         |
+| `npm run build`        | succeeded, browser + server bundles, 1 route prerendered |
+| `npm run e2e`          | 38 passed, including the full CRUD journey and axe       |
+| Import cycles          | none - 158 modules, 352 edges                            |
+
+The bundle-budget warning is still there and still pre-existing: 797 kB against a
+500 kB budget, of which Phase 2 added 15 kB - every page of the feature is a lazy
+chunk. Debt row 8, unchanged.
+
+**Findings worth carrying forward**
+
+- **`app-select` had a real defect, and only a real caller could find it.** It bound
+  `[value]` on the `<select>`; Angular applies an element's own bindings before it
+  creates that element's children, so a value that arrived before the first render -
+  from a bookmarked URL or a loaded record - named an option that did not exist yet
+  and was silently dropped. The field rendered empty while the filter was active.
+  Fixed by binding `[selected]` on each option, which is order-independent, and
+  covered by a regression test in `select.spec.ts`.
+- **An async validator resolving does not emit on `statusChanges`.** Angular 22
+  publishes a `StatusChangeEvent` on `control.events` instead. A submit that waited
+  on `statusChanges` for the form to stop being `PENDING` waited for ever, leaving
+  the button stuck in its busy state. `events` is the stream to use.
+- **A prerendered form is submittable before it is alive.** Pressing submit in that
+  window performs the browser's default GET - which put the username and password in
+  the address bar. The submit button is now disabled until `afterNextRender` runs.
+  Typing before hydration is still discarded: debt row 13.
+- **`CanDeactivateFn` receives `null` at runtime**, whatever its type says, for a
+  route that resolved but never rendered. A guard that calls a method on it turns
+  every navigation away from that route into an unhandled error.
+- **A PATCH has two reference points, not one.** The diff must be measured against
+  the record the form was _filled from_, while the version comes from the _newest_
+  record. Confusing them silently reverts whatever a colleague just changed - the
+  exact failure optimistic concurrency exists to prevent. The E2E test caught it
+  because it asserts on the other person's field, not on the save succeeding.
+- **jsdom does not implement form submission from a button** (`requestSubmit`), so a
+  component test has to dispatch the submit event itself. The button works in a real
+  browser, which is where the E2E suite checks it.
+- **Playwright's `request` fixture has its own cookie jar.** Signing the browser in
+  and then calling it produces a 401 that reads like an application bug;
+  `context.request` is the one that shares.
+
+**For the next phase (3)**
+
+- `authGuard` still returns `true` and is already attached to the shell branch.
+  `SessionService` has `signIn` and the signals; refresh, expiry, logout and the
+  guard body are what is missing.
+- `csrfInterceptor` is finished work Phase 3 can keep. The interceptor order is
+  documented in `http.providers.ts` and is load-bearing.
+- The list, the detail page and the form all handle an `authentication` error today
+  by offering a link to sign in. Phase 3 turns that into a redirect that preserves
+  the intended destination, and the pages should get simpler, not more complex.
+- The role matrix is already enforced server-side and already shared through
+  `@ecm/contracts`. Nothing in the UI reads it yet, which is Phase 3's UI
+  authorization work - and the delete action on the detail page is the obvious first
+  place for it, because MANAGER is deliberately denied it.
+- The sign-in page is a placeholder by design, and ADR-0012 says what it must grow
+  into. Phase 3 should supersede that ADR rather than extend it.
+
+---
 
 ### Phase 1 - Routing, Layout & Design System
 
@@ -388,18 +527,21 @@ it. Recorded as debt row 8 rather than silenced by raising the budget.
 
 Debt is only acceptable when it is written down. Remove the row when it is paid.
 
-| #   | Debt                                                                                                                                                             | Added in  | Why accepted                                                                              | Pay by                           | Status |
-| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- | ----------------------------------------------------------------------------------------- | -------------------------------- | ------ |
-| 1   | `provideRuntimeConfig()` has no end-to-end test - the browser fetch path is unexercised                                                                          | Phase 0   | The app does read `config.json` at boot, but no test asserts it                           | Phase 2                          | Open   |
-| 2   | Dependency direction is enforced by review, not by a tool                                                                                                        | Phase 0   | There is one package and few boundaries to break                                          | Phase 7                          | Open   |
-| 3   | Four npm packages have unapproved install scripts (`esbuild`, `lmdb`, `msgpackr-extract`, `@parcel/watcher`) under npm 11's new gating; builds work without them | Phase 0   | No observed impact on build, test or serve                                                | Phase 7                          | Open   |
-| 5   | `packages/contracts` must be built before the apps typecheck; a bare `tsc` in `apps/web` fails on a fresh clone                                                  | Phase 0.5 | The root scripts handle it; only a hand-run command is affected                           | Phase 7 (CI)                     | Open   |
-| 6   | The mock API rate limiter is fixed-window, so a client can send up to twice the limit across a boundary                                                          | Phase 0.5 | It exists to make 429 a real code path, not to be a real limiter                          | not planned - documented instead | Open   |
-| 7   | Avatar uploads are validated by declared MIME type only; no content inspection                                                                                   | Phase 0.5 | Stated in `docs/mock-backend.md` as a gap rather than implied to be safe                  | Phase 3                          | Open   |
-| 8   | The browser's initial bundle is 781 kB raw / 176 kB transferred, against a 500 kB budget                                                                         | Phase 0.5 | Pre-existing and measured, not introduced; the budget is left failing so it stays visible | Phase 5                          | Open   |
-| 9   | `app-dialog` renders inline rather than in a CDK overlay, and does not lock background scrolling                                                                 | Phase 1   | No page yet has a transformed ancestor or a scroll to lock                                | Phase 4                          | Open   |
-| 10  | "Components use only semantic tokens" is enforced by review and a grep, not by a linter                                                                          | Phase 1   | The grep for hex literals and `--palette-*` in components is clean today                  | Phase 6 (stylelint)              | Open   |
-| 11  | `CustomerListPage` fabricates `PLACEHOLDER_TOTAL_PAGES` so the paginator has something to page through                                                           | Phase 1   | Named, isolated to one constant, and deleted the moment real data arrives                 | Phase 2                          | Open   |
+| #   | Debt                                                                                                                                                             | Added in  | Why accepted                                                                                                                       | Pay by                                      | Status |
+| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- | ---------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- | ------ |
+| 2   | Dependency direction is enforced by review, not by a tool                                                                                                        | Phase 0   | There is one package and few boundaries to break                                                                                   | Phase 7                                     | Open   |
+| 3   | Four npm packages have unapproved install scripts (`esbuild`, `lmdb`, `msgpackr-extract`, `@parcel/watcher`) under npm 11's new gating; builds work without them | Phase 0   | No observed impact on build, test or serve                                                                                         | Phase 7                                     | Open   |
+| 5   | `packages/contracts` must be built before the apps typecheck; a bare `tsc` in `apps/web` fails on a fresh clone                                                  | Phase 0.5 | The root scripts handle it; only a hand-run command is affected                                                                    | Phase 7 (CI)                                | Open   |
+| 6   | The mock API rate limiter is fixed-window, so a client can send up to twice the limit across a boundary                                                          | Phase 0.5 | It exists to make 429 a real code path, not to be a real limiter                                                                   | not planned - documented instead            | Open   |
+| 7   | Avatar uploads are validated by declared MIME type only; no content inspection                                                                                   | Phase 0.5 | Stated in `docs/mock-backend.md` as a gap rather than implied to be safe                                                           | Phase 3                                     | Open   |
+| 8   | The browser's initial bundle is 797 kB raw against a 500 kB budget                                                                                               | Phase 0.5 | Pre-existing and measured; Phase 2 added 15 kB of it, because every feature page is lazy                                           | Phase 5                                     | Open   |
+| 9   | `app-dialog` renders inline rather than in a CDK overlay, and does not lock background scrolling                                                                 | Phase 1   | No page yet has a transformed ancestor or a scroll to lock                                                                         | Phase 4                                     | Open   |
+| 10  | "Components use only semantic tokens" is enforced by review and a grep, not by a linter                                                                          | Phase 1   | The grep for hex literals and `--palette-*` in components is clean today                                                           | Phase 6 (stylelint)                         | Open   |
+| 12  | A `VALIDATION_FAILED` response names the field but not the reason in any machine-readable form                                                                   | Phase 2   | The envelope's messages are developer prose and cannot be translated, so the client says which field and supplies its own sentence | Phase 6 (contract change)                   | Open   |
+| 13  | Typing into the prerendered sign-in form before hydration is discarded                                                                                           | Phase 2   | The submit button is disabled until the app is live, so the credential cannot reach the URL; only the keystrokes are lost          | Phase 3                                     | Open   |
+| 14  | Search does not match across diacritics - "nguyen" does not find "Nguyễn"                                                                                        | Phase 2   | The mock's index is a plain lowercase substring match, which is honest about what a naive search does                              | Phase 6                                     | Open   |
+| 15  | A mutation refetches the list even when nobody is looking at it                                                                                                  | Phase 2   | One request, in exchange for the list being correct on arrival; a staleness flag is more machinery than that is worth              | Phase 4 (with realtime)                     | Open   |
+| 16  | The i18n lint rule's `ignoreAttributes` list has grown to 16 entries                                                                                             | Phase 2   | Every entry is genuinely not copy, and the rule still catches real violations                                                      | Phase 6 (a custom rule is cheaper past ~20) | Open   |
 
 ---
 
@@ -414,5 +556,7 @@ Things that could not be decided yet and must be decided by a specific phase.
 | 3   | ~~Is SSR-in-dev noisy enough to hurt early phases?~~                                              | ~~Phase 1~~         | **Answered 2026-09-20:** no. Dev server, build and E2E all run normally with SSR enabled.                                                        |
 | 4   | ~~Should route titles use a translating `TitleStrategy`, or per-page metadata?~~                  | ~~Phase 1~~         | **Answered 2026-09-20:** a `TitleStrategy` reading route `title` as a translation key. See [ADR-0009](decisions/0009-translated-route-titles.md) |
 | 5   | Does the client hold one SSE connection per tab, or elect one tab to hold it and share?           | Phase 4 / 5         | HTTP/1.1 allows six connections per origin; see ADR-0006                                                                                         |
-| 6   | Where does DTO-to-domain mapping live once the customer feature exists?                           | Phase 2             | Contracts gives validated DTOs; the feature may want a different shape                                                                           |
+| 6   | ~~Where does DTO-to-domain mapping live once the customer feature exists?~~                       | ~~Phase 2~~         | **Answered 2026-09-20:** nowhere - the contract type is the domain type. See [ADR-0014](decisions/0014-no-dto-to-domain-mapping.md)              |
 | 7   | Does the dialog need a CDK overlay and a scroll lock once confirmations stack?                    | Phase 4             | See debt row 9; inline rendering is fine until an ancestor is transformed                                                                        |
+| 8   | Should `/login` stop being prerendered, now that a prerendered form loses pre-hydration typing?   | Phase 3             | Prerendering is ADR-0003; the cost is debt row 13, the benefit is an instant public surface                                                      |
+| 9   | Does "drop every cached page on every write" survive a server that pushes changes?                | Phase 4             | ADR-0013 says it is right today; realtime is what will test it                                                                                   |

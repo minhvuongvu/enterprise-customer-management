@@ -1,6 +1,7 @@
 import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/http';
 import { EnvironmentProviders, makeEnvironmentProviders } from '@angular/core';
 import { correlationIdInterceptor } from './correlation-id.interceptor';
+import { csrfInterceptor } from './csrf.interceptor';
 import { errorMappingInterceptor } from './error-mapping.interceptor';
 
 /**
@@ -13,17 +14,24 @@ import { errorMappingInterceptor } from './error-mapping.interceptor';
  * assembled elsewhere:
  *
  *   1. correlationId - stamps the request and publishes the ID on the context
- *   2. errorMapping  - reads that context when classifying a failure
+ *   2. csrf          - echoes the CSRF cookie on unsafe, same-origin requests
+ *   3. errorMapping  - reads that context when classifying a failure
  *
- * Timeout, retry and cancellation policy belong to the data-access layer in
- * Phase 2, not here: they are per-endpoint decisions, and an interceptor that
- * retries everything will happily retry a failed payment.
+ * Error mapping stays last so that a failure caused by anything the earlier
+ * interceptors did is still classified. The first two are independent of each
+ * other; their relative order is not load-bearing and is alphabetical.
+ *
+ * Timeout, retry and cancellation policy are deliberately absent. They belong
+ * to the data-access layer - Phase 2 implements them per endpoint in
+ * `customers/data/request-policy.ts` - because an interceptor that retries
+ * everything will happily retry a failed payment, and one that times out
+ * everything will cut off a file upload.
  */
 export function provideAppHttp(): EnvironmentProviders {
   return makeEnvironmentProviders([
     provideHttpClient(
       withFetch(),
-      withInterceptors([correlationIdInterceptor, errorMappingInterceptor]),
+      withInterceptors([correlationIdInterceptor, csrfInterceptor, errorMappingInterceptor]),
     ),
   ]);
 }

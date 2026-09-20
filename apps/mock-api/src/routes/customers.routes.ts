@@ -4,6 +4,7 @@ import {
   customerListQuerySchema,
   roleHasPermission,
   updateCustomerRequestSchema,
+  type AuditListResponse,
   type BulkItemResult,
   type BulkResponse,
   type Customer,
@@ -43,7 +44,13 @@ export function customerRoutes(store: MockStore): Router {
     // Confirms the customer exists first, so a missing record is a 404 rather
     // than an empty list that looks like "nothing ever happened".
     store.getOrThrow(pathParam(req, 'id'));
-    res.status(200).json({ items: store.auditFor(pathParam(req, 'id')) });
+    // `satisfies` rather than a cast: the contract now defines this envelope,
+    // and the compiler checks the handler against it instead of the client
+    // discovering the difference at runtime.
+    const response = {
+      items: store.auditFor(pathParam(req, 'id')),
+    } satisfies AuditListResponse;
+    res.status(200).json(response);
   });
 
   router.post('/', requireAuth, requireCsrf, requirePermission('CUSTOMER_CREATE'), (req, res) => {

@@ -83,3 +83,27 @@ export function dateOnlyParts(value: DateOnly): { year: number; month: number; d
   const [year, month, day] = value.split('-').map(Number);
   return { year, month, day };
 }
+
+/**
+ * Renders a calendar date in the viewer's language, without moving it.
+ *
+ * This is the "hand the parts to a locale-aware formatter" step the note above
+ * describes, written once so no caller has to get it right. The two halves that
+ * make it safe are easy to lose if it is reimplemented in a template:
+ *
+ *  - the `Date` is built from `Date.UTC`, so the parts land on the day they
+ *    say rather than on the previous evening in a negative offset;
+ *  - the formatter is pinned to UTC, so it reads them back the same way.
+ *
+ * Together they mean a birthday reads identically in Hanoi and in Los Angeles,
+ * which is the whole reason `DateOnly` is a separate type.
+ */
+export function formatDateOnly(value: DateOnly, locale: string): string {
+  const { year, month, day } = dateOnlyParts(value);
+  return new Intl.DateTimeFormat(locale, {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    timeZone: 'UTC',
+  }).format(new Date(Date.UTC(year, month - 1, day)));
+}

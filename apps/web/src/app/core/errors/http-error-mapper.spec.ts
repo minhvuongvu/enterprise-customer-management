@@ -5,6 +5,11 @@ function responseWith(status: number, headers?: HttpHeaders): HttpErrorResponse 
   return new HttpErrorResponse({ status, headers, url: '/api/customers' });
 }
 
+/** A response carrying the published error envelope as its body. */
+function responseWithBody(status: number, error: unknown): HttpErrorResponse {
+  return new HttpErrorResponse({ status, error, url: '/api/customers' });
+}
+
 describe('mapHttpError', () => {
   it.each([
     [400, 'validation'],
@@ -35,6 +40,34 @@ describe('mapHttpError', () => {
 
     expect(mapped.messageKey).toBe('errors.conflict');
     expect(mapped.messageKey).not.toContain(' ');
+  });
+
+  it('carries the current version a stale write collided with', () => {
+    const mapped = mapHttpError(
+      responseWithBody(409, {
+        error: {
+          code: 'CONFLICT',
+          message: 'Modified by someone else',
+          correlationId: 'test',
+          details: { currentVersion: 7 },
+        },
+      }),
+    );
+
+    // The discriminator between the two things 409 means on this API: with a
+    // version it is a stale write, without one it is a duplicate record.
+    expect(mapped.kind).toBe('conflict');
+    expect(mapped.kind === 'conflict' && mapped.currentVersion).toBe(7);
+  });
+
+  it('leaves the version undefined when the conflict is not about one', () => {
+    const mapped = mapHttpError(
+      responseWithBody(409, {
+        error: { code: 'CONFLICT', message: 'Email exists', correlationId: 'test' },
+      }),
+    );
+
+    expect(mapped.kind === 'conflict' && mapped.currentVersion).toBeUndefined();
   });
 
   it('reads Retry-After when the server rate limits', () => {

@@ -49,14 +49,14 @@ Concretely, from Phase 0's own suite:
 - Every test is deterministic. No wall-clock dependence, no ordering dependence, no
   shared mutable state between tests.
 
-## Current state — end of Phase 1
+## Current state — end of Phase 2
 
 | Suite                       | Files | Tests | Status  |
 | --------------------------- | ----- | ----- | ------- |
-| `@ecm/web` unit / component | 21    | 123   | passing |
+| `@ecm/web` unit / component | 35    | 248   | passing |
 | `@ecm/mock-api` integration | 8     | 101   | passing |
-| `@ecm/contracts` contract   | 1     | 23    | passing |
-| E2E + accessibility         | 4     | 30    | passing |
+| `@ecm/contracts` contract   | 1     | 27    | passing |
+| E2E + accessibility         | 5     | 38    | passing |
 
 **API tests run against the real server** on an ephemeral port, not against handlers
 invoked in process. Cookies, CORS, status codes and streaming are what that server
@@ -84,6 +84,40 @@ test asserting that focus moved into a dialog passes or fails for reasons unrela
 the component. The focus trap, the focus restore and the skip link are therefore
 verified in `e2e/layout.spec.ts`; the unit tests cover the wiring and everything else.
 
+Phase 2 added the feature levels the earlier phases had nothing to put in:
+
+- **API client tests** assert the request that goes out, the validation of what comes
+  back, and the policy - that a read is retried and a write never is.
+- **Store tests** assert the three properties that are invisible until they are
+  wrong: a superseded request is cancelled (`TestRequest.cancelled`), a cached answer
+  is shown while it revalidates, and every mutation invalidates what it made stale.
+- **Form tests** read as a specification, because the validators and the two payload
+  conversions are pure functions in `customer-form-model.ts` rather than behaviour
+  inside a component.
+- **Integration tests** drive the pages through the real router with
+  `RouterTestingHarness`, so the property the whole design rests on is exercised:
+  the page is never handed a page number, it is navigated to.
+- **The CRUD journey** runs in a browser against the real mock backend - sign in,
+  search, open, edit, save, delete - plus the two paths that only exist because there
+  is a server: a bulk action that partly fails, and a write that loses a race.
+
+**The application's real HTTP stack is used in tests**, through `provideTestHttp()`.
+A bare `provideHttpClient()` would exercise a request path that does not exist in
+production - no correlation id, no CSRF header and, most misleadingly, no error
+mapping - so every assertion about error handling would be testing the spec's own
+plumbing.
+
+**The conflict test creates a real race.** It updates the record through the API
+while the form is open, rather than asking the server to pretend with a
+fault-injection header. That is what caught a real defect: the first implementation
+recomputed the patch against the reloaded record and silently reverted the other
+person's field. A test that only asserted "the save succeeded" would have passed.
+
+**Records are isolated per test.** The suite runs in parallel against one dataset, so
+`anyCustomer(api, baseURL, position)` gives each test a different record. Two tests
+that both took "the first customer", one of them writing, would fail each other
+intermittently - the worst kind of failure, because it looks like an application bug.
+
 **The axe scan runs in both themes.** A palette that passes contrast in light routinely
 fails in dark, and finding that in Phase 6 would mean re-tuning tokens that six phases
 of components already depend on.
@@ -92,17 +126,19 @@ of components already depend on.
 
 These are gaps, not oversights. Each has an owner.
 
-| Gap                                               | Why it is acceptable now                                                        | Closed in |
-| ------------------------------------------------- | ------------------------------------------------------------------------------- | --------- |
-| No coverage thresholds                            | Coverage over 39 tests and no features would be a number, not a signal          | Phase 7   |
-| One browser (Chromium)                            | There is not enough UI for cross-browser differences to exist                   | Phase 6   |
-| No visual regression                              | Nothing has a stable visual identity yet                                        | Phase 7   |
-| No architecture/dependency tests                  | Boundaries are enforced by review until there are boundaries worth automating   | Phase 7   |
-| `provideRuntimeConfig` not covered end to end     | The browser fetch of `config.json` still has no test                            | Phase 2   |
-| Layouts checked at three fixed widths             | Real devices differ in more than width; these three are where the shape changes | Phase 6   |
-| Bulk `CONFLICT` outcome only reached by injection | A natural version race needs two concurrent clients                             | Phase 4   |
+| Gap                                                                    | Why it is acceptable now                                                                                                       | Closed in |
+| ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | --------- |
+| No coverage thresholds                                                 | A number without a policy is not a signal; Phase 7 sets both at once                                                           | Phase 7   |
+| One browser (Chromium)                                                 | There is not enough UI for cross-browser differences to exist                                                                  | Phase 6   |
+| No visual regression                                                   | Nothing has a stable visual identity yet                                                                                       | Phase 7   |
+| No architecture/dependency tests                                       | Boundaries are enforced by review until there are boundaries worth automating                                                  | Phase 7   |
+| Search does not match across diacritics                                | The mock's index is a plain lowercase substring match                                                                          | Phase 6   |
+| Layouts checked at three fixed widths                                  | Real devices differ in more than width; these three are where the shape changes                                                | Phase 6   |
+| Bulk `CONFLICT` outcome only reached by injection                      | A natural version race needs two concurrent clients                                                                            | Phase 4   |
+| Typing into the prerendered sign-in form before hydration is discarded | The submit button is disabled until the app is live, so the credential cannot leak into the URL; the keystrokes are still lost | Phase 3   |
 
 ## How this grows
 
-Phase 2 adds the first feature-level integration tests and the CRUD E2E journey.
-Phase 7 reviews the whole pyramid, adds coverage gates and wires it into CI.
+Phase 3 adds authorization tests that assert the _UI_ reflects a role while the
+server enforces it independently. Phase 7 reviews the whole pyramid, adds coverage
+gates and wires it into CI.

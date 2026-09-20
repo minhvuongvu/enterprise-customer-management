@@ -4,7 +4,11 @@
     "skipToContent": "Skip to main content"
   },
   "common": {
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "save": "Save",
+    "reset": "Reset",
+    "retry": "Try again",
+    "notProvided": "Not provided"
   },
   "nav": {
     "primary": "Primary",
@@ -39,7 +43,15 @@
     "login": {
       "title": "Sign in",
       "heading": "Sign in",
-      "placeholder": "Authentication arrives in Phase 3."
+      "placeholder": "A placeholder sign-in: it establishes the session the customer API requires. Real authentication - refresh, expiry, guards and permissions - arrives in Phase 3.",
+      "username": "Username",
+      "usernameHint": "admin, manager or viewer",
+      "usernameRequired": "Enter a username.",
+      "password": "Password",
+      "passwordHint": "The mock backend does not verify passwords, so any value works. There is no credential in this repository.",
+      "passwordRequired": "Enter a password.",
+      "submit": "Sign in",
+      "invalidCredentials": "That username and password were not accepted."
     },
     "notFound": {
       "title": "Page not found",
@@ -53,11 +65,46 @@
         "heading": "Customers",
         "description": "Search, filter and manage the customer records.",
         "create": "New customer",
-        "placeholderHeading": "The list arrives in Phase 2",
-        "placeholderBody": "The table, search, filters, sorting and bulk actions are Phase 2's work. The route, its query parameters and the page layout are in place.",
-        "urlStateLabel": "Navigation state",
-        "urlState": "Showing page {{page}} at {{size}} rows per page — read from the URL, not from component state.",
-        "searchState": "Search term from the URL: {{search}}"
+        "refresh": "Refresh",
+        "loading": "Loading customers",
+        "resultsLabel": "Customer results",
+        "summary": "Showing {{shown}} of {{total}} customers.",
+        "pageSize": "Rows per page",
+        "signIn": "Go to sign in",
+        "errorHeading": "The customer list could not be loaded",
+        "refreshFailed": "The list could not be refreshed. What you see below may be out of date.",
+        "emptyHeading": "No customers to show",
+        "emptyFiltered": "No customer matches the current search and filters.",
+        "emptyUnfiltered": "There are no customers yet. Create the first one.",
+        "filters": {
+          "label": "Search and filters",
+          "search": "Search",
+          "searchPlaceholder": "Name, email or code",
+          "searchHint": "Searching starts once you stop typing.",
+          "status": "Status",
+          "anyStatus": "Any status",
+          "gender": "Gender",
+          "anyGender": "Any gender",
+          "createdFrom": "Created from",
+          "createdTo": "Created to",
+          "reset": "Clear filters"
+        },
+        "table": {
+          "caption": "Customers, with their code, name, email, status and when they were last updated",
+          "selectAll": "Select every customer on this page",
+          "selectRow": "Select {{name}}"
+        },
+        "bulk": {
+          "selected": "{{count}} selected",
+          "activate": "Activate",
+          "deactivate": "Deactivate",
+          "delete": "Delete",
+          "clear": "Clear selection",
+          "summary": "{{succeeded}} of {{requested}} succeeded.",
+          "retryHint": "The records that failed are still selected, so you can try them again.",
+          "confirmHeading": "Delete the selected customers?",
+          "confirmBody": "{{count}} customers will be deleted. This cannot be undone."
+        }
       },
       "create": {
         "title": "New customer",
@@ -74,30 +121,56 @@
         "heading": "Customer",
         "breadcrumb": "Customer",
         "description": "Everything known about this customer, and what has been done to the record.",
-        "identifier": "Identifier from the route: {{id}}",
-        "placeholder": "The customer's details arrive in Phase 2, once the data-access layer exists.",
+        "loading": "Loading the customer",
+        "refresh": "Refresh",
         "edit": "Edit",
         "audit": "Audit trail",
         "delete": "Delete",
+        "backToList": "Back to customers",
+        "notFoundHeading": "No such customer",
+        "notFoundBody": "This customer does not exist. It may have been deleted, or the address may contain a typo.",
+        "errorHeading": "The customer could not be loaded",
         "deleteHeading": "Delete this customer?",
-        "deleteBody": "Deleting is not available yet — it arrives with the data-access layer in Phase 2. The confirmation itself is real: focus moved into this dialog, Escape closes it, and focus returns to the button you pressed."
+        "deleteBody": "{{name}} will be deleted. This cannot be undone."
       },
       "audit": {
         "title": "Audit trail",
         "heading": "Audit trail",
         "breadcrumb": "Audit",
         "description": "Every change made to this record, newest first.",
-        "identifier": "Identifier from the route: {{id}}",
-        "placeholderHeading": "No entries yet",
-        "placeholderBody": "The mock API already serves the audit trail. Reading it is Phase 2's work.",
-        "backToCustomer": "Back to the customer"
+        "loading": "Loading the audit trail",
+        "refresh": "Refresh",
+        "backToCustomer": "Back to the customer",
+        "by": "by {{actor}} on",
+        "becameSr": "became",
+        "emptyHeading": "Nothing recorded yet",
+        "emptyBody": "No change has been recorded against this customer.",
+        "errorHeading": "The audit trail could not be loaded"
       },
       "form": {
-        "description": "Fields, validation and saving arrive in Phase 2.",
-        "placeholder": "This page exists so the create and edit routes are real, deep-linkable and reachable from navigation. The form itself — reactive forms, validation, server-side field errors, unsaved-change protection and conflict handling — is Phase 2's subject.",
-        "mode": {
-          "create": "This page was opened in create mode, from route metadata.",
-          "edit": "This page was opened in edit mode, from route metadata."
+        "description": "Fields marked with an asterisk are required.",
+        "create": "Create customer",
+        "loading": "Loading the customer",
+        "loadErrorHeading": "The customer could not be loaded",
+        "fixFields": "Some fields need attention. They are marked below.",
+        "checkingEmail": "Checking whether this address is already in use...",
+        "phoneHint": "Required once the customer is active.",
+        "statusHint": "An active customer must have a phone number.",
+        "countryHint": "Two letters, such as VN or GB.",
+        "addressNote": "Leave the address empty, or fill in at least the first line, the city and the country.",
+        "tagsHint": "Separated by commas. Up to {{max}}.",
+        "conflictHeading": "Someone else changed this customer",
+        "conflictBody": "This record was saved by someone else while this form was open. Reload the newest version - what you have typed stays here - and then save again. Only the fields you changed are sent, so their work is kept.",
+        "conflictReload": "Reload the newest version",
+        "conflictReloaded": "Reloaded. Review your changes and save again.",
+        "leaveHeading": "Leave without saving?",
+        "leaveBody": "This form has changes that have not been saved. Leaving now discards them.",
+        "stay": "Stay on this page",
+        "discard": "Discard my changes",
+        "sections": {
+          "identity": "Customer",
+          "address": "Address",
+          "tags": "Tags"
         }
       }
     },
@@ -168,5 +241,69 @@
     "timeout": "That took too long. Please try again.",
     "cancelled": "The request was cancelled.",
     "unknown": "Something unexpected happened."
+  },
+  "customers": {
+    "status": {
+      "ACTIVE": "Active",
+      "INACTIVE": "Inactive",
+      "PROSPECT": "Prospect"
+    },
+    "gender": {
+      "MALE": "Male",
+      "FEMALE": "Female",
+      "OTHER": "Other",
+      "UNSPECIFIED": "Not specified"
+    },
+    "field": {
+      "customerCode": "Code",
+      "fullName": "Full name",
+      "email": "Email",
+      "phone": "Phone",
+      "dateOfBirth": "Date of birth",
+      "gender": "Gender",
+      "status": "Status",
+      "address": "Address",
+      "addressLine1": "Address line 1",
+      "addressLine2": "Address line 2",
+      "city": "City",
+      "postalCode": "Postal code",
+      "country": "Country",
+      "tags": "Tags",
+      "createdAt": "Created",
+      "updatedAt": "Last updated"
+    },
+    "validation": {
+      "required": "This field is required.",
+      "invalid": "This value is not valid.",
+      "invalidEmail": "Enter an email address, such as name@example.com.",
+      "invalidPhone": "Enter a phone number using digits, spaces and + ( ) - only.",
+      "invalidCountry": "Enter the two-letter country code, such as VN or GB.",
+      "invalidDate": "Enter a real date.",
+      "futureDate": "A date of birth cannot be in the future.",
+      "tooLong": "Use {{max}} characters or fewer.",
+      "tooManyTags": "Use {{max}} tags or fewer.",
+      "tagTooLong": "Each tag must be {{max}} characters or fewer.",
+      "emailTaken": "Another customer already uses this email address.",
+      "server": "The server rejected this value.",
+      "addressIncomplete": "An address needs at least a first line, a city and a country.",
+      "phoneRequiredWhenActive": "An active customer needs a phone number."
+    },
+    "audit": {
+      "action": {
+        "CUSTOMER_CREATED": "Customer created",
+        "CUSTOMER_UPDATED": "Customer updated",
+        "CUSTOMER_DELETED": "Customer deleted",
+        "CUSTOMER_STATUS_CHANGED": "Status changed",
+        "CUSTOMER_IMPORTED": "Customer imported"
+      }
+    },
+    "bulk": {
+      "failure": {
+        "NOT_FOUND": "{{count}} no longer exist.",
+        "FORBIDDEN": "{{count}} were not allowed.",
+        "CONFLICT": "{{count}} were changed by someone else.",
+        "INTERNAL_ERROR": "{{count}} failed for an unknown reason."
+      }
+    }
   }
 }

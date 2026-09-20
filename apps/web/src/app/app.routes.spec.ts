@@ -1,6 +1,6 @@
 import { provideLocationMocks } from '@angular/common/testing';
 import { TestBed } from '@angular/core/testing';
-import { ActivatedRouteSnapshot, provideRouter, Router } from '@angular/router';
+import { ActivatedRouteSnapshot, provideRouter, Router, type Route } from '@angular/router';
 import { routes } from './app.routes';
 import { AppConfigStore } from './core/config/app-config';
 
@@ -103,6 +103,23 @@ describe('application routes', () => {
     expect(matchedPath(router)).toBe('**');
   });
 
+  it('guards both routes that can hold an unsaved form', async () => {
+    const router = setUp();
+
+    // The guard is what stands between a half-typed record and a stray click
+    // on the navigation. Asserting it on the configuration rather than only in
+    // the page's own spec means removing it from one route is caught here.
+    for (const url of ['/customers/new', '/customers/c-42/edit']) {
+      await router.navigateByUrl(url);
+      expect(deepestConfig(router)?.canDeactivate ?? []).toHaveLength(1);
+    }
+
+    await router.navigateByUrl('/customers/c-42');
+    // The detail page holds nothing unsaved, so guarding it would only train
+    // users to click through the dialog.
+    expect(deepestConfig(router)?.canDeactivate).toBeUndefined();
+  });
+
   it('never resolves a route without a title', async () => {
     const router = setUp();
 
@@ -114,6 +131,17 @@ describe('application routes', () => {
       expect(titleOf(router)).toMatch(/^[a-z]+(\.[A-Za-z]+)+$/);
     }
   });
+
+  /** The configuration of the route that finally matched. */
+  function deepestConfig(router: Router): Route | null {
+    let snapshot: ActivatedRouteSnapshot | null = router.routerState.snapshot.root;
+    let config: Route | null = null;
+    while (snapshot) {
+      config = snapshot.routeConfig ?? config;
+      snapshot = snapshot.firstChild;
+    }
+    return config;
+  }
 
   function titleOf(router: Router): string {
     let snapshot: ActivatedRouteSnapshot | null = router.routerState.snapshot.root;

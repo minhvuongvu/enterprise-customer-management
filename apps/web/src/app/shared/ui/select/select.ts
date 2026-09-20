@@ -37,21 +37,34 @@ export interface SelectOption {
     <div class="field">
       <label class="field__label" [attr.for]="selectId">{{ label() }}</label>
 
+      <!--
+        The current value is expressed by [selected] on each option, not by
+        [value] on the select. A select's value property can only name an
+        option that already exists, and on the first render Angular applies an
+        element's own bindings before it creates that element's children - so
+        a value that arrived before the first paint, from a bookmarked URL or
+        a loaded record, was silently dropped and the field rendered empty.
+        Binding the option is order-independent: each one says whether it is
+        the chosen one as it is created.
+      -->
       <select
         class="field__control"
         [id]="selectId"
         [attr.name]="name() || null"
-        [value]="value()"
         [disabled]="isDisabled()"
         [attr.aria-describedby]="hint() ? hintId : null"
         (change)="handleChange($event)"
         (blur)="handleBlur()"
       >
         @if (placeholder()) {
-          <option value="">{{ placeholder() }}</option>
+          <option value="" [selected]="value() === ''">{{ placeholder() }}</option>
         }
         @for (option of options(); track option.value) {
-          <option [value]="option.value" [disabled]="option.disabled ?? false">
+          <option
+            [value]="option.value"
+            [selected]="option.value === value()"
+            [disabled]="option.disabled ?? false"
+          >
             {{ option.label }}
           </option>
         }

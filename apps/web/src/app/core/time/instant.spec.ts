@@ -1,4 +1,4 @@
-import { dateOnlyParts, parseDateOnly, parseInstant, toInstant } from './instant';
+import { dateOnlyParts, formatDateOnly, parseDateOnly, parseInstant, toInstant } from './instant';
 
 describe('time policy', () => {
   describe('parseInstant', () => {
@@ -33,6 +33,24 @@ describe('time policy', () => {
 
     it('rejects a timestamp, because a date-only value has no time', () => {
       expect(parseDateOnly('1990-01-01T00:00:00Z')).toBeNull();
+    });
+  });
+
+  describe('formatDateOnly', () => {
+    it('renders the day it says, whatever the viewer timezone is', () => {
+      const dateOfBirth = parseDateOnly('1990-01-01');
+      const rendered = formatDateOnly(dateOfBirth!, 'en-GB');
+
+      // The failure this guards against renders 31 December 1989 anywhere
+      // west of UTC - which is the bug the whole DateOnly type exists for.
+      expect(rendered).toContain('1990');
+      expect(rendered).toContain('1');
+      expect(rendered).not.toContain('1989');
+    });
+
+    it('follows the locale it is asked for', () => {
+      const date = parseDateOnly('2026-03-05');
+      expect(formatDateOnly(date!, 'en-GB')).toContain('March');
     });
   });
 

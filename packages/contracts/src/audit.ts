@@ -40,3 +40,19 @@ export const auditEntrySchema = z.object({
   changes: z.array(auditFieldChangeSchema),
 });
 export type AuditEntry = z.infer<typeof auditEntrySchema>;
+
+/**
+ * The audit endpoint's envelope.
+ *
+ * An object rather than a bare array, for the same reason the customer list is
+ * one: an array response has nowhere to put paging or a total when the trail
+ * grows past a screenful, and changing the shape later breaks every client.
+ *
+ * It is here rather than inferred on either side because until Phase 2 read it,
+ * the mock API was the only definition of this shape - which is precisely the
+ * second, hand-written copy this package exists to prevent.
+ */
+export const auditListResponseSchema = z.object({
+  items: z.array(auditEntrySchema),
+});
+export type AuditListResponse = z.infer<typeof auditListResponseSchema>;

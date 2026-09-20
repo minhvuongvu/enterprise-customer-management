@@ -1,6 +1,6 @@
 # Architecture
 
-What exists after Phase 1, and the rules that later phases build inside.
+What exists after Phase 2, and the rules that later phases build inside.
 
 `ANGULAR_PROJECT_CONTEXT.md` is the authority on intent. This document describes the
 code.
@@ -17,7 +17,7 @@ enterprise-customer-management/        npm workspace root
 │       ├── core/                      infrastructure, provided once
 │       ├── shared/ui/                 domain-agnostic components
 │       ├── layout/                    the application shell and its parts
-│       ├── customers/                 the business feature (pages only, until Phase 2)
+│       ├── customers/                 the business feature: data/, state/, four pages
 │       ├── technical-labs/            isolated browser experiments
 │       ├── login/  not-found/         the public page and the wildcard
 │       ├── app.routes.ts              route tree
@@ -91,8 +91,8 @@ the failure mode to avoid.
 | i18n            | `core/i18n/`                       | Transloco, English only, lazily imported chunks                                    | Phase 6     |
 | Logging         | `core/logging/`                    | `Logger` abstraction, `ConsoleLogger`, credential redaction, correlation IDs       | Phase 7     |
 | Errors          | `core/errors/`                     | the §4.7 taxonomy as a discriminated union, central HTTP mapping                   | every phase |
-| HTTP            | `core/http/`                       | correlation-id and error-mapping interceptors, ordered                             | Phase 2–4   |
-| Auth            | `core/auth/`                       | `SessionService` signals, `authGuard` that returns `true` and says so              | Phase 3     |
+| HTTP            | `core/http/`                       | correlation-id, CSRF and error-mapping interceptors, ordered                       | Phase 3–4   |
+| Auth            | `core/auth/`                       | `SessionService.signIn()` only; `authGuard` still returns `true` and says so       | Phase 3     |
 | Config          | `core/config/`                     | build-time `BuildEnvironment` + runtime `AppConfigStore` + feature flags           | Phase 7     |
 | Time            | `core/time/instant.ts`             | branded `Instant` (UTC) and `DateOnly` types                                       | Phase 6     |
 
@@ -104,27 +104,44 @@ reason - they are small now and expensive to retrofit:
 | Route metadata | `core/routing/` | typed `withMetadata()` / `routeMetadata()`; breadcrumb keys  | Phase 3   |
 | Document head  | `core/seo/`     | translated `TitleStrategy`; `<html lang>` follows the locale | Phase 6/7 |
 
+Phase 2 filled the **Auth** seam only as far as making a request possible - one
+`signIn()` method and a CSRF interceptor. What it deliberately left empty, and why,
+is [ADR-0012](decisions/0012-phase-2-session-boundary.md).
+
 ---
 
 ## 4. State ownership
 
-Phase 0 introduces no feature state. The rules it fixes:
+Six kinds of state, and for each one: who owns it, how long it lives, what the
+source of truth is, and what resets it. The customer feature is the worked example;
+§15 shows it in place.
 
-| Kind             | Owner                  | Mechanism                                                    |
-| ---------------- | ---------------------- | ------------------------------------------------------------ |
-| Local UI state   | the component          | `signal()` in the component                                  |
-| Form state       | the form               | Reactive Forms (Phase 2)                                     |
-| Navigation state | the URL                | route and query parameters, read via component input binding |
-| Server state     | the feature's store    | a signal store per feature plus an explicit cache (Phase 2)  |
-| Shared app state | `core/`                | `AppConfigStore`, `SessionService`                           |
-| Derived state    | wherever the source is | `computed()`                                                 |
+| Kind             | Owner                         | Lifetime                    | Source of truth                    | Reset by                        |
+| ---------------- | ----------------------------- | --------------------------- | ---------------------------------- | ------------------------------- |
+| URL / navigation | the router                    | the browser history entry   | the address bar                    | navigating                      |
+| Server state     | the feature's store + cache   | the feature's route subtree | the server                         | a mutation's invalidation rules |
+| Form state       | the `FormGroup` in the page   | the page                    | the form                           | `reset()` to the loaded record  |
+| Local UI state   | a `signal()` in the component | the component               | the component                      | whatever the component says     |
+| Shared app state | `core/`                       | the application             | `AppConfigStore`, `SessionService` | a reload                        |
+| Derived state    | wherever the source is        | its source                  | `computed()`                       | nothing - it is not stored      |
 
-Two rules follow from §4.5: the URL is the source of truth for anything that must
-survive a reload or be shareable as a link, and nothing goes into shared application
-state merely because more than one component reads it.
+Two rules follow from §4.5 of the context document, and Phase 2 is where they stop
+being theoretical:
 
-No store library is installed. That decision is revisited once, at Phase 4 — see
-ANGULAR_PROJECT_CONTEXT.md §5.5.
+- **the URL is the source of truth** for anything that must survive a reload or be
+  shareable as a link. The customer list holds no page number, filter or sort of its
+  own; it reads them from query parameters and navigates to change them.
+- **nothing goes into shared application state merely because more than one
+  component reads it.** Selection on the list is read by three components and is
+  still a signal on the page, because it means nothing once that page is gone.
+
+The distinction that matters most in practice is between **server state** and
+**everything else**. Server state is a cached answer to a question the server owns;
+it can be stale, it can fail, and it has to be invalidated. The other five cannot be
+stale, because nobody else can change them.
+
+No store library is installed. That decision is revisited once, at Phase 4 - see
+ANGULAR_PROJECT_CONTEXT.md §5.5 and [ADR-0013](decisions/0013-customer-server-state.md).
 
 `resource()` was checked in Phase 0 and is still marked `@experimental` in Angular
 22.1.7, so Phase 2's server-state layer is written explicitly rather than built on it.
@@ -140,7 +157,7 @@ component  →  feature state  →  API client  →  HttpClient  →  mock API
 ```
 
 An API client does three things, and `core/api/health.api.ts` is the worked example
-every Phase 2 client follows:
+`customers/data/customer.api.ts` follows:
 
 1. Takes its base URL from runtime configuration, so one build runs anywhere.
 2. **Validates the response against the contract** before returning it. A 200 with the
@@ -148,6 +165,18 @@ every Phase 2 client follows:
 object` three layers away.
 3. Lets failures leave as `AppError`. Nothing above the HTTP layer sees an
    `HttpErrorResponse`.
+
+Phase 2 added a fourth thing, deliberately **not** as an interceptor: a **timeout
+and retry policy chosen per endpoint**. A read is retried on a network failure or a
+timeout, because the question has not changed; a write never is, because "the
+connection dropped" and "the server handled it and the response was lost" are
+indistinguishable from the client and a retried create is a duplicate customer.
+Nothing in the 4xx family is retried at all - a 409 will conflict again, and
+retrying it only delays the message the user needs. See
+`customers/data/request-policy.ts`.
+
+Cancellation is not in the client either. It is a property of the subscription, and
+the store gets it by switching between requests - see §15.
 
 Dependency direction across packages is strict and one-way:
 
@@ -166,10 +195,14 @@ A request passes through, in order:
 
 1. `correlationIdInterceptor` — generates an ID, sets the `X-Correlation-Id` header,
    and publishes the ID on the request context.
-2. `errorMappingInterceptor` — catches the failure, reads that context, maps to an
+2. `csrfInterceptor` — echoes the readable CSRF cookie in a header, on unsafe,
+   same-origin requests only. It is transport mechanics, not authentication; see
+   [ADR-0012](decisions/0012-phase-2-session-boundary.md).
+3. `errorMappingInterceptor` — catches the failure, reads that context, maps to an
    `AppError`, logs it, rethrows the mapped value.
 
-The order is not incidental: the mapper reads the context the first interceptor sets.
+Error mapping stays last, so a failure caused by anything the earlier interceptors
+did is still classified. The first two are independent of each other.
 `provideAppHttp()` is the only place the list exists.
 
 The mapper **validates** the error body against the published envelope rather than
@@ -183,8 +216,10 @@ Below that interceptor, nothing ever sees an `HttpErrorResponse`. Features handl
 backend errors" and the no-hardcoded-strings rule end up being the same rule.
 
 Timeout, retry and cancellation are deliberately **not** interceptors. They are
-per-endpoint decisions and belong to the data-access layer in Phase 2; an interceptor
-that retries everything will retry the request you least want retried.
+per-endpoint decisions and live in the data-access layer - `customers/data/request-policy.ts`
+
+- because an interceptor that retries everything will retry the request you least
+  want retried, and one that times out everything will cut off a file upload.
 
 ---
 
@@ -241,11 +276,12 @@ Selectors are prefixed `app-`, enforced by lint.
 
 /                             AppShell + authGuard
 ├── /customers                lazy: customers.routes.ts
-│   ├── ''                    list        ?page &size &search
-│   ├── /new                  form        data.mode = 'create'
-│   └── /:id                  detail
-│       ├── /edit             form        data.mode = 'edit'
-│       └── /audit            audit trail
+│   └── ''                    providers: CustomerCache, CustomerStore
+│       ├── ''                list      ?page &size &sort &search &status &gender &createdFrom &createdTo
+│       ├── /new              form      data.mode = 'create', canDeactivate
+│       └── /:id              detail
+│           ├── /edit         form      data.mode = 'edit',   canDeactivate
+│           └── /audit        audit trail
 ├── /technical-labs           lazy, canMatch: technicalLabsEnabled
 │   ├── ''                    index, rendered from lab-catalog.ts
 │   ├── /api-connectivity     a real lab
@@ -275,7 +311,14 @@ than redirected, so a bug report still contains the address that failed.
 **List state lives in the URL.** `/customers?page=3&search=nguyen` is a link a
 colleague can be sent, a back button that works and a reload that lands where
 the user was. Parameters arrive as component inputs
-(`withComponentInputBinding`), so a page reads them like any other input.
+(`withComponentInputBinding`), so a page reads them like any other input. §15
+describes how they are normalised.
+
+**A path-less route carries the feature's providers.** It matches nothing and
+renders nothing; its only job is to give `CustomerStore` and `CustomerCache` a
+lifetime - alive for every page under `/customers`, destroyed on the way out.
+That is what makes returning from a detail page instant and stops one user's
+cached records outliving the section they were read in.
 
 ### Route metadata
 
@@ -296,6 +339,15 @@ a parent's data into an empty-path child, so the other one would produce
 ### Guards
 
 `authGuard` (Phase 0, still returning `true`) sits on the shell branch.
+
+`unsavedChangesGuard` is a **`CanDeactivate`** guard on the two routes that can
+hold a half-typed record. It asks the component, because the component has the
+form and the dialog; the guard itself is one line. Note that the router passes
+`null` for a route that was resolved but never rendered, whatever the type says
+
+- so the guard is null-safe, or every navigation away from a form that was not
+  on screen becomes an unhandled error.
+
 `technicalLabsEnabled` is a **`CanMatch`** guard on the lab area: a route that
 does not match does not exist, so the request falls through to the wildcard and
 the user sees an ordinary not-found page rather than a redirect that hints at a
@@ -412,3 +464,138 @@ later is a rename; un-sharing it is not.
 
 An explicit implementation that makes the concept visible beats a clever one that
 hides it. This repository is read more often than it is run.
+
+## 15. The customer feature
+
+The one business feature in the repository, and the shape every later feature
+should follow.
+
+### Layers
+
+```text
+page component        routing, layout, local UI state, form state
+    |
+CustomerStore         server state: what is on screen, and the cache
+    |
+CustomerApi           one request, validated, with a per-endpoint policy
+    |
+HttpClient            interceptors: correlation id, CSRF, error mapping
+    |
+mock API
+```
+
+Four layers, and no more. There is no service between the page and the store, no
+facade over the API client, and no repository interface with one implementation.
+
+```text
+customers/
+  customers.routes.ts          the feature's routes; providers live here
+  customer-vocabulary.ts       status and gender as keys and tones
+  data/
+    customer.api.ts            every HTTP call the feature makes
+    customer-list-criteria.ts  the URL <-> query <-> cache-key shape
+    customer-id.ts             a route parameter becomes a CustomerId, or null
+    request-policy.ts          timeout and retry, per endpoint
+  state/
+    customer-store.ts          the feature's server state
+    customer-cache.ts          pages by query key, entities by id
+    remote-data.ts             idle | loading | refreshing | success | error
+  customer-list/               page, filters, table, bulk bar
+  customer-detail/             page
+  customer-form/               page, fields, model, validators, guard
+  customer-audit/              page
+```
+
+### URL state design
+
+`/customers?page=2&size=20&search=john&status=ACTIVE&sort=updatedAt,desc`
+
+Eight parameters arrive as component inputs and are normalised **once**, by
+`readCriteria`, into a `CustomerListCriteria`. That single value is what the filter
+controls render, what the cache is keyed by, and what the request is built from -
+so "no status filter" cannot mean four different things in four places.
+
+Three properties are load-bearing:
+
+- **every value is validated.** A query string is user input: hand-edited,
+  bookmarked, truncated by a chat client. `?status=DELETED` renders the unfiltered
+  list rather than forwarding a 422.
+- **defaults are omitted.** `/customers` stays `/customers`. A short URL is the one
+  a person will actually paste, and it keeps the history readable.
+- **a filter change returns to page 1.** Forgetting this is the classic list bug:
+  searching from page 7 lands on page 7 of three pages of results, which reads as
+  "no matches".
+
+Selection is **not** in the URL. A link carrying twenty ids is not a link anyone
+shares, and restoring a selection made against a different page of results is how
+the wrong records get deleted. It is a signal on the page, cleared whenever the
+criteria change.
+
+### Server state and the cache
+
+See [ADR-0013](decisions/0013-customer-server-state.md) for the reasoning. In short:
+one store for the feature, provided by the feature's route, holding a cache of pages
+keyed by `criteriaKey` and of entities by id. Requests go through `switchMap`, so a
+superseded request is cancelled rather than raced. Debouncing lives in the filter
+component, because that is where the keystrokes are.
+
+Every mutation drops every cached page - a write can move a record onto a different
+page - and updates or drops the entity it touched. The table is in the ADR and in
+`customer-cache.ts`, next to the code that obeys it.
+
+### UX states
+
+Every API-driven surface renders one of four things, derived from the state machine
+in one `computed` rather than a chain of `@if`s:
+
+| Rendering | When                                  |
+| --------- | ------------------------------------- |
+| loading   | `idle` or `loading`                   |
+| error     | `error` with no value to fall back on |
+| empty     | a successful answer with no rows      |
+| rows      | anything else                         |
+
+`refreshing` deliberately does not get its own rendering: the rows stay on screen
+under `aria-busy`, because they are still the answer to the question being asked.
+An error that arrives while rows are on screen is a banner above them, not a blank
+page.
+
+### Form architecture
+
+`customer-form-model.ts` holds the `FormGroup` factory, the validators and the two
+conversions at its edges - none of it inside a component, so the rules can be tested
+as rules. `customer-form.ts` renders the fields. `customer-form-page.ts` loads,
+saves and navigates.
+
+- **Synchronous validators** mirror the contract: required, format, length. The
+  duplication is deliberate - a schema cannot tell a user which field to fix as they
+  type, and the server validates everything again anyway.
+- **Cross-field rules** live on the group that can answer them: an address is all or
+  nothing, and an active customer needs a phone number.
+- **One asynchronous validator**, on email, for the one rule the client genuinely
+  cannot answer. It debounces inside itself, so Angular's own cancellation does the
+  rest, and a failed check does not block the save - the server decides.
+- **Server field errors** mark the named control. The envelope's messages are
+  developer-facing prose, so the client uses the server's answer for _which field_
+  and supplies its own translated sentence for _what to say_.
+- **Unsaved changes** are protected by a `CanDeactivate` guard that asks the
+  component, because the component has the form and the dialog. It covers navigation
+  inside the application only; the tab-close case needs `beforeunload`, which is a
+  browser API and belongs to Phase 5.
+
+### Error handling
+
+Nothing above the HTTP layer sees an `HttpErrorResponse`, and nothing renders a
+server message. Each surface maps an `AppError` _kind_ to what the user should do:
+
+| Kind             | What the page does                                               |
+| ---------------- | ---------------------------------------------------------------- |
+| `authentication` | offers a link to sign in - retrying would fail identically       |
+| `not-found`      | says the customer does not exist, on detail and on edit          |
+| `validation`     | marks the named fields on the form                               |
+| `conflict`       | with a version, the reload panel; without one, a duplicate email |
+| anything else    | a translated message and, where it can help, a retry             |
+
+The conflict split is [ADR-0015](decisions/0015-losing-write-keeps-both-edits.md),
+and it is the most important error path in the feature: a losing write reloads the
+newest record, keeps what the user typed, and resubmits only their own fields.

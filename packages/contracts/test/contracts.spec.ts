@@ -4,6 +4,8 @@ import {
   FIXTURE_USERS,
   ROLE_PERMISSIONS,
   apiErrorBodySchema,
+  auditListResponseSchema,
+  bulkResponseSchema,
   createCustomerRequestSchema,
   customerListQuerySchema,
   customerSchema,
@@ -218,5 +220,61 @@ describe('a customer round-trips through its own schema', () => {
 
   it('rejects a customer code that is not the business format', () => {
     expect(customerSchema.safeParse({ customerCode: '12345' }).success).toBe(false);
+  });
+});
+
+describe('the audit envelope', () => {
+  const entry = {
+    id: '44444444-4444-4444-8444-444444444444',
+    customerId: '11111111-1111-4111-8111-111111111112',
+    action: 'CUSTOMER_UPDATED',
+    occurredAt: '2026-01-02T00:00:00.000Z',
+    actorId: '11111111-1111-4111-8111-111111111111',
+    actorDisplayName: 'Avery Admin',
+    changes: [{ field: 'status', previousValue: 'PROSPECT', newValue: 'ACTIVE' }],
+  };
+
+  it('wraps the entries in an object, leaving room for paging later', () => {
+    const parsed = auditListResponseSchema.safeParse({ items: [entry] });
+    expect(parsed.success, JSON.stringify(parsed.error?.issues)).toBe(true);
+  });
+
+  it('rejects a bare array, which is the shape that cannot grow', () => {
+    expect(auditListResponseSchema.safeParse([entry]).success).toBe(false);
+  });
+});
+
+describe('the bulk response', () => {
+  it('reports an outcome for every item, not one status for the batch', () => {
+    const parsed = bulkResponseSchema.safeParse({
+      requested: 2,
+      succeeded: 1,
+      failed: 1,
+      results: [
+        { id: '11111111-1111-4111-8111-111111111112', outcome: 'SUCCEEDED' },
+        {
+          id: '11111111-1111-4111-8111-111111111113',
+          outcome: 'FAILED',
+          errorCode: 'CONFLICT',
+        },
+      ],
+    });
+
+    expect(parsed.success, JSON.stringify(parsed.error?.issues)).toBe(true);
+  });
+
+  it('refuses a failure that does not say why', () => {
+    // The client groups failures by code to tell the user what to do next, so
+    // an unknown code is a contract violation rather than a detail.
+    const parsed = bulkResponseSchema.safeParse({
+      requested: 1,
+      succeeded: 0,
+      failed: 1,
+      results: [
+        { id: '11111111-1111-4111-8111-111111111112', outcome: 'FAILED', errorCode: 'TEAPOT' },
+      ],
+    });
+
+    expect(parsed.success).toBe(false);
   });
 });

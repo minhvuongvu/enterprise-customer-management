@@ -9,11 +9,16 @@ and educational, not only on whether the application works.
 
 ## Status
 
-**Phase 1 complete** — foundation and seams, the API contract and a real mock
-backend, and now the application shell: routing, the responsive layout, the shared UI
-primitives, design tokens and a light/dark theme. The customer pages exist as routes
-with no data behind them yet; see `docs/PROGRESS.md` for what exists and what comes
+**Phase 2 complete** — foundation and seams, the API contract and a real mock
+backend, the application shell, and now the customer feature itself: a server-paged
+list with search, filters and sorting held in the URL, create and edit with reactive
+forms, delete, bulk actions that report per item, an audit trail, and a server-state
+layer with an explicit cache. See `docs/PROGRESS.md` for what exists and what comes
 next.
+
+Sign in with `admin`, `manager` or `viewer` and any password — the mock backend does
+not verify one, which is why there is no credential in this repository. Real
+authentication is Phase 3.
 
 ## Quick start
 

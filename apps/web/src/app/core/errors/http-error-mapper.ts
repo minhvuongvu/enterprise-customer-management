@@ -50,7 +50,14 @@ export function mapHttpError(response: HttpErrorResponse, correlationId?: Correl
     case 404:
       return appError('not-found', base);
     case 409:
-      return appError('conflict', base);
+      return {
+        kind: 'conflict',
+        messageKey: DEFAULT_ERROR_MESSAGE_KEYS.conflict,
+        // Present only for a stale versioned write. Its absence is what tells
+        // a create that it collided with an existing record instead.
+        currentVersion: envelope?.error.details?.currentVersion,
+        ...base,
+      };
     case 429:
       return {
         kind: 'rate-limited',
