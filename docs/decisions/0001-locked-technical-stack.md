@@ -58,7 +58,7 @@ No store library initially: §4.5 requires explicit state ownership and warns ag
 
 ## Consequences
 
-- Phase 0 cannot start on Node v20.18.0; the runtime must be upgraded first.
+- Phase 0 cannot start on Node v20.18.0; the runtime must be upgraded first. **Resolved 2026-09-20:** Node v24.21.0 installed via nvm for Windows v2 and pinned in `.nvmrc`; the shadowing standalone install was removed from `PATH`. See the toolchain notes in `docs/PROGRESS.md`.
 - Phase 0 grows: it now also scaffolds SSR and creates the cross-cutting seams.
 - A new Phase 0.5 exists for the mock API and contracts package.
 - Phase 5 measures rendering modes instead of introducing SSR.

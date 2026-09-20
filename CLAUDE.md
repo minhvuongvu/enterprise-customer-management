@@ -21,7 +21,10 @@ If this file and `ANGULAR_PROJECT_CONTEXT.md` disagree, `ANGULAR_PROJECT_CONTEXT
 ## Runtime prerequisite
 
 Angular 22 requires Node `^22.22.3 || ^24.15.0 || >=26.0.0`.
-Check `node -v` before any install. Do not downgrade Angular to fit an older Node.
+
+The pinned version is in `.nvmrc` — currently **24.21.0**, installed via nvm for Windows v2. Check `node -v` before any install; do not downgrade Angular to fit an older Node.
+
+The repository `.npmrc` sets `legacy-peer-deps=false` and `engine-strict=true`. Do not disable either: the global `~/.npmrc` on this machine turns peer-dependency checking off, and this project depends on it being on.
 
 ## Repository layout
 

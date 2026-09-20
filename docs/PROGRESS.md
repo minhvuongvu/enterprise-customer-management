@@ -29,9 +29,18 @@ Status values: `Not started` · `In progress` · `Done` · `Done with deviations
 
 | Item | Required | Actual | Checked |
 |---|---|---|---|
-| Node | `^22.22.3 \|\| ^24.15.0 \|\| >=26.0.0` | **v20.18.0 — TOO OLD, blocks Phase 0** | 2026-09-20 |
-| npm | `>=8` | 11.2.0 | 2026-09-20 |
-| Angular | 22.1.7 | not installed | 2026-09-20 |
+| Node | `^22.22.3 \|\| ^24.15.0 \|\| >=26.0.0` | **v24.21.0** — OK | 2026-09-20 |
+| npm | `>=8` | 11.19.0 | 2026-09-20 |
+| Angular | 22.1.7 | not installed yet (Phase 0) | 2026-09-20 |
+
+Node is managed by **nvm for Windows v2.0.0** (`C:\Users\Admin\AppData\Local\Author Software\nvm`). The pinned version is in `.nvmrc`.
+
+### Toolchain notes — non-obvious machine state
+
+Two things were fixed on 2026-09-20 and will look confusing if rediscovered later:
+
+1. **A standalone Node v20.18.0 install still exists at `E:\Program Files\nodejs`.** Its entry was removed from the *machine* `PATH` — along with a duplicate of it and a dead `D:\Program Files\nodejs` entry in the *user* `PATH` — because it sat ahead of nvm and shadowed it, which made `nvm use` appear to do nothing. The directory is still on disk; uninstalling it through Windows "Apps & features" is optional cleanup, but **do not put it back on `PATH`**.
+2. **The global `~/.npmrc` sets `legacy-peer-deps=true`.** That silently accepts incompatible peer dependencies — the exact mechanism by which an unsupported TypeScript or Vitest would install against Angular 22 without a warning. The repository `.npmrc` overrides it with `legacy-peer-deps=false`, and adds `engine-strict=true` so a wrong Node runtime fails the install instead of failing later.
 
 Phase 0 must re-check and update this table.
 
