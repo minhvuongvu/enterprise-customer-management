@@ -4,9 +4,13 @@ import { RouterOutlet } from '@angular/router';
 /**
  * Root component.
  *
- * Intentionally almost empty. The application shell - header, navigation,
- * breadcrumbs, responsive layout - is Phase 1's work; putting a provisional
- * version here would only have to be deleted.
+ * Nothing but an outlet, and that is the point: the public routes and the
+ * authenticated application have different chrome, so each branch of the route
+ * tree brings its own. `AppShell` owns the header, navigation and the `<main>`
+ * landmark for the authenticated area; `LoginPage` owns its own.
+ *
+ * A `<main>` here would have produced two of them on every authenticated page,
+ * which is invalid HTML and makes "skip to main content" ambiguous.
  */
 @Component({
   selector: 'app-root',

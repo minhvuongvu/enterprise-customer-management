@@ -15,7 +15,7 @@ skipped, or broke.
 | ----- | ----------------------------------------------- | ----------- | ------------ | ---------- |
 | 0     | Foundation & Architecture                       | **Done**    | `phase-0`    | 2026-09-20 |
 | 0.5   | Mock API & Contracts                            | **Done**    | `phase-0.5`  | 2026-09-20 |
-| 1     | Routing, Layout & Design System                 | Not started | `phase-1`    | —          |
+| 1     | Routing, Layout & Design System                 | **Done**    | `phase-1`    | 2026-09-20 |
 | 2     | Customer CRUD, Forms & Server State             | Not started | `phase-2`    | —          |
 | 3     | Authentication, Authorization & Security        | Not started | `phase-3`    | —          |
 | 4     | Enterprise UX, Files, Notifications & Realtime  | Not started | `phase-4`    | —          |
@@ -62,6 +62,127 @@ Two things were fixed on 2026-09-20 and will look confusing if rediscovered late
 ## Phase log
 
 Newest entry first. One entry per phase, appended at the end of that phase.
+
+### Phase 1 - Routing, Layout & Design System
+
+**Completed:** 2026-09-20 - **Tag:** `phase-1-complete`
+
+**Built**
+
+- The route tree: `/customers` with `new`, `:id`, `:id/edit`, `:id/audit`, a
+  `/technical-labs` area behind a `CanMatch` feature flag, and a wildcard that renders
+  _inside_ the shell so a mistyped URL still has navigation. Every route lazy, every
+  feature owning its own route file.
+- `AppShell` - header, navigation, breadcrumbs, one `<main>` landmark, skip link - with
+  three genuinely different layouts: a permanent sidebar, an icon rail, and a modal
+  drawer with a focus trap (ADR-0011).
+- Thirteen shared UI primitives on top of CDK, each accessible on its own:
+  button/link, text input and select as `ControlValueAccessor`s, badge, spinner,
+  skeleton, empty and error states, dialog, dropdown menu, tooltip, pagination, and a
+  table scroll region.
+- A two-layer design-token system and runtime light/dark theming driven by one
+  attribute on `<html>` (ADR-0010).
+- Translated route titles and a document `lang` that follows the active locale
+  (ADR-0009), which answers open question 4.
+- Typed route metadata (`withMetadata` / `routeMetadata`) and breadcrumbs derived from
+  the router's state rather than pushed by pages.
+- Attribute checking turned on in the i18n lint rule, which pays technical-debt row 4.
+
+**Architectural decisions**
+
+- [ADR-0009](decisions/0009-translated-route-titles.md) - route titles are translation
+  keys, resolved by a `TitleStrategy`.
+- [ADR-0010](decisions/0010-design-tokens-and-theming.md) - primitive and semantic
+  token layers; the theme is one attribute.
+- [ADR-0011](decisions/0011-adaptive-shell-layout.md) - three layouts; CSS for
+  presentation, TypeScript only for the drawer's behaviour.
+
+**Deviated from the plan**
+
+- `HomePage` was **deleted**, not filled in. Its API-connectivity check moved to
+  `/technical-labs/api-connectivity`, which is what the lab area is for: a technique
+  with no home in customer management. `/home` remains as a redirect, because a URL
+  that once worked and now 404s is indistinguishable from a broken application.
+- `app-button` renders an `<a>` when given a `link`. The shared-UI rules said "no
+  navigation"; they now say "no component _decides_ where to navigate", because the
+  alternative was either a click handler where a link belongs - losing middle click
+  and "open in a new tab" - or a second component with the same styling. The rule and
+  the reason are both written down in `shared/ui/README.md`.
+- `src/styles/` and `stylePreprocessorOptions.includePaths` were added so component
+  styles can `@use` the shared breakpoint partial. Without it the breakpoint values
+  would be copied into every component that has a media query.
+- `tsconfig.spec.json` gained the `node` types, for one test that reads
+  `_breakpoints.scss` to prove the SCSS and TypeScript breakpoints still agree.
+- The customer list page fabricates a page count so the paginator can demonstrate that
+  list state lives in the URL. It is named `PLACEHOLDER_TOTAL_PAGES` and is debt row 11.
+
+**Deliberately not done**
+
+- No data anywhere. No API clients, no stores, no forms - Phase 2. The customer pages
+  are routes and layout, and say so on screen.
+- No real authentication. `authGuard` still returns `true`; it is wired onto the shell
+  branch so Phase 3 changes a function body.
+- No second language. The i18n seam is exercised by the title strategy's language
+  test; Phase 6 adds Vietnamese.
+- No stylelint, no visual regression, no dependency-boundary tooling - Phase 6/7.
+
+**Checks**
+
+| Check                  | Result                                                   |
+| ---------------------- | -------------------------------------------------------- |
+| `npm run format:check` | clean                                                    |
+| `npm run lint`         | clean - root + workspaces, 0 errors, 0 warnings          |
+| `npm run typecheck`    | clean across all three packages                          |
+| `npm test`             | 241 passed - 117 web, 101 mock-api, 23 contracts         |
+| `npm run build`        | succeeded, browser + server bundles, 1 route prerendered |
+| `npm run e2e`          | 30 passed, including axe in both themes                  |
+| Import cycles          | none - 124 modules, 201 edges                            |
+
+`npm run build` prints a bundle-budget warning. It is not new: the same warning exists
+at `phase-0.5-complete` (739 kB against a 500 kB budget), and Phase 1 added 42 kB of
+it. Recorded as debt row 8 rather than silenced by raising the budget.
+
+**Findings worth carrying forward**
+
+- **A backtick inside a template literal ends it.** Several component templates carried
+  explanatory comments written in the same Markdown style as the rest of the repository,
+  and the compiler reported only `Failed to resolve @Component.styles to a string`,
+  naming no file. Prose inside a `template:` or `styles:` block cannot use backticks.
+- **jsdom makes CDK's focus utilities untestable.** `InteractivityChecker` decides an
+  element is focusable by measuring it, and jsdom gives everything zero size - so a
+  focus trap finds nothing to focus and the test fails for a reason that has nothing to
+  do with the component. Focus behaviour belongs in the E2E suite.
+- **CDK reads `keyCode` as well as `key`**, and jsdom's `KeyboardEvent` constructor
+  ignores `keyCode` in its init object. An Escape key event has to have it defined
+  afterwards, or CDK silently ignores it.
+- **The i18n lint rule checks every static attribute**, not only the ones a user can
+  read, so `data-testid` and component inputs have to be excused by name. The list in
+  `eslint.config.js` is short and grouped; if it grows past a screen, the rule is the
+  wrong tool and a custom one is cheaper than the exceptions.
+- **Playwright matches accessible names by substring.** "Navigation menu" also matched
+  "Dismiss the navigation menu" - which is worth knowing because the same ambiguity is
+  real for screen-reader users, and the fix was to give the two controls different
+  names, not only to add `exact: true`.
+
+**For the next phase (2)**
+
+- `CustomerListPage`, `CustomerDetailPage`, `CustomerFormPage` and `CustomerAuditPage`
+  exist as routes with layout and no data. Replacing their bodies is the expected shape
+  of Phase 2; the routes, parameters and metadata should not need to move.
+- List state is already in the URL and arrives as component inputs. The server-state
+  layer should read those inputs rather than introduce a second source of truth.
+- `app-table`, `app-pagination`, `app-empty-state`, `app-error-state`, `app-skeleton`
+  and `app-dialog` were built for the list and the delete confirmation; `app-text-input`
+  and `app-select` for the form. `error` on the text input is an already-translated
+  message on purpose - merging client validators with the server's `fieldErrors` is
+  Phase 2's decision, not the component's.
+- `/customers/:id`'s breadcrumb reads "Customer". A resolver feeding a dynamic label is
+  the intended way to make it read the customer's name; the breadcrumb component does
+  not need to change.
+- The delete confirmation on the detail page is wired and inert. Phase 2 replaces the
+  disabled confirm button; nothing about the dialog changes.
+
+---
 
 ### Phase 0.5 - Mock API & Contracts
 
@@ -260,15 +381,18 @@ Newest entry first. One entry per phase, appended at the end of that phase.
 
 Debt is only acceptable when it is written down. Remove the row when it is paid.
 
-| #   | Debt                                                                                                                                                             | Added in  | Why accepted                                                             | Pay by                           | Status |
-| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- | ------------------------------------------------------------------------ | -------------------------------- | ------ |
-| 1   | `provideRuntimeConfig()` has no end-to-end test - the browser fetch path is unexercised                                                                          | Phase 0   | The app does read `config.json` at boot, but no test asserts it          | Phase 1                          | Open   |
-| 2   | Dependency direction is enforced by review, not by a tool                                                                                                        | Phase 0   | There is one package and few boundaries to break                         | Phase 7                          | Open   |
-| 3   | Four npm packages have unapproved install scripts (`esbuild`, `lmdb`, `msgpackr-extract`, `@parcel/watcher`) under npm 11's new gating; builds work without them | Phase 0   | No observed impact on build, test or serve                               | Phase 7                          | Open   |
-| 4   | `@angular-eslint/template/i18n` checks text nodes only; attributes (`aria-label`, `placeholder`, `title`) are not checked                                        | Phase 0   | No components with attributes to check yet                               | Phase 1                          | Open   |
-| 5   | `packages/contracts` must be built before the apps typecheck; a bare `tsc` in `apps/web` fails on a fresh clone                                                  | Phase 0.5 | The root scripts handle it; only a hand-run command is affected          | Phase 7 (CI)                     | Open   |
-| 6   | The mock API rate limiter is fixed-window, so a client can send up to twice the limit across a boundary                                                          | Phase 0.5 | It exists to make 429 a real code path, not to be a real limiter         | not planned - documented instead | Open   |
-| 7   | Avatar uploads are validated by declared MIME type only; no content inspection                                                                                   | Phase 0.5 | Stated in `docs/mock-backend.md` as a gap rather than implied to be safe | Phase 3                          | Open   |
+| #   | Debt                                                                                                                                                             | Added in  | Why accepted                                                                              | Pay by                           | Status |
+| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- | ----------------------------------------------------------------------------------------- | -------------------------------- | ------ |
+| 1   | `provideRuntimeConfig()` has no end-to-end test - the browser fetch path is unexercised                                                                          | Phase 0   | The app does read `config.json` at boot, but no test asserts it                           | Phase 2                          | Open   |
+| 2   | Dependency direction is enforced by review, not by a tool                                                                                                        | Phase 0   | There is one package and few boundaries to break                                          | Phase 7                          | Open   |
+| 3   | Four npm packages have unapproved install scripts (`esbuild`, `lmdb`, `msgpackr-extract`, `@parcel/watcher`) under npm 11's new gating; builds work without them | Phase 0   | No observed impact on build, test or serve                                                | Phase 7                          | Open   |
+| 5   | `packages/contracts` must be built before the apps typecheck; a bare `tsc` in `apps/web` fails on a fresh clone                                                  | Phase 0.5 | The root scripts handle it; only a hand-run command is affected                           | Phase 7 (CI)                     | Open   |
+| 6   | The mock API rate limiter is fixed-window, so a client can send up to twice the limit across a boundary                                                          | Phase 0.5 | It exists to make 429 a real code path, not to be a real limiter                          | not planned - documented instead | Open   |
+| 7   | Avatar uploads are validated by declared MIME type only; no content inspection                                                                                   | Phase 0.5 | Stated in `docs/mock-backend.md` as a gap rather than implied to be safe                  | Phase 3                          | Open   |
+| 8   | The browser's initial bundle is 781 kB raw / 176 kB transferred, against a 500 kB budget                                                                         | Phase 0.5 | Pre-existing and measured, not introduced; the budget is left failing so it stays visible | Phase 5                          | Open   |
+| 9   | `app-dialog` renders inline rather than in a CDK overlay, and does not lock background scrolling                                                                 | Phase 1   | No page yet has a transformed ancestor or a scroll to lock                                | Phase 4                          | Open   |
+| 10  | "Components use only semantic tokens" is enforced by review and a grep, not by a linter                                                                          | Phase 1   | The grep for hex literals and `--palette-*` in components is clean today                  | Phase 6 (stylelint)              | Open   |
+| 11  | `CustomerListPage` fabricates `PLACEHOLDER_TOTAL_PAGES` so the paginator has something to page through                                                           | Phase 1   | Named, isolated to one constant, and deleted the moment real data arrives                 | Phase 2                          | Open   |
 
 ---
 
@@ -276,11 +400,12 @@ Debt is only acceptable when it is written down. Remove the row when it is paid.
 
 Things that could not be decided yet and must be decided by a specific phase.
 
-| #   | Question                                                                                          | Must be answered by | Notes                                                                                                                 |
-| --- | ------------------------------------------------------------------------------------------------- | ------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| 1   | ~~Do Angular 22's `resource()` / `httpResource()` APIs cover the server-state needs?~~            | ~~Phase 0~~         | **Answered 2026-09-20:** `resource()` is `@experimental` in 22.1.7. Phase 2 writes the server-state layer explicitly. |
-| 2   | Does the hand-written cache survive realtime + optimistic updates, or is NgRx SignalStore needed? | Phase 4             | Revisit once, via ADR. See context §5.5                                                                               |
-| 3   | ~~Is SSR-in-dev noisy enough to hurt early phases?~~                                              | ~~Phase 1~~         | **Answered 2026-09-20:** no. Dev server, build and E2E all run normally with SSR enabled.                             |
-| 4   | Should route titles use a translating `TitleStrategy`, or per-page metadata?                      | Phase 1             | Needed for §7.1's scoped SEO; must not reintroduce hardcoded strings                                                  |
-| 5   | Does the client hold one SSE connection per tab, or elect one tab to hold it and share?           | Phase 4 / 5         | HTTP/1.1 allows six connections per origin; see ADR-0006                                                              |
-| 6   | Where does DTO-to-domain mapping live once the customer feature exists?                           | Phase 2             | Contracts gives validated DTOs; the feature may want a different shape                                                |
+| #   | Question                                                                                          | Must be answered by | Notes                                                                                                                                            |
+| --- | ------------------------------------------------------------------------------------------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | ~~Do Angular 22's `resource()` / `httpResource()` APIs cover the server-state needs?~~            | ~~Phase 0~~         | **Answered 2026-09-20:** `resource()` is `@experimental` in 22.1.7. Phase 2 writes the server-state layer explicitly.                            |
+| 2   | Does the hand-written cache survive realtime + optimistic updates, or is NgRx SignalStore needed? | Phase 4             | Revisit once, via ADR. See context §5.5                                                                                                          |
+| 3   | ~~Is SSR-in-dev noisy enough to hurt early phases?~~                                              | ~~Phase 1~~         | **Answered 2026-09-20:** no. Dev server, build and E2E all run normally with SSR enabled.                                                        |
+| 4   | ~~Should route titles use a translating `TitleStrategy`, or per-page metadata?~~                  | ~~Phase 1~~         | **Answered 2026-09-20:** a `TitleStrategy` reading route `title` as a translation key. See [ADR-0009](decisions/0009-translated-route-titles.md) |
+| 5   | Does the client hold one SSE connection per tab, or elect one tab to hold it and share?           | Phase 4 / 5         | HTTP/1.1 allows six connections per origin; see ADR-0006                                                                                         |
+| 6   | Where does DTO-to-domain mapping live once the customer feature exists?                           | Phase 2             | Contracts gives validated DTOs; the feature may want a different shape                                                                           |
+| 7   | Does the dialog need a CDK overlay and a scroll lock once confirmations stack?                    | Phase 4             | See debt row 9; inline rendering is fine until an ancestor is transformed                                                                        |

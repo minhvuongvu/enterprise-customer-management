@@ -1,0 +1,242 @@
+/* Design tokens.
+ *
+ * Two layers, and the separation is the whole point (ADR-0010):
+ *
+ *   1. PRIMITIVES - the raw palette and scales. `--palette-blue-600` is a
+ *      colour. It has no opinion about where it is used.
+ *   2. SEMANTIC   - what a thing means: `--accent`, `--surface-raised`,
+ *      `--text-muted`. These are the only tokens a component may reference.
+ *
+ * Only the semantic layer is redefined per theme. That is why switching to dark
+ * is one attribute on <html> and not a second stylesheet: every component is
+ * already written against meaning rather than against a colour.
+ *
+ * A component that reaches for a primitive, or writes `#1f2937` directly, has
+ * opted out of theming without saying so - and will look wrong in dark mode.
+ */
+
+:root {
+  /* ------------------------------------------------------------------ *
+   * 1. Primitives - no component may use these directly
+   * ------------------------------------------------------------------ */
+
+  /* Neutrals carry most of an enterprise UI, so the ramp is deliberately
+     long: the difference between a divider and a border is one step. */
+  --palette-neutral-0: #ffffff;
+  --palette-neutral-25: #fcfcfd;
+  --palette-neutral-50: #f7f8fa;
+  --palette-neutral-100: #eef0f4;
+  --palette-neutral-200: #dfe3ea;
+  --palette-neutral-300: #c6ccd8;
+  --palette-neutral-400: #99a1b3;
+  --palette-neutral-500: #6f7788;
+  --palette-neutral-600: #525a6b;
+  --palette-neutral-700: #3b4252;
+  --palette-neutral-800: #272d3a;
+  --palette-neutral-900: #181d27;
+  --palette-neutral-950: #0e121b;
+
+  --palette-blue-100: #dbe8ff;
+  --palette-blue-200: #b8d2ff;
+  --palette-blue-400: #5b94f5;
+  --palette-blue-500: #3b7ae4;
+  --palette-blue-600: #2563c4;
+  --palette-blue-700: #1d4ea0;
+  --palette-blue-900: #14315f;
+
+  --palette-red-100: #ffe1e1;
+  --palette-red-400: #f4756f;
+  --palette-red-600: #c53030;
+  --palette-red-700: #9b2222;
+  --palette-red-900: #5c1616;
+
+  --palette-amber-100: #fdefcf;
+  --palette-amber-400: #e0a52c;
+  --palette-amber-600: #a9741a;
+  --palette-amber-900: #4d340a;
+
+  --palette-green-100: #d6f2e0;
+  --palette-green-400: #46b877;
+  --palette-green-600: #1f8a4c;
+  --palette-green-900: #0f3f23;
+
+  /* ------------------------------------------------------------------ *
+   * 2. Scales - shared by both themes
+   * ------------------------------------------------------------------ */
+
+  /* Spacing: a 4px base. Named by step, not by size, so a component says
+     "two steps of padding" instead of committing to 8 pixels forever. */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+  --space-8: 4rem;
+
+  --font-sans:
+    'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', arial, 'Noto Sans', sans-serif;
+  --font-mono: 'Cascadia Mono', ui-monospace, 'SF Mono', consolas, 'Liberation Mono', monospace;
+
+  --text-xs: 0.75rem;
+  --text-sm: 0.8125rem;
+  --text-md: 0.875rem;
+  --text-lg: 1rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+
+  --leading-tight: 1.25;
+  --leading-normal: 1.5;
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+
+  --radius-sm: 3px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --radius-pill: 999px;
+
+  --border-width: 1px;
+
+  /* Motion. Every duration in the application comes from here, so
+     `prefers-reduced-motion` has exactly one place to override. */
+  --motion-fast: 120ms;
+  --motion-base: 200ms;
+  --motion-slow: 320ms;
+  --motion-ease: cubic-bezier(0.2, 0, 0.2, 1);
+
+  /* Layout metrics. The shell reads these; so do the media queries that
+     decide when the sidebar changes shape. */
+  --layout-header-height: 3.5rem;
+  --layout-sidebar-width: 15rem;
+  --layout-rail-width: 3.75rem;
+  --layout-content-max: 82rem;
+
+  --z-sticky: 10;
+  --z-drawer: 40;
+  --z-overlay: 50;
+
+  /* ------------------------------------------------------------------ *
+   * 3. Semantic tokens - light theme (the default)
+   * ------------------------------------------------------------------ */
+  color-scheme: light;
+
+  --surface-page: var(--palette-neutral-50);
+  --surface-raised: var(--palette-neutral-0);
+  --surface-sunken: var(--palette-neutral-100);
+  --surface-hover: var(--palette-neutral-100);
+  --surface-active: var(--palette-neutral-200);
+  --surface-overlay: var(--palette-neutral-0);
+  --surface-inverse: var(--palette-neutral-800);
+
+  /* The ramp steps are chosen for contrast, not for taste: every one of these
+     clears 4.5:1 against the surface it is used on, verified by the axe scan
+     in the E2E suite. Lightening any of them is a change to be measured. */
+  --text-primary: var(--palette-neutral-900);
+  --text-secondary: var(--palette-neutral-700);
+  --text-muted: var(--palette-neutral-600);
+  --text-inverse: var(--palette-neutral-0);
+  --text-on-accent: var(--palette-neutral-0);
+
+  --border-subtle: var(--palette-neutral-200);
+  --border-strong: var(--palette-neutral-300);
+
+  --accent: var(--palette-blue-600);
+  --accent-hover: var(--palette-blue-700);
+  --accent-subtle: var(--palette-blue-100);
+  --accent-text: var(--palette-blue-700);
+
+  --danger: var(--palette-red-600);
+  --danger-subtle: var(--palette-red-100);
+  --danger-text: var(--palette-red-700);
+
+  --warning: var(--palette-amber-600);
+  --warning-subtle: var(--palette-amber-100);
+  /* A step darker than `--warning`: the mid tone is legible on white and
+     fails on its own pale background, which is where a badge puts it. */
+  --warning-text: var(--palette-amber-900);
+
+  --success: var(--palette-green-600);
+  --success-subtle: var(--palette-green-100);
+  --success-text: var(--palette-green-900);
+
+  --focus-ring: var(--palette-blue-600);
+  --scrim: rgb(14 18 27 / 45%);
+
+  --shadow-sm: 0 1px 2px rgb(14 18 27 / 8%);
+  --shadow-md: 0 4px 12px rgb(14 18 27 / 10%);
+  --shadow-lg: 0 12px 32px rgb(14 18 27 / 16%);
+}
+
+/* ------------------------------------------------------------------ *
+ * 4. Semantic tokens - dark theme
+ *
+ * Applied two ways, and both are needed:
+ *
+ *   - `[data-theme='dark']`, written by ThemeService for an explicit choice;
+ *   - `prefers-color-scheme`, for the "system" setting and - importantly - for
+ *     the server-rendered and pre-hydration paint, where no script has run yet.
+ *     Guarded by `:not([data-theme='light'])` so an explicit light choice still
+ *     wins on a machine set to dark.
+ * ------------------------------------------------------------------ */
+
+@mixin dark-theme {
+  color-scheme: dark;
+
+  --surface-page: var(--palette-neutral-950);
+  --surface-raised: var(--palette-neutral-900);
+  --surface-sunken: var(--palette-neutral-800);
+  --surface-hover: var(--palette-neutral-800);
+  --surface-active: var(--palette-neutral-700);
+  --surface-overlay: var(--palette-neutral-800);
+  --surface-inverse: var(--palette-neutral-100);
+
+  --text-primary: var(--palette-neutral-50);
+  --text-secondary: var(--palette-neutral-300);
+  --text-muted: var(--palette-neutral-400);
+  --text-inverse: var(--palette-neutral-900);
+  --text-on-accent: var(--palette-neutral-0);
+
+  --border-subtle: var(--palette-neutral-800);
+  --border-strong: var(--palette-neutral-700);
+
+  /* `--accent` is a filled surface carrying white text, so it does not get
+     lighter in the dark theme - a lighter blue behind white text drops below
+     4.5:1. What changes is `--accent-text`, which is a *text* colour on the
+     page background and has the opposite requirement. */
+  --accent: var(--palette-blue-600);
+  --accent-hover: var(--palette-blue-700);
+  --accent-subtle: var(--palette-blue-900);
+  --accent-text: var(--palette-blue-200);
+
+  --danger: var(--palette-red-400);
+  --danger-subtle: var(--palette-red-900);
+  --danger-text: var(--palette-red-400);
+
+  --warning: var(--palette-amber-400);
+  --warning-subtle: var(--palette-amber-900);
+  --warning-text: var(--palette-amber-400);
+
+  --success: var(--palette-green-400);
+  --success-subtle: var(--palette-green-900);
+  --success-text: var(--palette-green-400);
+
+  --focus-ring: var(--palette-blue-400);
+  --scrim: rgb(0 0 0 / 60%);
+
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 40%);
+  --shadow-md: 0 4px 12px rgb(0 0 0 / 45%);
+  --shadow-lg: 0 12px 32px rgb(0 0 0 / 55%);
+}
+
+:root[data-theme='dark'] {
+  @include dark-theme;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    @include dark-theme;
+  }
+}

@@ -1,1 +1,22 @@
-/* You can add global styles to this file, and also import other style files */
+/* Global stylesheet.
+ *
+ * Only three things belong here, and everything else belongs to a component:
+ *
+ *   tokens - the design-token layer (ADR-0010);
+ *   base   - element defaults expressed in those tokens;
+ *   a11y   - utilities that must work across component style scopes.
+ *
+ * There is no global component styling and no utility framework. A rule added
+ * here applies to every page ever written, including the ones written after
+ * whoever added it has left.
+ */
+
+@use 'styles/tokens';
+@use 'styles/base';
+@use 'styles/a11y';
+
+/* The CDK overlay container lives outside the application's DOM, so overlay
+   content (dropdown menus, tooltips) cannot be styled from a component. Only
+   the positioning primitives are imported; appearance stays with the
+   components that open them. */
+@use '@angular/cdk/overlay-prebuilt.css';

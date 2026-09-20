@@ -7,11 +7,15 @@ import { expect, test } from '@playwright/test';
  * the runtime-configured base URL, the HTTP interceptors, and the response
  * validation in `HealthApi`. Unit tests mock the transport by design, so this
  * is the only place the wiring itself can fail visibly.
+ *
+ * It lives at `/technical-labs/api-connectivity` since Phase 1: connectivity
+ * is a technique with no home in customer management, which is exactly what
+ * the lab area is for.
  */
 
 test.describe('application to API wiring', () => {
-  test('the home page reaches the API and reports what it found', async ({ page }) => {
-    await page.goto('/home');
+  test('the connectivity lab reaches the API and reports what it found', async ({ page }) => {
+    await page.goto('/technical-labs/api-connectivity');
 
     await expect(page.getByTestId('api-status')).toHaveText('Connected to the mock API.');
     // Proves the response was parsed, not merely received.
@@ -21,7 +25,7 @@ test.describe('application to API wiring', () => {
   test('the request carries a correlation id and the API echoes it back', async ({ page }) => {
     const [request] = await Promise.all([
       page.waitForRequest((candidate) => candidate.url().includes('/api/health')),
-      page.goto('/home'),
+      page.goto('/technical-labs/api-connectivity'),
     ]);
 
     const sent = request.headers()['x-correlation-id'];
@@ -50,7 +54,7 @@ test.describe('application to API wiring', () => {
     // The interceptor classifies it, the page decides what to show. A user sees
     // a message, not a blank screen or a raw backend error.
     await page.route('**/api/health', (route) => route.abort('connectionrefused'));
-    await page.goto('/home');
+    await page.goto('/technical-labs/api-connectivity');
 
     await expect(page.getByTestId('api-status')).toContainText('not reachable');
   });

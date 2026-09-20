@@ -1,6 +1,6 @@
 # Architecture
 
-What exists after Phase 0, and the rules that later phases build inside.
+What exists after Phase 1, and the rules that later phases build inside.
 
 `ANGULAR_PROJECT_CONTEXT.md` is the authority on intent. This document describes the
 code.
@@ -12,10 +12,14 @@ code.
 ```text
 enterprise-customer-management/        npm workspace root
 ├── apps/web/                          Angular 22 application (SSR-scaffolded, zoneless)
+│   ├── src/styles/                    design tokens, element defaults, a11y utilities
 │   └── src/app/
 │       ├── core/                      infrastructure, provided once
-│       ├── shared/ui/                 domain-agnostic components (empty until Phase 1)
-│       ├── login/  home/  not-found/  Phase 0 placeholder routes
+│       ├── shared/ui/                 domain-agnostic components
+│       ├── layout/                    the application shell and its parts
+│       ├── customers/                 the business feature (pages only, until Phase 2)
+│       ├── technical-labs/            isolated browser experiments
+│       ├── login/  not-found/         the public page and the wildcard
 │       ├── app.routes.ts              route tree
 │       ├── app.routes.server.ts       render mode per route
 │       └── app.config.ts              browser bootstrap
@@ -33,14 +37,22 @@ library (ADR-0008); the two apps run from source.
 ## 2. Dependency direction
 
 ```text
-            routes / pages
-                  ↓
-        feature state (Phase 2)
-                  ↓
-          data access (Phase 2)
-                  ↓
-              core/
+   layout/  ->  routes / pages  ->  shared/ui/
+                      |
+                      v
+            feature state (Phase 2)
+                      |
+                      v
+             data access (Phase 2)
+                      |
+                      v
+                    core/
 ```
+
+`layout/` and `shared/ui/` are both presentation, and they are separate
+folders because they answer to different owners: `layout/` knows this
+application has customers and technical labs, `shared/ui/` must not know what a
+customer is. `layout/` may use `shared/ui/`; never the other way round.
 
 Rules, in the order they get broken:
 
@@ -49,7 +61,8 @@ Rules, in the order they get broken:
 2. **A feature never reaches into another feature's internals.** Cross-feature
    communication goes through an explicit public entry point.
 3. **`shared/ui` never imports from `core/` business concerns or from any feature.** It
-   takes inputs and emits outputs.
+   takes inputs and emits outputs, and decides no navigation of its own - see the
+   rules in `apps/web/src/app/shared/ui/README.md`.
 4. **Nothing imports upward.** `core/logging` may not import `core/http`; the arrow
    only points one way.
 
@@ -82,6 +95,14 @@ the failure mode to avoid.
 | Auth            | `core/auth/`                       | `SessionService` signals, `authGuard` that returns `true` and says so              | Phase 3     |
 | Config          | `core/config/`                     | build-time `BuildEnvironment` + runtime `AppConfigStore` + feature flags           | Phase 7     |
 | Time            | `core/time/instant.ts`             | branded `Instant` (UTC) and `DateOnly` types                                       | Phase 6     |
+
+Phase 1 added two more that behave like seams, and are listed here for the same
+reason - they are small now and expensive to retrofit:
+
+| Seam           | Where           | Today                                                        | Filled in |
+| -------------- | --------------- | ------------------------------------------------------------ | --------- |
+| Route metadata | `core/routing/` | typed `withMetadata()` / `routeMetadata()`; breadcrumb keys  | Phase 3   |
+| Document head  | `core/seo/`     | translated `TitleStrategy`; `<html lang>` follows the locale | Phase 6/7 |
 
 ---
 
@@ -211,7 +232,166 @@ Selectors are prefixed `app-`, enforced by lint.
 
 ---
 
-## 9. When to create a shared component
+## 9. Routing
+
+```text
+/                             -> /customers
+/login                        public, prerendered, its own <main>
+/home                         -> /customers   (Phase 0's URL, kept working)
+
+/                             AppShell + authGuard
+├── /customers                lazy: customers.routes.ts
+│   ├── ''                    list        ?page &size &search
+│   ├── /new                  form        data.mode = 'create'
+│   └── /:id                  detail
+│       ├── /edit             form        data.mode = 'edit'
+│       └── /audit            audit trail
+├── /technical-labs           lazy, canMatch: technicalLabsEnabled
+│   ├── ''                    index, rendered from lab-catalog.ts
+│   ├── /api-connectivity     a real lab
+│   └── /:labId               placeholder for a planned lab
+└── **                        not found, inside the shell
+```
+
+Five decisions are encoded in that shape.
+
+**Public and authenticated are different branches.** `/login` sits outside the
+shell, and is the one route that is prerendered (ADR-0003). Everything else
+lives under a path-less route that renders `AppShell` and carries `authGuard`,
+so the guard is stated once rather than repeated on every page — and Phase 3
+changes a function body, not the tree.
+
+**Every route is lazy**, and a feature owns its own route file. The application
+composes it with one `loadChildren` and learns nothing about its internals;
+adding `/customers/:id/notes` is a change to `customers.routes.ts` alone.
+
+**Not found renders inside the shell**, keeping the header and navigation. A
+404 that strands the user is a support ticket. The URL is left as typed rather
+than redirected, so a bug report still contains the address that failed.
+
+**Order is load-bearing** in two places: `login` before the path-less shell, and
+`new` before `:id` — otherwise "new" is read as an identifier.
+
+**List state lives in the URL.** `/customers?page=3&search=nguyen` is a link a
+colleague can be sent, a back button that works and a reload that lands where
+the user was. Parameters arrive as component inputs
+(`withComponentInputBinding`), so a page reads them like any other input.
+
+### Route metadata
+
+| Field        | Meaning                                                                        |
+| ------------ | ------------------------------------------------------------------------------ |
+| `title`      | a **translation key**, resolved by `TranslatedTitleStrategy` (ADR-0009)        |
+| `breadcrumb` | a translation key, read by `app-breadcrumbs`                                   |
+| `mode`       | bound to the form page's `mode` input, so one component serves create and edit |
+
+Metadata is authored through `withMetadata()` and read through
+`routeMetadata()` — Angular types `Route.data` as `any`, so a typo in a route
+file is otherwise silent.
+
+`routeMetadata()` reads `routeConfig.data`, not `snapshot.data`. Angular merges
+a parent's data into an empty-path child, so the other one would produce
+"Customers › Customers".
+
+### Guards
+
+`authGuard` (Phase 0, still returning `true`) sits on the shell branch.
+`technicalLabsEnabled` is a **`CanMatch`** guard on the lab area: a route that
+does not match does not exist, so the request falls through to the wildcard and
+the user sees an ordinary not-found page rather than a redirect that hints at a
+hidden feature — and Angular never loads the chunk.
+
+---
+
+## 10. Layout
+
+```text
+AppShell                 header + navigation + <main>, one per authenticated page
+├── AppHeader            brand, menu toggle, theme control
+├── AppSidebar           the links; knows nothing about where it is rendered
+├── Breadcrumbs          derived from the router's state
+└── <main id="main-content" tabindex="-1">
+    └── router-outlet
+        └── PageContainer
+            ├── PageHeader   <h1>, description, [pageActions] slot
+            └── page content
+```
+
+The navigation changes **kind** across three widths — permanent region, icon
+rail, modal drawer — rather than merely changing size. The full reasoning, the
+breakpoints and the CSS/TypeScript split are in ADR-0011. The short version:
+presentation is CSS, so it is correct before hydration and with JavaScript
+disabled; only the drawer's behaviour (focus trap, Escape, close on navigation)
+is code, because a media query cannot do those.
+
+There is exactly **one `<main>` per page**. The shell owns it for the
+authenticated area; `LoginPage` owns its own. The root component is an outlet
+and nothing else, which is what keeps that true.
+
+`PageContainer` answers "how wide is a page and how much air is between its
+sections" once. `PageHeader` renders the page's only `<h1>` and projects its
+actions, rather than accepting a list of button descriptors — a descriptor list
+grows icons, tones, disabled reasons and permissions, and every one of those is
+business knowledge inside a layout component.
+
+---
+
+## 11. Design tokens and theming
+
+Two layers, and the separation is the point (ADR-0010):
+
+```text
+primitives   --palette-neutral-700, --palette-blue-600   a colour, no opinion
+semantic     --surface-raised, --text-muted, --accent    what a thing means
+```
+
+**Components may reference only the semantic layer**, plus the shared scales
+(`--space-*`, `--text-*`, `--radius-*`, `--motion-*`). A component that writes
+a hex literal, or reaches for a palette entry, has opted out of theming without
+saying so.
+
+Only the semantic layer is redefined per theme, which is why switching is one
+attribute on `<html>` and nothing re-renders. `ThemeService` writes
+`data-theme` for an explicit choice and _removes_ it for "follow the system",
+handing the decision back to the `prefers-color-scheme` rule that also paints
+the first frame.
+
+Contrast is part of the token definition rather than a later audit: several
+tokens sit a step darker than the palette entry they are named after because
+they failed 4.5:1, and the axe scans run in both themes.
+
+Global CSS holds three things and nothing else: the tokens, element defaults
+expressed in those tokens, and the two accessibility utilities that must work
+across component style scopes (`.visually-hidden`, `.skip-link`). Everything
+else is a component style. A rule added to the global sheet applies to every
+page ever written, including the ones written after whoever added it has left.
+
+---
+
+## 12. Composition
+
+- **Presentation components take inputs and emit outputs.** They own no data
+  and decide no navigation.
+- **Content projection over configuration** wherever the caller's content could
+  be anything: the dialog's actions, the page header's actions, the empty
+  state's call to action. An `[actions]` input would have to grow every
+  property a button might need, and would end up carrying permissions.
+- **State belongs to the caller.** `app-dialog` takes `[open]` and emits
+  `(closed)`; it does not own its own visibility. The state that decides
+  whether it should be open lives with the caller anyway.
+- **Copy belongs to the caller**, already translated. The exception is text
+  that belongs to the mechanism rather than to the message — "Go to page 4" —
+  which lives under the `ui.*` namespace.
+- **The platform does the platform's job.** A button is a `<button>`, a
+  navigation is an `<a>`, a choice is a `<select>`. Replacing a native control
+  is justified only when the design genuinely cannot be expressed with it.
+
+The full set of rules, and the component inventory, is in
+`apps/web/src/app/shared/ui/README.md`.
+
+---
+
+## 13. When to create a shared component
 
 All of these, not some:
 
@@ -223,7 +403,7 @@ All of these, not some:
 Until all four hold, the component lives next to the feature that owns it. Moving it
 later is a rename; un-sharing it is not.
 
-## 10. When _not_ to create an abstraction
+## 14. When _not_ to create an abstraction
 
 - You cannot name the second caller.
 - It exists to hide a library the codebase has already committed to.

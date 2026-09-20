@@ -91,11 +91,65 @@ module.exports = defineConfig([
     rules: {
       // Flags literal text in templates. Everything a user reads must come
       // from the translation layer, so a bare sentence here is a bug.
-      // Attributes are checked from Phase 1, when real components exist.
+      //
+      // `checkAttributes` was turned on in Phase 1, once components with
+      // `aria-label`, `placeholder` and `title` existed: those are read out to
+      // screen-reader users and are exactly the strings that get missed,
+      // because they do not look like copy. A binding satisfies the rule - an
+      // attribute that is computed is not a hardcoded one.
       '@angular-eslint/template/i18n': [
         'error',
-        { checkId: false, checkText: true, checkAttributes: false },
+        {
+          checkId: false,
+          checkText: true,
+          checkAttributes: true,
+          // The rule checks every static attribute it does not already ignore,
+          // so the ones that are not copy have to be named. Three groups, and
+          // nothing else belongs here - an attribute a user can read must be a
+          // binding, not an entry in this list.
+          ignoreAttributes: [
+            // ARIA state and live-region values: vocabulary, not text.
+            'aria-current',
+            'aria-live',
+            // Test hooks and styling switches, never rendered.
+            'data-testid',
+            'data-direction',
+            // SVG presentation attributes.
+            'stroke-linecap',
+            'stroke-linejoin',
+            // Component inputs whose values are enum members, scoped to the
+            // component that declares them so a same-named attribute
+            // elsewhere is still checked.
+            'app-badge[tone]',
+            'app-button[variant]',
+            'app-button[link]',
+          ],
+        },
       ],
+    },
+  },
+  {
+    // Specs run only in a browser-like environment, and often have to reach
+    // the document directly: focus lives on it, and the CDK overlay container
+    // is deliberately outside the component under test. The rule exists to
+    // protect the server build, which no spec is part of.
+    files: ['**/*.spec.ts'],
+    rules: {
+      'no-restricted-globals': [
+        'error',
+        ...BROWSER_GLOBALS.filter((global) => global.name !== 'document'),
+      ],
+    },
+  },
+  {
+    // Inline templates inside specs are fixtures, not product copy. They exist
+    // to be asserted against; routing them through the translation layer would
+    // test Transloco rather than the component, and would hide the literal the
+    // assertion is looking for. Last in the list, so it wins over the template
+    // block above.
+    files: ['**/*.spec.ts/*.html'],
+    rules: {
+      '@angular-eslint/template/i18n': 'off',
     },
   },
 ]);

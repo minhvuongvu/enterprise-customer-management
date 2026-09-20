@@ -84,11 +84,25 @@ To make something fail on demand, send `x-mock-scenario`. The catalogue is at
 ## Adding a route
 
 1. Create the component as `<name>-page.ts` in its feature folder.
-2. Add a lazy entry to `app.routes.ts`. Every route is lazily loaded; there is no
-   reason for a new one to be the exception.
-3. Decide its render mode in `app.routes.server.ts`. Public and static → `Prerender`.
+2. Add a lazy entry to the **feature's** route file — `customers/customers.routes.ts`,
+   not `app.routes.ts`. The application composes features with one `loadChildren`
+   each, and only a new feature touches the root tree.
+3. Give it a `title`, which is a **translation key**, not a title (ADR-0009). Give it
+   `data: withMetadata({ breadcrumb: '...' })` if it should appear in the trail.
+4. Decide its render mode in `app.routes.server.ts`. Public and static → `Prerender`.
    Anything per-user → `Client`. If unsure, it is `Client`.
-4. Put its text in `core/i18n/translations/en.json` and read it through Transloco.
+5. Put its text in `core/i18n/translations/en.json` and read it through Transloco.
+6. Wrap the page in `app-page-container` and give it one `app-page-header`. That is
+   the page's only `<h1>`.
+
+## Adding a shared component
+
+Read `apps/web/src/app/shared/ui/README.md` first — it is short, and rules 1, 3 and 7
+are the ones that get broken. In particular: a component moves into `shared/ui` when a
+_second_ caller needs it, not when it looks generic.
+
+Use only semantic design tokens (`--surface-raised`, `--text-muted`). A hex literal or
+a `--palette-*` reference is a component that will be wrong in the dark theme.
 
 ## The rules lint enforces
 
@@ -104,17 +118,23 @@ translation layer, today, while only English exists. The expensive part of i18n 
 never the second language — it is finding six phases of strings that were typed
 inline.
 
-Neither rule is a style preference; both were verified in Phase 0 by writing a
-violation and watching lint reject it.
+Since Phase 1 this covers **attributes** as well as text, because `aria-label`,
+`placeholder` and `title` are read out to screen-reader users and are exactly the
+strings that get missed — they do not look like copy. A binding satisfies the rule; a
+static value does not. Attributes that are not copy (`data-testid`, ARIA state values,
+SVG presentation) are named explicitly in `eslint.config.js`, and that list is the only
+place they may be excused.
+
+Neither rule is a style preference; both were verified by writing a violation and
+watching lint reject it — in Phase 0 for text, and again in Phase 1 for attributes.
 
 ## Things that are deliberately not here yet
 
-| Missing                                      | Arrives in |
-| -------------------------------------------- | ---------- |
-| Application shell, navigation, design system | Phase 1    |
-| Customer feature, forms, server state        | Phase 2    |
-| Real authentication and authorization        | Phase 3    |
-| CI pipeline                                  | Phase 7    |
+| Missing                               | Arrives in |
+| ------------------------------------- | ---------- |
+| Customer data, forms, server state    | Phase 2    |
+| Real authentication and authorization | Phase 3    |
+| CI pipeline                           | Phase 7    |
 
 If you need one of these now, that is a signal the phase order is wrong — raise it
 rather than building it early.

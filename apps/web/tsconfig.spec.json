@@ -3,7 +3,12 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "types": ["vitest/globals"]
+    /* `node` is here for one test: layout-breakpoints.spec.ts reads
+     * src/styles/_breakpoints.scss to prove the SCSS and the TypeScript
+     * constants still agree. Specs run in Node with a jsdom document, so the
+     * built-ins are genuinely available - application code is not, and
+     * tsconfig.app.json deliberately does not list them. */
+    "types": ["vitest/globals", "node"]
   },
   "include": ["src/**/*.d.ts", "src/**/*.spec.ts"]
 }

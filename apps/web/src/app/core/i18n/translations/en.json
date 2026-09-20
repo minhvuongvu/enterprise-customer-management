@@ -3,29 +3,157 @@
     "title": "Customer Management",
     "skipToContent": "Skip to main content"
   },
+  "common": {
+    "cancel": "Cancel"
+  },
   "nav": {
-    "home": "Home",
-    "login": "Sign in"
+    "primary": "Primary",
+    "menu": "Navigation menu",
+    "breadcrumbs": "Breadcrumb",
+    "dismissMenu": "Dismiss the navigation menu",
+    "customers": "Customers",
+    "technicalLabs": "Technical labs"
+  },
+  "theme": {
+    "label": "Colour theme",
+    "options": {
+      "light": "Light",
+      "dark": "Dark",
+      "system": "Match the system"
+    }
+  },
+  "ui": {
+    "dialog": {
+      "close": "Close the dialog",
+      "dismiss": "Dismiss the dialog"
+    },
+    "pagination": {
+      "label": "Pages",
+      "summary": "Page {{page}} of {{totalPages}}",
+      "previous": "Previous page",
+      "next": "Next page",
+      "goToPage": "Go to page {{page}}"
+    }
   },
   "pages": {
-    "home": {
-      "heading": "Customer Management",
-      "placeholder": "The application shell and navigation arrive in Phase 1.",
-      "apiStatus": {
-        "checking": "Checking the connection to the API...",
-        "connected": "Connected to the mock API.",
-        "unavailable": "The mock API is not reachable. Run it with: npm run start:api"
-      },
-      "customerCount": "{{count}} customers in the dataset."
-    },
     "login": {
+      "title": "Sign in",
       "heading": "Sign in",
       "placeholder": "Authentication arrives in Phase 3."
     },
     "notFound": {
+      "title": "Page not found",
       "heading": "Page not found",
-      "body": "The page you asked for does not exist.",
-      "backHome": "Go to the start page"
+      "body": "The page you asked for does not exist. It may have been moved, or the address may contain a typo.",
+      "backHome": "Go to customers"
+    },
+    "customers": {
+      "list": {
+        "title": "Customers",
+        "heading": "Customers",
+        "description": "Search, filter and manage the customer records.",
+        "create": "New customer",
+        "placeholderHeading": "The list arrives in Phase 2",
+        "placeholderBody": "The table, search, filters, sorting and bulk actions are Phase 2's work. The route, its query parameters and the page layout are in place.",
+        "urlStateLabel": "Navigation state",
+        "urlState": "Showing page {{page}} at {{size}} rows per page — read from the URL, not from component state.",
+        "searchState": "Search term from the URL: {{search}}"
+      },
+      "create": {
+        "title": "New customer",
+        "heading": "New customer",
+        "breadcrumb": "New"
+      },
+      "edit": {
+        "title": "Edit customer",
+        "heading": "Edit customer",
+        "breadcrumb": "Edit"
+      },
+      "detail": {
+        "title": "Customer",
+        "heading": "Customer",
+        "breadcrumb": "Customer",
+        "description": "Everything known about this customer, and what has been done to the record.",
+        "identifier": "Identifier from the route: {{id}}",
+        "placeholder": "The customer's details arrive in Phase 2, once the data-access layer exists.",
+        "edit": "Edit",
+        "audit": "Audit trail",
+        "delete": "Delete",
+        "deleteHeading": "Delete this customer?",
+        "deleteBody": "Deleting is not available yet — it arrives with the data-access layer in Phase 2. The confirmation itself is real: focus moved into this dialog, Escape closes it, and focus returns to the button you pressed."
+      },
+      "audit": {
+        "title": "Audit trail",
+        "heading": "Audit trail",
+        "breadcrumb": "Audit",
+        "description": "Every change made to this record, newest first.",
+        "identifier": "Identifier from the route: {{id}}",
+        "placeholderHeading": "No entries yet",
+        "placeholderBody": "The mock API already serves the audit trail. Reading it is Phase 2's work.",
+        "backToCustomer": "Back to the customer"
+      },
+      "form": {
+        "description": "Fields, validation and saving arrive in Phase 2.",
+        "placeholder": "This page exists so the create and edit routes are real, deep-linkable and reachable from navigation. The form itself — reactive forms, validation, server-side field errors, unsaved-change protection and conflict handling — is Phase 2's subject.",
+        "mode": {
+          "create": "This page was opened in create mode, from route metadata.",
+          "edit": "This page was opened in edit mode, from route metadata."
+        }
+      }
+    },
+    "labs": {
+      "backToIndex": "Back to the labs",
+      "index": {
+        "title": "Technical labs",
+        "heading": "Technical labs",
+        "description": "Browser techniques that have no natural home in customer management, kept isolated from it on purpose.",
+        "available": "Available",
+        "plannedForPhase": "Phase {{phase}}"
+      },
+      "placeholder": {
+        "title": "Technical lab",
+        "breadcrumb": "Lab",
+        "heading": "Not built yet",
+        "body": "This lab arrives in Phase {{phase}}."
+      },
+      "unknown": {
+        "heading": "Unknown lab",
+        "body": "There is no lab with that name",
+        "hint": "The address may contain a typo, or the lab may have been renamed."
+      },
+      "apiConnectivity": {
+        "title": "API connectivity",
+        "breadcrumb": "API connectivity",
+        "heading": "API connectivity",
+        "description": "Proves the plumbing end to end: the development proxy, the runtime-configured base URL, the HTTP interceptors, and validation of the response against the contract.",
+        "recheck": "Check again",
+        "status": {
+          "checking": "Checking the connection to the API...",
+          "connected": "Connected to the mock API.",
+          "unavailable": "The mock API is not reachable. Run it with: npm run start:api"
+        },
+        "customerCount": "{{count}} customers in the dataset."
+      },
+      "browserStorage": {
+        "title": "Browser storage",
+        "description": "localStorage, sessionStorage and IndexedDB, and what each one survives."
+      },
+      "crossTab": {
+        "title": "Cross-tab synchronisation",
+        "description": "BroadcastChannel and leader election between two tabs of the same application."
+      },
+      "offline": {
+        "title": "Offline and connectivity",
+        "description": "Detecting connectivity, queueing work, and reconciling it when the network returns."
+      },
+      "realtime": {
+        "title": "Realtime",
+        "description": "The server-sent event stream, reconnection, and what happens to data that changed while disconnected."
+      },
+      "rendering": {
+        "title": "Rendering and performance",
+        "description": "Measuring rendering strategies against each other instead of assuming one is faster."
+      }
     }
   },
   "errors": {

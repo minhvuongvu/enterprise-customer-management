@@ -4,6 +4,7 @@ import { GlobalErrorHandler } from './errors/global-error-handler';
 import { provideAppHttp } from './http/http.providers';
 import { provideI18n } from './i18n/i18n.providers';
 import { ConsoleLogger, Logger } from './logging/logger';
+import { provideDocumentLanguage } from './seo/document-language';
 
 /**
  * Everything the application needs exactly once.
@@ -22,6 +23,8 @@ export function provideCore(): EnvironmentProviders {
     { provide: ErrorHandler, useClass: GlobalErrorHandler },
     provideAppHttp(),
     provideI18n(),
+    // After provideI18n(): it subscribes to the translation service.
+    provideDocumentLanguage(),
     provideRuntimeConfig(),
   ]);
 }

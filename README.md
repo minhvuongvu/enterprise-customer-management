@@ -9,9 +9,11 @@ and educational, not only on whether the application works.
 
 ## Status
 
-**Phase 0.5 complete** — foundation and seams, plus the API contract and a real mock
-backend. There is no customer UI yet; see `docs/PROGRESS.md` for what exists and what
-comes next.
+**Phase 1 complete** — foundation and seams, the API contract and a real mock
+backend, and now the application shell: routing, the responsive layout, the shared UI
+primitives, design tokens and a light/dark theme. The customer pages exist as routes
+with no data behind them yet; see `docs/PROGRESS.md` for what exists and what comes
+next.
 
 ## Quick start
 

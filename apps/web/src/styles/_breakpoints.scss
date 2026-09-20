@@ -1,0 +1,23 @@
+/* Breakpoints, defined once.
+ *
+ * Three sizes, because the layout genuinely changes shape three times
+ * (ADR-0011) - not because a framework offers five.
+ *
+ * `rem` rather than `px`: a user who raises their browser's base font size is
+ * telling us their screen is effectively narrower, and a rem-based breakpoint
+ * believes them.
+ *
+ * The same two numbers exist in `app/layout/layout-breakpoints.ts`, which is
+ * what lets TypeScript know which layout is active for behaviour CSS cannot
+ * express (trapping focus in the mobile drawer). Change one, change the other;
+ * a test asserts the strings match.
+ */
+
+$tablet-min: 48rem; /* 768px */
+$desktop-min: 64rem; /* 1024px */
+
+$tablet-up: '(min-width: #{$tablet-min})';
+$desktop-up: '(min-width: #{$desktop-min})';
+$below-tablet: '(max-width: #{$tablet-min - 0.01rem})';
+$below-desktop: '(max-width: #{$desktop-min - 0.01rem})';
+$tablet-only: '(min-width: #{$tablet-min}) and (max-width: #{$desktop-min - 0.01rem})';

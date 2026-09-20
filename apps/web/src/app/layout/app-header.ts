@@ -1,0 +1,120 @@
+import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { RouterLink } from '@angular/router';
+import { TranslocoDirective } from '@jsverse/transloco';
+import { ThemeToggle } from './theme-toggle';
+
+/**
+ * The application banner.
+ *
+ * Presentation only: it reports that the menu button was pressed and lets
+ * `AppShell` decide what that means. A header that opened the drawer itself
+ * would have to know about breakpoints, focus trapping and route changes -
+ * three concerns that have nothing to do with a bar at the top of the page.
+ */
+@Component({
+  selector: 'app-header',
+  imports: [RouterLink, ThemeToggle, TranslocoDirective],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <header class="header" *transloco="let t">
+      @if (showMenuButton()) {
+        <button
+          type="button"
+          class="header__menu"
+          [attr.aria-label]="t('nav.menu')"
+          [attr.aria-expanded]="drawerOpen()"
+          (click)="menuToggled.emit()"
+        >
+          <!--
+            The name stays the same whether the drawer is open or closed;
+            aria-expanded is what carries the state. A button that renames
+            itself to "Close..." says the same thing twice, and the two can
+            disagree.
+
+            No aria-controls either: the drawer only exists in the DOM while it
+            is open, and pointing at an absent id is worse than pointing at
+            nothing.
+          -->
+          <span class="header__menu-icon" aria-hidden="true"></span>
+        </button>
+      }
+
+      <a class="header__brand" routerLink="/">{{ t('app.title') }}</a>
+
+      <div class="header__actions">
+        <app-theme-toggle />
+      </div>
+    </header>
+  `,
+  styles: `
+    /* Sticky so navigation and the theme control stay reachable while a long
+       customer list scrolls. */
+    :host {
+      position: sticky;
+      top: 0;
+      z-index: var(--z-sticky);
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      height: var(--layout-header-height);
+      padding: 0 var(--space-4);
+      border-bottom: var(--border-width) solid var(--border-subtle);
+      background-color: var(--surface-raised);
+    }
+
+    .header__menu {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 2.25rem;
+      height: 2.25rem;
+      border: none;
+      border-radius: var(--radius-md);
+      background: transparent;
+      color: var(--text-primary);
+      cursor: pointer;
+    }
+
+    .header__menu:hover {
+      background-color: var(--surface-hover);
+    }
+
+    /* Three bars from one element: the middle is the box, the other two are
+       shadows. No icon asset, no second dependency. */
+    .header__menu-icon {
+      display: block;
+      width: 1.125rem;
+      height: 2px;
+      background-color: currentcolor;
+      box-shadow:
+        0 -6px currentcolor,
+        0 6px currentcolor;
+    }
+
+    .header__brand {
+      color: var(--text-primary);
+      font-size: var(--text-lg);
+      font-weight: var(--weight-semibold);
+      text-decoration: none;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .header__actions {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      margin-inline-start: auto;
+    }
+  `,
+})
+export class AppHeader {
+  readonly showMenuButton = input(false);
+  readonly drawerOpen = input(false);
+
+  readonly menuToggled = output<void>();
+}

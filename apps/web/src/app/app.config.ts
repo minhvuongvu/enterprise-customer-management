@@ -1,8 +1,14 @@
 import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/core';
 import { provideClientHydration, withEventReplay } from '@angular/platform-browser';
-import { provideRouter, withComponentInputBinding, withInMemoryScrolling } from '@angular/router';
+import {
+  provideRouter,
+  TitleStrategy,
+  withComponentInputBinding,
+  withInMemoryScrolling,
+} from '@angular/router';
 import { routes } from './app.routes';
 import { provideCore } from './core/core.providers';
+import { TranslatedTitleStrategy } from './core/seo/translated-title.strategy';
 
 /**
  * Browser bootstrap configuration.
@@ -22,6 +28,10 @@ export const appConfig: ApplicationConfig = {
       withComponentInputBinding(),
       withInMemoryScrolling({ scrollPositionRestoration: 'enabled', anchorScrolling: 'enabled' }),
     ),
+    // Route titles are translation keys, so the default strategy - which
+    // writes them into the document verbatim - would put `pages.customers.
+    // list.title` in the browser tab. See ADR-0009.
+    { provide: TitleStrategy, useClass: TranslatedTitleStrategy },
     // Event replay captures clicks that land before hydration finishes on the
     // prerendered public routes, so an early click is not silently lost.
     provideClientHydration(withEventReplay()),

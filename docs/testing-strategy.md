@@ -49,14 +49,14 @@ Concretely, from Phase 0's own suite:
 - Every test is deterministic. No wall-clock dependence, no ordering dependence, no
   shared mutable state between tests.
 
-## Current state — end of Phase 0.5
+## Current state — end of Phase 1
 
 | Suite                       | Files | Tests | Status  |
 | --------------------------- | ----- | ----- | ------- |
-| `@ecm/web` unit / component | 9     | 43    | passing |
+| `@ecm/web` unit / component | 20    | 117   | passing |
 | `@ecm/mock-api` integration | 8     | 101   | passing |
 | `@ecm/contracts` contract   | 1     | 23    | passing |
-| E2E + accessibility         | 2     | 9     | passing |
+| E2E + accessibility         | 4     | 30    | passing |
 
 **API tests run against the real server** on an ephemeral port, not against handlers
 invoked in process. Cookies, CORS, status codes and streaming are what that server
@@ -73,18 +73,34 @@ rotation and replay; every fault-injection scenario; seed determinism and data r
 upload, CSV partial import and export; the SSE wire format; and the application-to-API
 wiring in a browser.
 
+Phase 1 added the shell and the shared components: the route tree resolved as a unit
+(redirects, deep links, the wildcard, and a feature flag that makes a branch stop
+matching), the breadcrumb trail built from the real route tree, the three layouts, and
+each shared component's behaviour rather than its markup.
+
+**Focus behaviour is tested in the browser, not in jsdom.** CDK decides an element is
+focusable by measuring it, and jsdom reports every element as zero-sized — so a unit
+test asserting that focus moved into a dialog passes or fails for reasons unrelated to
+the component. The focus trap, the focus restore and the skip link are therefore
+verified in `e2e/layout.spec.ts`; the unit tests cover the wiring and everything else.
+
+**The axe scan runs in both themes.** A palette that passes contrast in light routinely
+fails in dark, and finding that in Phase 6 would mean re-tuning tokens that six phases
+of components already depend on.
+
 ## Known gaps
 
 These are gaps, not oversights. Each has an owner.
 
-| Gap                                               | Why it is acceptable now                                                      | Closed in |
-| ------------------------------------------------- | ----------------------------------------------------------------------------- | --------- |
-| No coverage thresholds                            | Coverage over 39 tests and no features would be a number, not a signal        | Phase 7   |
-| One browser (Chromium)                            | There is not enough UI for cross-browser differences to exist                 | Phase 6   |
-| No visual regression                              | Nothing has a stable visual identity yet                                      | Phase 7   |
-| No architecture/dependency tests                  | Boundaries are enforced by review until there are boundaries worth automating | Phase 7   |
-| `provideRuntimeConfig` not covered end to end     | The browser fetch of `config.json` still has no test                          | Phase 1   |
-| Bulk `CONFLICT` outcome only reached by injection | A natural version race needs two concurrent clients                           | Phase 4   |
+| Gap                                               | Why it is acceptable now                                                        | Closed in |
+| ------------------------------------------------- | ------------------------------------------------------------------------------- | --------- |
+| No coverage thresholds                            | Coverage over 39 tests and no features would be a number, not a signal          | Phase 7   |
+| One browser (Chromium)                            | There is not enough UI for cross-browser differences to exist                   | Phase 6   |
+| No visual regression                              | Nothing has a stable visual identity yet                                        | Phase 7   |
+| No architecture/dependency tests                  | Boundaries are enforced by review until there are boundaries worth automating   | Phase 7   |
+| `provideRuntimeConfig` not covered end to end     | The browser fetch of `config.json` still has no test                            | Phase 2   |
+| Layouts checked at three fixed widths             | Real devices differ in more than width; these three are where the shape changes | Phase 6   |
+| Bulk `CONFLICT` outcome only reached by injection | A natural version race needs two concurrent clients                             | Phase 4   |
 
 ## How this grows
 

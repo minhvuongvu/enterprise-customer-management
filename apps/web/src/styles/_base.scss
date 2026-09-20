@@ -1,0 +1,102 @@
+/* Element defaults, built entirely from the semantic tokens.
+ *
+ * Deliberately small. This is not a reset that normalises every element in the
+ * specification - it sets the handful of defaults that every page depends on,
+ * so that a component never has to undo a global rule.
+ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  /* Also set by ThemeService at runtime; declared here so the pre-hydration
+     paint and the no-JavaScript case are still correct. */
+  background-color: var(--surface-page);
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background-color: var(--surface-page);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  line-height: var(--leading-normal);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  margin: 0;
+  color: var(--text-primary);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-tight);
+}
+
+h1 {
+  font-size: var(--text-2xl);
+}
+h2 {
+  font-size: var(--text-xl);
+}
+h3 {
+  font-size: var(--text-lg);
+}
+
+p {
+  margin: 0;
+}
+
+a {
+  color: var(--accent-text);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
+/* Inputs do not inherit typography by default, and an input rendering in the
+   browser's default font is the single most common "unstyled" bug. */
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+img,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+/* One focus indicator for the whole application.
+ *
+ * `:focus-visible` rather than `:focus` so a mouse click does not leave a ring
+ * behind, while keyboard and programmatic focus always show one. Components
+ * must not remove this; if a component needs a different shape, it overrides
+ * `outline-offset` or `border-radius`, never `outline: none`. */
+:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* Respect the operating system's reduced-motion setting.
+ *
+ * Not a blanket `animation: none`: a transition that becomes instant still
+ * fires its `transitionend`, so components that wait for one keep working. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
