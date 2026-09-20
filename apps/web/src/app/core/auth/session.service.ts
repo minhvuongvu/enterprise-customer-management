@@ -14,11 +14,14 @@ import { computed, Injectable, signal } from '@angular/core';
  */
 export type SessionStatus = 'unknown' | 'anonymous' | 'authenticated';
 
-export interface SessionUser {
-  readonly id: string;
-  readonly displayName: string;
-  readonly roles: readonly string[];
-}
+/**
+ * The authenticated user is an API type, so it is defined once in
+ * `@ecm/contracts` and re-exported here for convenience. Declaring a second
+ * shape for the same value is how the two drift - and the one that is wrong is
+ * always the one nobody is looking at.
+ */
+import type { SessionUser } from '@ecm/contracts';
+export type { SessionUser };
 
 interface SessionState {
   readonly status: SessionStatus;
