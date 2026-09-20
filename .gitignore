@@ -1,0 +1,73 @@
+# Dependencies
+node_modules/
+.pnp/
+.pnp.js
+
+# Angular / build output
+dist/
+tmp/
+out-tsc/
+bazel-out/
+.angular/
+*.tsbuildinfo
+
+# Testing / coverage
+coverage/
+.nyc_output/
+/playwright-report/
+/playwright/.cache/
+/test-results/
+/blob-report/
+.vitest-cache/
+
+# Mock API runtime artifacts
+apps/mock-api/.data/
+apps/mock-api/uploads/
+*.sqlite
+*.sqlite-journal
+
+# Environment & secrets  (NEVER commit real secrets)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets.json
+
+# Logs
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+logs/
+*.log
+
+# Editors / IDE
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.shared.json
+!.vscode/launch.shared.json
+.idea/
+*.iml
+*.swp
+*.swo
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+.history/
+
+# OS
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Misc tooling caches
+.eslintcache
+.stylelintcache
+.prettiercache
+.cache/
+.parcel-cache/
