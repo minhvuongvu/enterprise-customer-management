@@ -85,7 +85,9 @@ Report honestly. A failing check is reported as failing, with output. Never mark
 ## Git
 
 - One branch per phase: `phase-0`, `phase-0.5`, `phase-1`, …
-- Tag the phase on completion.
+- Tag the phase on completion as `phase-N-complete`. The tag must not share a
+  name with the branch: git then reports `refname is ambiguous` and `git
+  checkout phase-1` stops meaning one thing.
 - Commit only when a phase or a coherent step is finished — not mid-edit.
 
 ## Style
