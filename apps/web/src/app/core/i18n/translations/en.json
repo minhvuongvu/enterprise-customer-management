@@ -10,7 +10,13 @@
   "pages": {
     "home": {
       "heading": "Customer Management",
-      "placeholder": "The application shell and navigation arrive in Phase 1."
+      "placeholder": "The application shell and navigation arrive in Phase 1.",
+      "apiStatus": {
+        "checking": "Checking the connection to the API...",
+        "connected": "Connected to the mock API.",
+        "unavailable": "The mock API is not reachable. Run it with: npm run start:api"
+      },
+      "customerCount": "{{count}} customers in the dataset."
     },
     "login": {
       "heading": "Sign in",

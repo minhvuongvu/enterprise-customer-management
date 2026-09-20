@@ -28,6 +28,7 @@
     "@angular/platform-server": "^22.1.0",
     "@angular/router": "^22.1.0",
     "@angular/ssr": "^22.1.7",
+    "@ecm/contracts": "*",
     "@jsverse/transloco": "8.4.0",
     "express": "^5.1.0",
     "rxjs": "~7.8.0",

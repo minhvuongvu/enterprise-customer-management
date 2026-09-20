@@ -1,3 +1,5 @@
+import type { DateOnly, Instant } from '@ecm/contracts';
+
 /**
  * Time policy, encoded once.
  *
@@ -12,18 +14,12 @@
  *    the same birthday in London, and `new Date('1990-01-01')` in a negative
  *    offset silently makes it 1989-12-31.
  *
- * Both are branded strings, so the compiler stops the two from being mixed up
- * and stops a raw string from being passed where a validated value is required.
+ * The **types** are defined in `@ecm/contracts`, because they describe what
+ * crosses the wire and the mock API has to agree about them. The **operations**
+ * are here, because formatting and "now" are application concerns that no API
+ * contract should carry. Re-exported so feature code has one import for both.
  */
-
-declare const instantBrand: unique symbol;
-declare const dateOnlyBrand: unique symbol;
-
-/** An instant in time, as a UTC ISO-8601 string (`2026-09-20T04:15:00.000Z`). */
-export type Instant = string & { readonly [instantBrand]: 'Instant' };
-
-/** A calendar date with no time and no timezone (`1990-01-01`). */
-export type DateOnly = string & { readonly [dateOnlyBrand]: 'DateOnly' };
+export type { DateOnly, Instant } from '@ecm/contracts';
 
 const DATE_ONLY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 

@@ -29,6 +29,7 @@ Run from the repository root.
 | Script                            | What it does                                     |
 | --------------------------------- | ------------------------------------------------ |
 | `npm start`                       | dev server on http://localhost:4200              |
+| `npm run start:api`               | mock API on http://localhost:4300                |
 | `npm run build`                   | production build, browser **and** server bundles |
 | `npm test`                        | unit and component tests (Vitest), single run    |
 | `npm run lint`                    | ESLint over TypeScript and templates             |
@@ -40,6 +41,45 @@ Run from the repository root.
 `npm run verify` is the one to run before calling a phase done.
 
 Inside `apps/web`, `npm run test:watch` re-runs tests on change.
+
+## Running the two processes
+
+The application proxies `/api` to the mock API (`apps/web/proxy.conf.json`), so the
+browser sees one origin and the session cookie is first-party - the same arrangement a
+reverse proxy gives in production.
+
+```bash
+npm run start:api     # terminal 1
+npm start             # terminal 2
+```
+
+`npm run e2e` starts both itself, so it needs neither.
+
+`packages/contracts` is a compiled library (ADR-0008). Editing it requires a build
+before the apps see the change:
+
+```bash
+npm run build:contracts               # once
+npm run watch --workspace @ecm/contracts   # or keep it running
+```
+
+The root `typecheck`, `test`, `build` and `e2e` scripts build it first, so this only
+affects the inner loop.
+
+## Working on the mock API
+
+It runs from source - Node 24 strips the types, so there is no build step. That costs
+two rules inside `apps/mock-api/src`:
+
+- no constructor parameter properties (`constructor(private readonly x: T)`);
+- no `enum` or `namespace` in code Node loads;
+- relative imports carry a literal `.ts` extension.
+
+Contracts is the opposite: `.js` specifiers that resolve to `.ts` files, because it is
+compiled. ADR-0008 explains why the two differ.
+
+To make something fail on demand, send `x-mock-scenario`. The catalogue is at
+`GET /api/_mock/scenarios` and in `docs/mock-backend.md`.
 
 ## Adding a route
 
@@ -71,7 +111,6 @@ violation and watching lint reject it.
 
 | Missing                                      | Arrives in |
 | -------------------------------------------- | ---------- |
-| Mock API, API contracts                      | Phase 0.5  |
 | Application shell, navigation, design system | Phase 1    |
 | Customer feature, forms, server state        | Phase 2    |
 | Real authentication and authorization        | Phase 3    |

@@ -1,0 +1,32 @@
+{
+  "name": "@ecm/mock-api",
+  "version": "0.0.0",
+  "description": "Mock backend - a real HTTP server, not an in-app stub",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": "^22.22.3 || ^24.15.0 || >=26.0.0"
+  },
+  "scripts": {
+    "start": "node --watch src/main.ts",
+    "serve": "node src/main.ts",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@ecm/contracts": "*",
+    "cookie-parser": "1.4.7",
+    "csv-parse": "7.0.2",
+    "express": "5.2.1",
+    "multer": "2.4.0",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@types/cookie-parser": "1.4.10",
+    "@types/express": "5.0.6",
+    "@types/multer": "2.2.0",
+    "@types/node": "24.13.6",
+    "typescript": "6.0.3",
+    "vitest": "4.1.11"
+  }
+}

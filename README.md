@@ -9,8 +9,9 @@ and educational, not only on whether the application works.
 
 ## Status
 
-**Phase 0 complete** — foundation, architecture and cross-cutting seams. There is no
-customer feature yet; see `docs/PROGRESS.md` for what exists and what comes next.
+**Phase 0.5 complete** — foundation and seams, plus the API contract and a real mock
+backend. There is no customer UI yet; see `docs/PROGRESS.md` for what exists and what
+comes next.
 
 ## Quick start
 
@@ -19,7 +20,8 @@ nvm use                          # Node 24.21.0, see .nvmrc
 npm install
 npx playwright install chromium
 
-npm start                        # http://localhost:4200
+npm run start:api                # mock API on http://localhost:4300
+npm start                        # the app on http://localhost:4200
 npm run verify                   # format, lint, typecheck, test, build, e2e
 ```
 
@@ -30,8 +32,8 @@ otherwise, which is deliberate.
 
 ```text
 apps/web/            Angular 22 application - standalone, signals, zoneless, SSR-scaffolded
-apps/mock-api/       Express mock backend                          (Phase 0.5)
-packages/contracts/  Zod schemas shared by app and API             (Phase 0.5)
+apps/mock-api/       Express mock backend - real cookies, CSRF, CORS, SSE
+packages/contracts/  Zod schemas + inferred types, shared by app and API
 e2e/                 Playwright specs, including accessibility scans
 docs/                architecture, guides, ADRs, progress log
 prompts/             the phase prompts this repository is built from
@@ -39,16 +41,18 @@ prompts/             the phase prompts this repository is built from
 
 ## Where to read next
 
-| Document                        | What it answers                                           |
-| ------------------------------- | --------------------------------------------------------- |
-| `CLAUDE.md`                     | the working rules, and the rules that must not be broken  |
-| `ANGULAR_PROJECT_CONTEXT.md`    | product scope and engineering intent — the authority      |
-| `ANGULAR_PROJECT_CONTEXT.md` §5 | the locked technical decisions, and why they are locked   |
-| `docs/architecture.md`          | what the code looks like and which way dependencies point |
-| `docs/development-guide.md`     | how to run, build, test and add to it                     |
-| `docs/testing-strategy.md`      | what is tested where, and the gaps that are known         |
-| `docs/decisions/`               | ADRs — the trade-offs behind each significant choice      |
-| `docs/PROGRESS.md`              | phase log, deviations, technical-debt register            |
+| Document                        | What it answers                                                       |
+| ------------------------------- | --------------------------------------------------------------------- |
+| `CLAUDE.md`                     | the working rules, and the rules that must not be broken              |
+| `ANGULAR_PROJECT_CONTEXT.md`    | product scope and engineering intent — the authority                  |
+| `ANGULAR_PROJECT_CONTEXT.md` §5 | the locked technical decisions, and why they are locked               |
+| `docs/architecture.md`          | what the code looks like and which way dependencies point             |
+| `docs/development-guide.md`     | how to run, build, test and add to it                                 |
+| `docs/testing-strategy.md`      | what is tested where, and the gaps that are known                     |
+| `docs/api-contract.md`          | the API shape, error envelope, permissions, concurrency               |
+| `docs/mock-backend.md`          | the mock server, fault injection, and who owns which security control |
+| `docs/decisions/`               | ADRs — the trade-offs behind each significant choice                  |
+| `docs/PROGRESS.md`              | phase log, deviations, technical-debt register                        |
 
 ## The two rules that lint enforces
 

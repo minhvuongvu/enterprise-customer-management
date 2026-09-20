@@ -49,33 +49,44 @@ Concretely, from Phase 0's own suite:
 - Every test is deterministic. No wall-clock dependence, no ordering dependence, no
   shared mutable state between tests.
 
-## Current state — end of Phase 0
+## Current state — end of Phase 0.5
 
-| Suite            | Files | Tests | Status  |
-| ---------------- | ----- | ----- | ------- |
-| Unit / component | 8     | 39    | passing |
-| E2E + a11y       | 1     | 5     | passing |
+| Suite                       | Files | Tests | Status  |
+| --------------------------- | ----- | ----- | ------- |
+| `@ecm/web` unit / component | 9     | 43    | passing |
+| `@ecm/mock-api` integration | 8     | 101   | passing |
+| `@ecm/contracts` contract   | 1     | 23    | passing |
+| E2E + accessibility         | 2     | 9     | passing |
 
-Covered: time policy, log redaction, HTTP error mapping, platform storage fallbacks,
-configuration merging, session initial state, interceptor chain (headers, error
-classification, correlation-ID propagation into logs), root component landmark,
-routing/redirect/not-found in a browser, axe scan of the public surface.
+**API tests run against the real server** on an ephemeral port, not against handlers
+invoked in process. Cookies, CORS, status codes and streaming are what that server
+exists to provide, and none of them are exercised by calling an Express handler
+directly.
+
+**Contract tests import the package by name**, so they run against the built artifact
+everyone else consumes rather than against source that might compile differently.
+
+Covered: the Phase 0 seams; every documented status code and the error envelope; paging,
+sorting, filtering, search, CRUD, optimistic concurrency, audit and bulk partial failure;
+the role matrix enforced server-side with no UI involved; cookie flags, CSRF, refresh
+rotation and replay; every fault-injection scenario; seed determinism and data realism;
+upload, CSV partial import and export; the SSE wire format; and the application-to-API
+wiring in a browser.
 
 ## Known gaps
 
 These are gaps, not oversights. Each has an owner.
 
-| Gap                                           | Why it is acceptable now                                                      | Closed in |
-| --------------------------------------------- | ----------------------------------------------------------------------------- | --------- |
-| No coverage thresholds                        | Coverage over 39 tests and no features would be a number, not a signal        | Phase 7   |
-| One browser (Chromium)                        | There is not enough UI for cross-browser differences to exist                 | Phase 6   |
-| No visual regression                          | Nothing has a stable visual identity yet                                      | Phase 7   |
-| No architecture/dependency tests              | Boundaries are enforced by review until there are boundaries worth automating | Phase 7   |
-| `provideRuntimeConfig` not covered end to end | Needs a server to fetch from                                                  | Phase 0.5 |
-| No mock-API integration tests                 | There is no API                                                               | Phase 0.5 |
+| Gap                                               | Why it is acceptable now                                                      | Closed in |
+| ------------------------------------------------- | ----------------------------------------------------------------------------- | --------- |
+| No coverage thresholds                            | Coverage over 39 tests and no features would be a number, not a signal        | Phase 7   |
+| One browser (Chromium)                            | There is not enough UI for cross-browser differences to exist                 | Phase 6   |
+| No visual regression                              | Nothing has a stable visual identity yet                                      | Phase 7   |
+| No architecture/dependency tests                  | Boundaries are enforced by review until there are boundaries worth automating | Phase 7   |
+| `provideRuntimeConfig` not covered end to end     | The browser fetch of `config.json` still has no test                          | Phase 1   |
+| Bulk `CONFLICT` outcome only reached by injection | A natural version race needs two concurrent clients                           | Phase 4   |
 
 ## How this grows
 
-Phase 0.5 adds contract tests and API integration tests against the real mock server.
 Phase 2 adds the first feature-level integration tests and the CRUD E2E journey.
 Phase 7 reviews the whole pyramid, adds coverage gates and wires it into CI.

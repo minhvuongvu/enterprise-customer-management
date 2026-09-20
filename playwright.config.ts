@@ -3,15 +3,19 @@ import { defineConfig, devices } from '@playwright/test';
 /**
  * End-to-end and accessibility testing.
  *
- * Lives at the workspace root rather than inside `apps/web`, because from
- * Phase 0.5 a journey spans the application *and* the mock API, and a test that
- * belongs to both does not belong to either package.
+ * Lives at the workspace root because a journey spans the application *and* the
+ * mock API, and a test that belongs to both does not belong to either package.
  *
- * Phase 0 runs one browser. Phase 6 widens the matrix, when there is enough UI
- * for cross-browser differences to mean anything.
+ * Both servers are started here. The application talks to the API through the
+ * dev proxy, so the browser sees one origin - which is what makes the session
+ * cookie first-party, exactly as a deployed setup behind a reverse proxy would.
+ *
+ * Phase 0.5 runs one browser. Phase 6 widens the matrix, when there is enough
+ * UI for cross-browser differences to mean anything.
  */
-const PORT = 4200;
-const BASE_URL = `http://localhost:${PORT}`;
+const WEB_PORT = 4200;
+const API_PORT = 4300;
+const BASE_URL = `http://localhost:${WEB_PORT}`;
 
 export default defineConfig({
   testDir: './e2e',
@@ -30,12 +34,30 @@ export default defineConfig({
 
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
 
-  webServer: {
-    command: 'npm run start --workspace @ecm/web',
-    url: BASE_URL,
-    reuseExistingServer: !process.env['CI'],
-    timeout: 180_000,
-    stdout: 'pipe',
-    stderr: 'pipe',
-  },
+  webServer: [
+    {
+      command: 'npm run serve --workspace @ecm/mock-api',
+      // Waits for the health endpoint, not just for the port: a process that is
+      // listening but has not finished seeding would fail the first test.
+      url: `http://localhost:${API_PORT}/api/health`,
+      reuseExistingServer: !process.env['CI'],
+      timeout: 120_000,
+      stdout: 'pipe',
+      stderr: 'pipe',
+      env: {
+        // Artificial latency exists to make loading states visible by hand. In
+        // a test suite it only adds minutes.
+        MOCK_API_LATENCY_MS: '0',
+        MOCK_API_JITTER_MS: '0',
+      },
+    },
+    {
+      command: 'npm run start --workspace @ecm/web',
+      url: BASE_URL,
+      reuseExistingServer: !process.env['CI'],
+      timeout: 180_000,
+      stdout: 'pipe',
+      stderr: 'pipe',
+    },
+  ],
 });

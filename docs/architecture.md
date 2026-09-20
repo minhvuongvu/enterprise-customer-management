@@ -19,12 +19,14 @@ enterprise-customer-management/        npm workspace root
 │       ├── app.routes.ts              route tree
 │       ├── app.routes.server.ts       render mode per route
 │       └── app.config.ts              browser bootstrap
-├── e2e/                               Playwright specs (app + API from Phase 0.5)
+├── apps/mock-api/                     Express mock backend - a real server
+├── packages/contracts/                Zod schemas + inferred types, shared by both
+├── e2e/                               Playwright specs (app + API)
 └── docs/                              this folder
 ```
 
-`apps/mock-api` and `packages/contracts` arrive in Phase 0.5. The workspace is already
-shaped for them.
+`packages/contracts` is the single definition of the API shape. It is a compiled
+library (ADR-0008); the two apps run from source.
 
 ---
 
@@ -108,6 +110,35 @@ ANGULAR_PROJECT_CONTEXT.md §5.5.
 
 ---
 
+## 4a. Data access
+
+```text
+component  →  feature state  →  API client  →  HttpClient  →  mock API
+                                     ↓
+                            @ecm/contracts (schemas)
+```
+
+An API client does three things, and `core/api/health.api.ts` is the worked example
+every Phase 2 client follows:
+
+1. Takes its base URL from runtime configuration, so one build runs anywhere.
+2. **Validates the response against the contract** before returning it. A 200 with the
+   wrong shape becomes a `server` error at the boundary, instead of `undefined is not an
+object` three layers away.
+3. Lets failures leave as `AppError`. Nothing above the HTTP layer sees an
+   `HttpErrorResponse`.
+
+Dependency direction across packages is strict and one-way:
+
+```text
+apps/web  →  packages/contracts  ←  apps/mock-api
+```
+
+`packages/contracts` imports from neither. The whole value of a shared definition is
+that both sides depend on it and it depends on nothing of theirs.
+
+---
+
 ## 5. HTTP and errors
 
 A request passes through, in order:
@@ -119,6 +150,11 @@ A request passes through, in order:
 
 The order is not incidental: the mapper reads the context the first interceptor sets.
 `provideAppHttp()` is the only place the list exists.
+
+The mapper **validates** the error body against the published envelope rather than
+trusting it: a 422 whose body is a proxy's HTML error page is a real possibility, and
+reading `details.fieldErrors` off it would throw inside the error handler - turning a
+handled failure into an unhandled one.
 
 Below that interceptor, nothing ever sees an `HttpErrorResponse`. Features handle
 `AppError` kinds — `conflict`, `network`, `authorization` — not status codes. Every
