@@ -1,0 +1,8 @@
+{
+  "apiBaseUrl": "/api",
+  "defaultLanguage": "en",
+  "logLevel": "debug",
+  "features": {
+    "technicalLabs": true
+  }
+}

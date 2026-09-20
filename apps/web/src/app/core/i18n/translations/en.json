@@ -1,0 +1,38 @@
+{
+  "app": {
+    "title": "Customer Management",
+    "skipToContent": "Skip to main content"
+  },
+  "nav": {
+    "home": "Home",
+    "login": "Sign in"
+  },
+  "pages": {
+    "home": {
+      "heading": "Customer Management",
+      "placeholder": "The application shell and navigation arrive in Phase 1."
+    },
+    "login": {
+      "heading": "Sign in",
+      "placeholder": "Authentication arrives in Phase 3."
+    },
+    "notFound": {
+      "heading": "Page not found",
+      "body": "The page you asked for does not exist.",
+      "backHome": "Go to the start page"
+    }
+  },
+  "errors": {
+    "validation": "Some of the information provided is not valid.",
+    "authentication": "Your session has ended. Please sign in again.",
+    "authorization": "You do not have permission to do that.",
+    "notFound": "We could not find what you were looking for.",
+    "conflict": "Someone else changed this while you were working on it.",
+    "rateLimited": "Too many requests. Please wait a moment and try again.",
+    "server": "Something went wrong on our side. Please try again.",
+    "network": "We could not reach the server. Check your connection.",
+    "timeout": "That took too long. Please try again.",
+    "cancelled": "The request was cancelled.",
+    "unknown": "Something unexpected happened."
+  }
+}

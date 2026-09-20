@@ -15,10 +15,12 @@ Several of these are cross-cutting and cannot be changed later without a reposit
 ## Options considered
 
 ### Option A — Let each phase choose
+
 - Pros: no upfront work; each phase picks what fits.
 - Cons: guaranteed inconsistency across sessions; cross-cutting choices (i18n, SSR, mock backend) become refactors when they land late; the Phase 8 review has no baseline to judge against.
 
 ### Option B — Lock the stack once, allow change only by superseding ADR
+
 - Pros: every session makes the same choices; cross-cutting seams exist from Phase 0; deviations become visible and deliberate.
 - Cons: some decisions are made before the code that would justify them exists.
 
@@ -28,27 +30,27 @@ Option B. The stack is recorded in `ANGULAR_PROJECT_CONTEXT.md` §5 and is bindi
 
 Versions verified against the npm registry on 2026-09-20:
 
-| Concern | Choice | Version |
-|---|---|---|
-| Framework | Angular standalone + signals | 22.1.7 |
-| Language | TypeScript strict | 6.0.3 |
-| Unit/component tests | Vitest via `@angular/build` | 4.1.11 |
-| E2E | Playwright | 1.63.0 |
-| A11y testing | `@axe-core/playwright` | 4.13.0 |
-| Lint | ESLint + angular-eslint | 10.11.0 / 22.5.0 |
-| Format | Prettier | 3.9.8 |
-| UI | hand-written components on Angular CDK | 22.1.7 |
-| i18n | Transloco | 8.4.0 |
-| Contracts | Zod | 4.6.5 |
-| Mock backend | Express | 5.2.1 |
-| Monorepo | npm workspaces | npm 11.x |
-| Server state | no store library — per-feature signal store + explicit cache | — |
+| Concern              | Choice                                                       | Version          |
+| -------------------- | ------------------------------------------------------------ | ---------------- |
+| Framework            | Angular standalone + signals                                 | 22.1.7           |
+| Language             | TypeScript strict                                            | 6.0.3            |
+| Unit/component tests | Vitest via `@angular/build`                                  | 4.1.11           |
+| E2E                  | Playwright                                                   | 1.63.0           |
+| A11y testing         | `@axe-core/playwright`                                       | 4.13.0           |
+| Lint                 | ESLint + angular-eslint                                      | 10.11.0 / 22.5.0 |
+| Format               | Prettier                                                     | 3.9.8            |
+| UI                   | hand-written components on Angular CDK                       | 22.1.7           |
+| i18n                 | Transloco                                                    | 8.4.0            |
+| Contracts            | Zod                                                          | 4.6.5            |
+| Mock backend         | Express                                                      | 5.2.1            |
+| Monorepo             | npm workspaces                                               | npm 11.x         |
+| Server state         | no store library — per-feature signal store + explicit cache | —                |
 
 ## Reason
 
 Three constraints did most of the work:
 
-1. **Compatibility is not negotiable.** Angular 22 requires TypeScript `>=6.0 <6.1` and `@angular/build` peer-requires `vitest ^4.0.8`. The *latest* TypeScript (7.0.2) and *latest* Vitest (5.0.1) are both incompatible. "Use the latest" would have failed at install.
+1. **Compatibility is not negotiable.** Angular 22 requires TypeScript `>=6.0 <6.1` and `@angular/build` peer-requires `vitest ^4.0.8`. The _latest_ TypeScript (7.0.2) and _latest_ Vitest (5.0.1) are both incompatible. "Use the latest" would have failed at install.
 2. **Some requirements cannot be honestly met by a frontend-only mock.** HttpOnly cookies, CSRF, CORS, CSP, server-side authorization, upload progress and WebSocket/SSE all need a real HTTP server. §4.12 forbids claiming a frontend mechanism provides backend security, so the mock backend must be a real Express process.
 3. **Runtime language switching rules out `@angular/localize`**, which is build-time-per-locale. Transloco is the choice that satisfies the stated requirement.
 
@@ -70,3 +72,42 @@ No store library initially: §4.5 requires explicit state ownership and warns ag
 - An Angular upgrade changes the TypeScript or Vitest compatibility range.
 - Phase 4 shows the hand-written cache cannot express realtime invalidation plus optimistic rollback.
 - SSR in development proves disruptive enough to outweigh the platform-safety benefit (Phase 1).
+
+## Resolved at install - Phase 0, 2026-09-20
+
+Phase 0 was required to re-verify the lock rather than trust it. What npm actually
+installed:
+
+| Package                 | Locked           | Resolved        |
+| ----------------------- | ---------------- | --------------- |
+| @angular/core           | 22.1.7           | 22.1.7          |
+| @angular/cli            | 22.1.7           | 22.1.8          |
+| @angular/build          | 22.1.7           | 22.1.8          |
+| @angular/ssr            | 22.1.7           | 22.1.8          |
+| @angular/cdk            | 22.1.7           | 22.1.7          |
+| typescript              | 6.0.3            | 6.0.3           |
+| vitest                  | 4.1.11           | 4.1.11          |
+| @playwright/test        | 1.63.0           | 1.63.0          |
+| @axe-core/playwright    | 4.13.0           | 4.13.0          |
+| @jsverse/transloco      | 8.4.0            | 8.4.0           |
+| prettier                | 3.9.8            | 3.9.8           |
+| eslint / angular-eslint | 10.11.0 / 22.5.0 | 10.9.1 / 22.5.0 |
+| rxjs                    | -                | 7.8.2           |
+
+The CLI, build and SSR packages resolved to 22.1.8, a patch ahead of the recorded
+version and inside the range the generated manifest asks for. No peer conflicts,
+no vulnerabilities.
+
+Three assumptions behind the lock were checked rather than trusted:
+
+- **TypeScript 6 enables `strict` by default.** Verified with a probe file:
+  `noImplicitAny` and `strictNullChecks` both fired without `"strict": true` being
+  set. The setting is now written explicitly anyway (ADR-0002).
+- **Angular 22 enables `strictTemplates` by default.** Verified: a `number | null`
+  bound to a required `number` input was rejected. Also written explicitly.
+- **`resource()` is still `@experimental` in Angular 22.1.7.** This is the check
+  section 5.5 asked Phase 0 to perform. Conclusion: Phase 2 writes its server-state
+  layer explicitly and does not build on `resource()` / `httpResource()` yet.
+
+One thing the lock got wrong in the other direction: `@angular/cli` generates
+`vitest` as the default test runner in Angular 22, so choosing it cost nothing.

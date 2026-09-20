@@ -1,0 +1,39 @@
+/* TypeScript configuration for @ecm/web.
+ *
+ * `strict` and `strictTemplates` are already the defaults in TypeScript 6 /
+ * Angular 22, but they are set explicitly here: this repository is read as a
+ * learning artifact, and the two settings it depends on most should not be
+ * invisible defaults. See docs/decisions/0002-angular-workspace-foundation.md.
+ */
+{
+  "compileOnSave": false,
+  "compilerOptions": {
+    "strict": true,
+    "resolveJsonModule": true,
+    "noImplicitOverride": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "experimentalDecorators": true,
+    "importHelpers": true,
+    "target": "ES2022",
+    "module": "preserve"
+  },
+  "angularCompilerOptions": {
+    "strictTemplates": true,
+    "enableI18nLegacyMessageIdFormat": false,
+    "strictInjectionParameters": true,
+    "strictInputAccessModifiers": true
+  },
+  "files": [],
+  "references": [
+    {
+      "path": "./tsconfig.app.json"
+    },
+    {
+      "path": "./tsconfig.spec.json"
+    }
+  ]
+}

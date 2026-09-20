@@ -11,10 +11,12 @@ What forced a decision. Include the concrete symptom or requirement, not a gener
 ## Options considered
 
 ### Option A — <name>
+
 - Pros:
 - Cons:
 
 ### Option B — <name>
+
 - Pros:
 - Cons:
 
@@ -24,7 +26,7 @@ What was chosen.
 
 ## Reason
 
-Why this option beat the others *for this repository* — a learning repository with a small business scope and deliberately deep technical scope.
+Why this option beat the others _for this repository_ — a learning repository with a small business scope and deliberately deep technical scope.
 
 ## Consequences
 

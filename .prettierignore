@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.angular/
+coverage/
+playwright-report/
+test-results/
+blob-report/
+package-lock.json
+
+# Hand-authored planning documents. Prettier reflows tables and list markers,
+# which produces large diffs with no benefit on prose that is edited by hand.
+prompts/
+ANGULAR_PROJECT_CONTEXT.md
+CLAUDE.md

@@ -1,0 +1,51 @@
+{
+  "name": "@ecm/web",
+  "version": "0.0.0",
+  "description": "Angular application - Customer Management",
+  "private": true,
+  "engines": {
+    "node": "^22.22.3 || ^24.15.0 || >=26.0.0"
+  },
+  "packageManager": "npm@11.19.0",
+  "scripts": {
+    "ng": "ng",
+    "start": "ng serve",
+    "build": "ng build",
+    "watch": "ng build --watch --configuration development",
+    "test": "ng test --watch=false",
+    "test:watch": "ng test",
+    "typecheck": "ngc -p tsconfig.app.json --noEmit && ngc -p tsconfig.spec.json --noEmit",
+    "serve:ssr": "node dist/web/server/server.mjs",
+    "lint": "ng lint"
+  },
+  "dependencies": {
+    "@angular/cdk": "22.1.7",
+    "@angular/common": "^22.1.0",
+    "@angular/compiler": "^22.1.0",
+    "@angular/core": "^22.1.0",
+    "@angular/forms": "^22.1.0",
+    "@angular/platform-browser": "^22.1.0",
+    "@angular/platform-server": "^22.1.0",
+    "@angular/router": "^22.1.0",
+    "@angular/ssr": "^22.1.7",
+    "@jsverse/transloco": "8.4.0",
+    "express": "^5.1.0",
+    "rxjs": "~7.8.0",
+    "tslib": "^2.3.0"
+  },
+  "devDependencies": {
+    "@angular-eslint/builder": "22.5.0",
+    "@angular/build": "^22.1.7",
+    "@angular/cli": "^22.1.7",
+    "@angular/compiler-cli": "^22.1.0",
+    "@eslint/js": "^10.0.1",
+    "@types/express": "^5.0.1",
+    "@types/node": "24.13.6",
+    "angular-eslint": "22.5.0",
+    "eslint": "^10.9.1",
+    "jsdom": "^28.0.0",
+    "typescript": "~6.0.2",
+    "typescript-eslint": "8.69.0",
+    "vitest": "^4.0.8"
+  }
+}
