@@ -53,7 +53,7 @@ Concretely, from Phase 0's own suite:
 
 | Suite                       | Files | Tests | Status  |
 | --------------------------- | ----- | ----- | ------- |
-| `@ecm/web` unit / component | 20    | 117   | passing |
+| `@ecm/web` unit / component | 21    | 123   | passing |
 | `@ecm/mock-api` integration | 8     | 101   | passing |
 | `@ecm/contracts` contract   | 1     | 23    | passing |
 | E2E + accessibility         | 4     | 30    | passing |

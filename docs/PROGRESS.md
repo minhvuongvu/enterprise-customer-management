@@ -115,6 +115,13 @@ Newest entry first. One entry per phase, appended at the end of that phase.
   `_breakpoints.scss` to prove the SCSS and TypeScript breakpoints still agree.
 - The customer list page fabricates a page count so the paginator can demonstrate that
   list state lives in the URL. It is named `PLACEHOLDER_TOTAL_PAGES` and is debt row 11.
+- **Five shared components have no caller yet**: `app-text-input`, `app-select`,
+  `app-table`, `app-skeleton` and `app-error-state`. The shared-UI rule is that a
+  component moves there when a _second_ caller needs it, and these have none. They were
+  built anyway because the phase prompt names them and because their caller is named and
+  one phase away - the list needs the table, the skeleton and the error state; the form
+  needs the two inputs. That is the reason rule 8 actually asks for. If Phase 2 ends
+  without using one of them, it should be deleted rather than kept for a third phase.
 
 **Deliberately not done**
 
@@ -133,10 +140,10 @@ Newest entry first. One entry per phase, appended at the end of that phase.
 | `npm run format:check` | clean                                                    |
 | `npm run lint`         | clean - root + workspaces, 0 errors, 0 warnings          |
 | `npm run typecheck`    | clean across all three packages                          |
-| `npm test`             | 241 passed - 117 web, 101 mock-api, 23 contracts         |
+| `npm test`             | 247 passed - 123 web, 101 mock-api, 23 contracts         |
 | `npm run build`        | succeeded, browser + server bundles, 1 route prerendered |
 | `npm run e2e`          | 30 passed, including axe in both themes                  |
-| Import cycles          | none - 124 modules, 201 edges                            |
+| Import cycles          | none - 125 modules, 202 edges                            |
 
 `npm run build` prints a bundle-budget warning. It is not new: the same warning exists
 at `phase-0.5-complete` (739 kB against a 500 kB budget), and Phase 1 added 42 kB of
