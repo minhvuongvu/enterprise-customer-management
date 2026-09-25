@@ -15,6 +15,7 @@ An **enterprise-oriented Angular learning repository**: a small Customer Managem
 | `docs/PROGRESS.md` | What is actually done, what deviated, what debt exists. **Read this first every session** |
 | `docs/decisions/` | ADRs. A locked decision changes only by a superseding ADR |
 | `prompts/Phase *.md` | The prompt for the phase currently being implemented |
+| `HANDOFF.md` | Orientation for a session starting cold. **Not authority** - it describes one commit and may be stale |
 
 If this file and `ANGULAR_PROJECT_CONTEXT.md` disagree, `ANGULAR_PROJECT_CONTEXT.md` wins — and say so rather than silently picking one.
 
