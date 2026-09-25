@@ -1,5 +1,12 @@
-import type { RealtimeEvent } from '@ecm/contracts';
+import {
+  CSRF_COOKIE_NAME,
+  LAST_EVENT_ID_HEADER,
+  LAST_EVENT_ID_PARAM,
+  RESYNC_EVENT,
+  type RealtimeEvent,
+} from '@ecm/contracts';
 import { Router } from 'express';
+import type { EventStreams } from '../domain/event-streams.ts';
 import type { MockStore } from '../domain/store.ts';
 import { requireAuth } from '../middleware/auth.ts';
 
@@ -8,17 +15,20 @@ import { requireAuth } from '../middleware/auth.ts';
  *
  * SSE rather than WebSocket because every event here travels one way, and SSE
  * gives reconnection and event ids for free from the browser. ADR-0006 records
- * the comparison.
+ * the comparison; ADR-0020 the client that consumes it.
  *
- * Two details that matter to the client:
+ * Three details that matter to the client:
  *
- *  - Each event carries an `id`. On reconnect the browser resends the last one
- *    as `Last-Event-ID`, and a client that tracks what it has applied can drop
- *    duplicates. Duplicate delivery is normal here, not a bug.
- *  - A comment heartbeat keeps proxies from closing an idle connection. Without
- *    it, a connection that looks fine simply stops delivering.
+ *  - Each event carries an `id`. A reconnecting client names the last one it
+ *    saw - the browser sends `Last-Event-ID` itself; a client that opened a
+ *    new stream sends `?lastEventId=` - and receives what it missed from a
+ *    short replay buffer. Replay overlaps what the client may already have, so
+ *    **duplicate delivery is normal here**, and the client de-duplicates by id.
+ *  - An id the buffer no longer holds gets no replay. A `resync` event says so,
+ *    and the client revalidates instead of trusting a partial history.
+ *  - A comment heartbeat keeps proxies from closing an idle connection.
  */
-export function eventRoutes(store: MockStore): Router {
+export function eventRoutes(store: MockStore, streams: EventStreams): Router {
   const router = Router();
 
   const HEARTBEAT_MS = 15_000;
@@ -42,15 +52,37 @@ export function eventRoutes(store: MockStore): Router {
       res.write(`data: ${JSON.stringify(event)}\n\n`);
     };
 
+    const lastEventId =
+      req.get(LAST_EVENT_ID_HEADER) ??
+      (typeof req.query[LAST_EVENT_ID_PARAM] === 'string' ? req.query[LAST_EVENT_ID_PARAM] : '');
+    if (lastEventId) {
+      const missed = store.eventsAfter(lastEventId);
+      if (missed === null) {
+        res.write(`event: ${RESYNC_EVENT}\ndata: {}\n\n`);
+      } else {
+        missed.forEach(send);
+      }
+    }
+
     const unsubscribe = store.subscribe(send);
     const heartbeat = setInterval(() => res.write(': heartbeat\n\n'), HEARTBEAT_MS);
 
-    // Without this the store keeps a reference to a dead response for every
-    // tab that was ever opened.
-    req.on('close', () => {
+    const cleanup = (): void => {
       clearInterval(heartbeat);
       unsubscribe();
-    });
+      unregister();
+    };
+    const unregister = streams.register(
+      () => {
+        cleanup();
+        res.end();
+      },
+      (req.cookies?.[CSRF_COOKIE_NAME] as string | undefined) ?? '',
+    );
+
+    // Without this the store keeps a reference to a dead response for every
+    // tab that was ever opened.
+    req.on('close', cleanup);
   });
 
   return router;

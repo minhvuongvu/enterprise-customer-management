@@ -2,15 +2,21 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import {
   auditListResponseSchema,
+  avatarUploadResponseSchema,
   bulkResponseSchema,
   customerSchema,
+  importPreviewSchema,
+  importResultSchema,
   pageResponseSchema,
   type AuditEntry,
+  type AvatarUploadResponse,
   type BulkRequest,
   type BulkResponse,
   type CreateCustomerRequest,
   type Customer,
   type CustomerId,
+  type ImportPreview,
+  type ImportResult,
   type PageResponse,
   type UpdateCustomerRequest,
 } from '@ecm/contracts';
@@ -20,6 +26,7 @@ import { AppConfigStore } from '../../core/config/app-config';
 import { appError } from '../../core/errors/app-error';
 import type { CustomerListCriteria } from './customer-list-criteria';
 import { withReadPolicy, withWritePolicy } from './request-policy';
+import { toTransfer, type Transfer } from './transfer';
 
 /**
  * Every HTTP call the customer feature makes, and the only place it makes one.
@@ -106,6 +113,71 @@ export class CustomerApi {
       .pipe(withWritePolicy(), map(parseWith(bulkResponseSchema)));
   }
 
+  // ------------------------------------------------------------------ files
+  //
+  // No timeout policy on these. A timeout sized for a JSON request would cut
+  // off a large file on a slow connection, and a transfer the user can watch
+  // and cancel does not need one: cancelling is the user's timeout.
+
+  /**
+   * Uploads an avatar, reporting upload progress.
+   *
+   * `reportUploadProgress` is what routes this request through XHR rather
+   * than fetch (`UploadAwareBackend`, ADR-0021). Unsubscribing aborts it.
+   */
+  uploadAvatar(id: CustomerId, file: File): Observable<Transfer<AvatarUploadResponse>> {
+    return this.http
+      .post<unknown>(`${this.baseUrl}/${encodeURIComponent(id)}/avatar`, formWith(file), {
+        observe: 'events',
+        reportUploadProgress: true,
+      })
+      .pipe(toTransfer((response) => parseWith(avatarUploadResponseSchema)(response.body)));
+  }
+
+  /** Validates every row of a CSV and writes nothing. */
+  previewImport(file: File): Observable<Transfer<ImportPreview>> {
+    return this.http
+      .post<unknown>(`${this.baseUrl}/import`, formWith(file), {
+        params: { mode: 'preview' },
+        observe: 'events',
+        reportUploadProgress: true,
+      })
+      .pipe(toTransfer((response) => parseWith(importPreviewSchema)(response.body)));
+  }
+
+  /** Imports a CSV, answering per row. Partial success is a 200. */
+  importFile(file: File): Observable<Transfer<ImportResult>> {
+    return this.http
+      .post<unknown>(`${this.baseUrl}/import`, formWith(file), {
+        params: { mode: 'commit' },
+        observe: 'events',
+        reportUploadProgress: true,
+      })
+      .pipe(toTransfer((response) => parseWith(importResultSchema)(response.body)));
+  }
+
+  /**
+   * The customers matching these criteria, as CSV, with download progress.
+   *
+   * Paging is ignored by the server - "export what I am looking at" means
+   * every page of it.
+   */
+  exportCsv(criteria: CustomerListCriteria): Observable<Transfer<ExportedFile>> {
+    return this.http
+      .get(`${this.baseUrl}/export`, {
+        params: toHttpParams(criteria),
+        observe: 'events',
+        reportProgress: true,
+        responseType: 'blob',
+      })
+      .pipe(
+        toTransfer((response) => ({
+          blob: response.body ?? new Blob([]),
+          fileName: fileNameFrom(response.headers.get('content-disposition')) ?? 'customers.csv',
+        })),
+      );
+  }
+
   /**
    * Looks for an existing customer with this email address.
    *
@@ -129,6 +201,28 @@ export class CustomerApi {
       }),
     );
   }
+}
+
+/** A downloaded file, ready to hand to the browser. */
+export interface ExportedFile {
+  readonly blob: Blob;
+  readonly fileName: string;
+}
+
+function formWith(file: File): FormData {
+  const form = new FormData();
+  form.append('file', file, file.name);
+  return form;
+}
+
+/**
+ * The filename a `Content-Disposition: attachment; filename="…"` header names.
+ * Only the plain form is read; anything else falls back to a default rather
+ * than trusting a path the server did not mean to send.
+ */
+function fileNameFrom(header: string | null): string | null {
+  const match = header ? /filename="([^"/\\]+)"/.exec(header) : null;
+  return match ? match[1] : null;
 }
 
 /**

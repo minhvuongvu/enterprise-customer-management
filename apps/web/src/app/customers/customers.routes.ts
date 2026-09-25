@@ -3,6 +3,7 @@ import { requirePermission } from '../core/auth/permission.guard';
 import { withMetadata } from '../core/routing/route-metadata';
 import { unsavedChangesGuard } from './customer-form/unsaved-changes.guard';
 import { CustomerCache } from './state/customer-cache';
+import { provideCustomerRealtimeSync } from './state/customer-realtime-sync';
 import { CustomerStore } from './state/customer-store';
 
 /**
@@ -36,7 +37,8 @@ import { CustomerStore } from './state/customer-store';
 export const customersRoutes: Routes = [
   {
     path: '',
-    providers: [CustomerCache, CustomerStore],
+    // The realtime sync lives and dies with the store it keeps fresh.
+    providers: [CustomerCache, CustomerStore, provideCustomerRealtimeSync()],
     // Route authorization. Reading is the floor for the whole section; the two
     // pages that exist only to write ask for the permission to write. Each
     // guard names a permission, never a role. UX only - the API checks the
@@ -66,6 +68,15 @@ export const customersRoutes: Routes = [
         canDeactivate: [unsavedChangesGuard],
         loadComponent: () =>
           import('./customer-form/customer-form-page').then((m) => m.CustomerFormPage),
+      },
+      {
+        // Before `:id` for the same reason as `new`.
+        path: 'import',
+        title: 'pages.customers.import.title',
+        data: withMetadata({ breadcrumb: 'pages.customers.import.breadcrumb' }),
+        canActivate: [requirePermission('CUSTOMER_IMPORT')],
+        loadComponent: () =>
+          import('./customer-import/customer-import-page').then((m) => m.CustomerImportPage),
       },
       {
         path: ':id',

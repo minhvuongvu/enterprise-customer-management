@@ -96,19 +96,24 @@ failed cross-field rule) are collected under `_`.
 
 ### Files
 
-| Method | Path                        | Permission        | Notes                                    |
-| ------ | --------------------------- | ----------------- | ---------------------------------------- |
-| `POST` | `/api/customers/:id/avatar` | `CUSTOMER_UPDATE` | multipart `file`; ≤2 MB; png/jpeg/webp   |
-| `GET`  | `/api/customers/:id/avatar` | `CUSTOMER_READ`   | `nosniff`, `Content-Disposition: inline` |
-| `POST` | `/api/customers/import`     | `CUSTOMER_IMPORT` | CSV; ≤5 MB, ≤5000 rows                   |
-| `GET`  | `/api/customers/export`     | `CUSTOMER_EXPORT` | CSV, same filters as the list            |
+| Method | Path                        | Permission        | Notes                                                                                                                                                |
+| ------ | --------------------------- | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `POST` | `/api/customers/:id/avatar` | `CUSTOMER_UPDATE` | multipart `file`; ≤2 MB; png/jpeg/webp                                                                                                               |
+| `GET`  | `/api/customers/:id/avatar` | `CUSTOMER_READ`   | `nosniff`, `Content-Disposition: inline`                                                                                                             |
+| `POST` | `/api/customers/import`     | `CUSTOMER_IMPORT` | CSV; ≤5 MB, ≤5000 rows; `?mode=preview` validates and writes nothing (`ImportPreview`), `?mode=commit` (default) imports (`ImportResult`) - ADR-0024 |
+| `GET`  | `/api/customers/export`     | `CUSTOMER_EXPORT` | CSV, same filters as the list                                                                                                                        |
 
 ### Realtime and health
 
-| Method | Path          | Permission | Notes                         |
-| ------ | ------------- | ---------- | ----------------------------- |
-| `GET`  | `/api/events` | session    | Server-sent events — ADR-0006 |
-| `GET`  | `/api/health` | —          | Liveness, dataset size, seed  |
+| Method | Path          | Permission | Notes                                                                                                                                                                  |
+| ------ | ------------- | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET`  | `/api/events` | session    | Server-sent events — ADR-0006, ADR-0020. Replays after `Last-Event-ID` or `?lastEventId=`; sends a `resync` event when it cannot. Customer events carry `customerCode` |
+| `GET`  | `/api/health` | —          | Liveness, dataset size, seed                                                                                                                                           |
+
+Audit entries record, per changed field, the value before and after - except for
+fields in `AUDIT_REDACTED_FIELDS` (date of birth), whose change is recorded with
+`redacted: true` and no values. The server withholds them; the client does not hide
+them.
 
 `/api/_mock/*` exists only in the mock. It is deliberately **not** described in
 `@ecm/contracts`, so the application has no typed way to depend on it. See
@@ -158,7 +163,9 @@ User A saves with version 4                  → 409, currentVersion: 5
 
 The version is required rather than optional because an update that does not say what it
 is based on cannot be checked — and silently overwriting a colleague's edit is the exact
-failure this prevents. Phase 4 builds the UI that lets User A see what changed.
+failure this prevents. The form shows the conflict and offers to reload the other
+user's changes while keeping this user's (ADR-0015); since Phase 4 a realtime event
+warns about it before the save rather than after.
 
 Bulk operations do not take a version: they set a status rather than replace a record,
 and demanding a version per item would make the request unusable.

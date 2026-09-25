@@ -155,7 +155,7 @@ test.describe('unsaved changes', () => {
     await expect(page.getByLabel('Full name')).toHaveValue('Something else entirely');
 
     await page.getByRole('link', { name: 'Customers' }).first().click();
-    await page.getByTestId('discard-changes').click();
+    await page.getByTestId('confirm-accept').click();
     await expect(page).toHaveURL(/\/customers$/);
   });
 });

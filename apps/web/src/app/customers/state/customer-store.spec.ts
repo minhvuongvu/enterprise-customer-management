@@ -27,6 +27,9 @@ describe('CustomerStore', () => {
     store = TestBed.inject(CustomerStore);
     cache = TestBed.inject(CustomerCache);
     backend = TestBed.inject(HttpTestingController);
+    // The list is on screen in every test here unless one says otherwise: a
+    // list nobody watches is refetched on the next visit, not immediately.
+    store.watchList();
   });
 
   afterEach(() => backend.verify());

@@ -130,11 +130,10 @@ watching lint reject it — in Phase 0 for text, and again in Phase 1 for attrib
 
 ## Things that are deliberately not here yet
 
-| Missing                                          | Arrives in |
-| ------------------------------------------------ | ---------- |
-| File upload, CSV import, notifications, realtime | Phase 4    |
-| A second language                                | Phase 6    |
-| CI pipeline                                      | Phase 7    |
+| Missing           | Arrives in |
+| ----------------- | ---------- |
+| A second language | Phase 6    |
+| CI pipeline       | Phase 7    |
 
 Authentication, refresh and authorization arrived in Phase 3; how they work and what
 protects what is in [`security.md`](security.md).

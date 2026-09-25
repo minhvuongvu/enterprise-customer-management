@@ -118,7 +118,12 @@
           "retryHint": "The records that failed are still selected, so you can try them again.",
           "confirmHeading": "Delete the selected customers?",
           "confirmBody": "{{count}} customers will be deleted. This cannot be undone."
-        }
+        },
+        "export": "Export CSV",
+        "import": "Import CSV",
+        "exporting": "Preparing the export…",
+        "exportingPercent": "Downloading the export… {{percent}}%",
+        "exported": "Export downloaded."
       },
       "create": {
         "title": "New customer",
@@ -145,7 +150,17 @@
         "notFoundBody": "This customer does not exist. It may have been deleted, or the address may contain a typo.",
         "errorHeading": "The customer could not be loaded",
         "deleteHeading": "Delete this customer?",
-        "deleteBody": "{{name}} will be deleted. This cannot be undone."
+        "deleteBody": "{{name}} will be deleted. This cannot be undone.",
+        "activate": "Activate",
+        "deactivate": "Deactivate",
+        "statusSaving": "Saving…",
+        "statusConflict": "The status change was undone: someone else changed this customer. It has been reloaded.",
+        "statusRolledBack": "The status change was undone. {{reason}}",
+        "stale": {
+          "updated": "Customer {{code}} was changed by another user. What you see may be out of date.",
+          "deleted": "Customer {{code}} was deleted by another user.",
+          "unverified": "Live updates were interrupted, so this record may be out of date."
+        }
       },
       "audit": {
         "title": "Audit trail",
@@ -159,7 +174,10 @@
         "becameSr": "became",
         "emptyHeading": "Nothing recorded yet",
         "emptyBody": "No change has been recorded against this customer.",
-        "errorHeading": "The audit trail could not be loaded"
+        "errorHeading": "The audit trail could not be loaded",
+        "redacted": "Changed (value not shown)",
+        "changedNoValue": "Changed",
+        "otherField": "Other detail"
       },
       "form": {
         "description": "Fields marked with an asterisk are required.",
@@ -185,7 +203,60 @@
           "identity": "Customer",
           "address": "Address",
           "tags": "Tags"
+        },
+        "remote": {
+          "updatedHeading": "Someone else changed this customer",
+          "updatedBody": "Saving now would conflict. Reload their changes first - everything you have typed is kept.",
+          "deletedHeading": "This customer was deleted",
+          "deletedBody": "Another user deleted this customer while you were editing it. Your changes cannot be saved.",
+          "unverifiedHeading": "This record may be out of date",
+          "unverifiedBody": "Live updates were interrupted. Reload to be sure you are editing the latest version - what you have typed is kept."
         }
+      },
+      "import": {
+        "title": "Import customers",
+        "breadcrumb": "Import",
+        "heading": "Import customers",
+        "description": "Add customers from a CSV file. You will see what the file contains, and what will be skipped, before anything is imported.",
+        "backToList": "Back to customers",
+        "stepsLabel": "Import steps",
+        "step": {
+          "select": "Choose a file",
+          "preview": "Check and confirm",
+          "result": "Result"
+        },
+        "choose": "Choose a CSV file, or drop one here",
+        "hint": "Required columns: {{columns}}. Up to {{size}} MB.",
+        "checking": "Checking the file",
+        "importing": "Importing",
+        "percent": "{{label}}… {{percent}}%",
+        "previewHeading": "What this file will do",
+        "previewSummary": "{{total}} rows: {{valid}} will be imported, {{invalid}} will be skipped.",
+        "missingColumns": "The file has no {{columns}} column, so nothing can be imported.",
+        "unknownColumns": "These columns will be ignored: {{columns}}.",
+        "previewCaption": "The first {{count}} rows of the file",
+        "row": "Row",
+        "outcome": "Outcome",
+        "willImport": "Will import",
+        "willSkip": "Will be skipped",
+        "confirm": "Import {{count}} customers",
+        "chooseAnother": "Choose another file",
+        "resultHeading": "Import finished",
+        "resultSummary": "{{succeeded}} customers imported, {{failed}} rows skipped.",
+        "truncated": "Only the first rows with problems are listed.",
+        "downloadErrors": "Download the skipped rows",
+        "failed": "The file could not be processed.",
+        "errorsHeading": "Rows with problems",
+        "errorLine": "Row {{row}}, {{column}}: {{reason}}",
+        "wholeRow": "whole row",
+        "code": {
+          "REQUIRED": "a required value is missing",
+          "INVALID_FORMAT": "the value is not in a valid format",
+          "DUPLICATE_EMAIL": "a customer with this email already exists",
+          "UNKNOWN_COLUMN": "unknown column",
+          "TOO_LONG": "the value is too long"
+        },
+        "notification": "Import finished: {{succeeded}} added, {{failed}} skipped."
       }
     },
     "labs": {
@@ -284,7 +355,8 @@
       "country": "Country",
       "tags": "Tags",
       "createdAt": "Created",
-      "updatedAt": "Last updated"
+      "updatedAt": "Last updated",
+      "avatarUrl": "Picture"
     },
     "validation": {
       "required": "This field is required.",
@@ -318,6 +390,54 @@
         "CONFLICT": "{{count}} were changed by someone else.",
         "INTERNAL_ERROR": "{{count}} failed for an unknown reason."
       }
+    },
+    "avatar": {
+      "region": "Customer picture",
+      "previewAlt": "Preview of the chosen picture",
+      "currentAlt": "Picture of {{name}}",
+      "choose": "Choose a picture, or drop one here",
+      "hint": "{{types}}, up to {{size}} MB.",
+      "upload": "Upload picture",
+      "retry": "Try again",
+      "discard": "Discard",
+      "cancel": "Cancel upload",
+      "uploading": "Uploading…",
+      "uploadingPercent": "Uploading… {{percent}}%",
+      "failed": "The picture was not uploaded.",
+      "done": "Picture updated.",
+      "cancelled": "Upload cancelled. The picture was not changed."
+    }
+  },
+  "notifications": {
+    "dismiss": "Dismiss",
+    "center": "Notifications",
+    "centerUnread": "Notifications, {{count}} unread",
+    "markAllRead": "Mark all as read",
+    "unread": "Unread",
+    "empty": "Nothing new. Changes other people make to customers will appear here."
+  },
+  "realtime": {
+    "status": {
+      "idle": "Live updates off",
+      "connecting": "Connecting…",
+      "open": "Live",
+      "reconnecting": "Reconnecting…"
+    },
+    "customer": {
+      "created": "Customer {{code}} was created by another user.",
+      "updated": "Customer {{code}} was updated by another user.",
+      "deleted": "Customer {{code}} was deleted by another user."
+    },
+    "refresh": "Refresh",
+    "backToList": "Back to the list",
+    "importCompleted": "Another user imported customers: {{succeeded}} added, {{failed}} skipped."
+  },
+  "files": {
+    "rejection": {
+      "EMPTY": "That file is empty.",
+      "TOO_LARGE": "That file is too large. The limit is {{size}} MB.",
+      "EXTENSION": "That kind of file is not accepted. Choose one of: {{types}}.",
+      "MIME_TYPE": "That file's type is not accepted. Choose one of: {{types}}."
     }
   }
 }

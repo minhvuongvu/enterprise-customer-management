@@ -7,6 +7,8 @@ import { routes } from '../app.routes';
 import { Breadcrumbs } from './breadcrumbs';
 import translations from '../core/i18n/translations/en.json';
 import { provideSignedInAs } from '../core/testing/session-testing';
+import { Logger } from '../core/logging/logger';
+import { SilentLogger } from '../core/testing/http-testing';
 
 /**
  * No `<router-outlet>`: the trail is derived from the router's state, not from
@@ -32,7 +34,13 @@ describe('Breadcrumbs', () => {
           preloadLangs: true,
         }),
       ],
-      providers: [provideRouter(routes), provideLocationMocks(), provideSignedInAs('admin')],
+      providers: [
+        provideRouter(routes),
+        provideLocationMocks(),
+        provideSignedInAs('admin'),
+        // The customers route starts the realtime sync, which logs.
+        { provide: Logger, useClass: SilentLogger },
+      ],
     }).compileComponents();
 
     const fixture = TestBed.createComponent(BreadcrumbsHost);

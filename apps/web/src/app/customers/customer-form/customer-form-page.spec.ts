@@ -13,6 +13,7 @@ import { CustomerFormPage } from './customer-form-page';
 import { EMAIL_CHECK_DEBOUNCE_MS } from './email-availability.validator';
 import { unsavedChangesGuard } from './unsaved-changes.guard';
 import { provideSignedInAs } from '../../core/testing/session-testing';
+import { ConfirmationService } from '../../core/notifications/confirmation.service';
 
 @Component({
   selector: 'app-stub-page',
@@ -351,12 +352,12 @@ describe('CustomerFormPage', () => {
       await vi.advanceTimersByTimeAsync(0);
       harness.detectChanges();
 
-      expect(root.textContent).toContain('Leave without saving?');
+      // The question goes to the shared confirmation, which the shell renders.
+      const confirmation = TestBed.inject(ConfirmationService);
+      expect(confirmation.pending()?.request.headingKey).toBe('pages.customers.form.leaveHeading');
+      expect(confirmation.pending()?.request.cancelKey).toBe('pages.customers.form.stay');
 
-      const stay = Array.from(root.querySelectorAll('button')).find(
-        (button) => button.textContent?.trim() === 'Stay on this page',
-      );
-      stay?.click();
+      confirmation.answer(false);
       harness.detectChanges();
 
       expect(await leaving).toBe(false);

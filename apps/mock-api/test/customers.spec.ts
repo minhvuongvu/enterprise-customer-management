@@ -1,5 +1,11 @@
-import type { ApiErrorBody, BulkResponse, Customer, PageResponse } from '@ecm/contracts';
-import { customerSchema } from '@ecm/contracts';
+import type {
+  ApiErrorBody,
+  AuditListResponse,
+  BulkResponse,
+  Customer,
+  PageResponse,
+} from '@ecm/contracts';
+import { auditListResponseSchema, customerSchema } from '@ecm/contracts';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { startTestServer, type TestClient, type TestServer } from './helpers.ts';
 
@@ -193,6 +199,47 @@ describe('customer writes', () => {
     expect(body.items[0].changes.map((change) => change.field)).toContain('fullName');
     // The actor resolves against the same fixture that authenticated us.
     expect(body.items[0].actorDisplayName).toBe('Avery Admin');
+  });
+
+  it("serves a seeded customer's trail in the shape the contract promises", async () => {
+    // The oldest code is always a seeded record, never one a test created.
+    const { body: page } = await admin.json<PageResponse<Customer>>(
+      '/api/customers?size=1&sort=customerCode,asc',
+    );
+    const { status, body } = await admin.json<unknown>(`/api/customers/${page.items[0].id}/audit`);
+
+    expect(status).toBe(200);
+    // The derived creation entry once carried a non-UUID id, and every seeded
+    // customer's audit page failed to parse in the client.
+    const parsed = auditListResponseSchema.safeParse(body);
+    expect(parsed.success, JSON.stringify(parsed.error?.issues)).toBe(true);
+  });
+
+  it('records that a sensitive field changed, without recording its values', async () => {
+    const created = await create('audit-dob@example.test');
+    await admin.call(`/api/customers/${created.id}`, {
+      method: 'PATCH',
+      body: { dateOfBirth: '1991-02-03', fullName: 'Audited Twice', version: created.version },
+    });
+
+    const { body } = await admin.json<AuditListResponse>(`/api/customers/${created.id}/audit`);
+    const changes = body.items[0].changes;
+
+    const dob = changes.find((change) => change.field === 'dateOfBirth');
+    // That it changed, and by whom, is what an audit is for. What it was is
+    // withheld here - never sent, so it cannot leak from a network log.
+    expect(dob).toEqual({
+      field: 'dateOfBirth',
+      previousValue: null,
+      newValue: null,
+      redacted: true,
+    });
+    expect(JSON.stringify(body)).not.toContain('1991-02-03');
+    // An ordinary field still shows before and after.
+    expect(changes.find((change) => change.field === 'fullName')).toMatchObject({
+      newValue: 'Audited Twice',
+      redacted: false,
+    });
   });
 
   it('deletes, and then reports the customer as gone', async () => {

@@ -114,12 +114,14 @@ loudly; ignoring it produces a green test that proves nothing.
 
 ### Control endpoints
 
-| Method          | Path                   |                                               |
-| --------------- | ---------------------- | --------------------------------------------- |
-| `GET`           | `/api/_mock/scenarios` | The catalogue above                           |
-| `GET` / `PATCH` | `/api/_mock/controls`  | Latency, jitter, random error rate            |
-| `POST`          | `/api/_mock/reseed`    | `{ seed?, count? }`                           |
-| `POST`          | `/api/_mock/notice`    | Publishes a `system.notice` on the SSE stream |
+| Method          | Path                           |                                                                                                                      |
+| --------------- | ------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
+| `GET`           | `/api/_mock/scenarios`         | The catalogue above                                                                                                  |
+| `GET` / `PATCH` | `/api/_mock/controls`          | Latency, jitter, random error rate                                                                                   |
+| `POST`          | `/api/_mock/reseed`            | `{ seed?, count? }`                                                                                                  |
+| `POST`          | `/api/_mock/notice`            | Publishes a `system.notice` on the SSE stream                                                                        |
+| `POST`          | `/api/_mock/events/disconnect` | Ends the caller's session's event streams (all streams without a session) - makes reconnection testable              |
+| `POST`          | `/api/_mock/events/duplicate`  | `{ customerId }` - re-delivers the newest event about that customer with the same id - makes de-duplication testable |
 
 Unauthenticated on purpose: tests use them to arrange state before signing in. They are
 absent from `@ecm/contracts`, so the application has no typed way to reach them.

@@ -9,19 +9,13 @@ and educational, not only on whether the application works.
 
 ## Status
 
-**Phase 3 complete** — foundation and seams, the API contract and a real mock
-backend, the application shell, the customer feature (a server-paged list with
-search, filters and sorting held in the URL, create and edit with reactive forms,
-delete, bulk actions, an audit trail, an explicit server-state cache), and now the
-session and its security: sign-in and sign-out, expiry and single-flight token
-refresh, route, UI and action authorization by permission, and file validation shared
-with the server. See `docs/PROGRESS.md` for what exists and what comes next.
-
-Sign in with `admin`, `manager` or `viewer` and any password — the mock backend does
-not verify one, which is why there is no credential in this repository. Each role sees
-a different application: a viewer can only read, a manager can edit but not delete.
-Everything else about the session is real - `HttpOnly` cookies, refresh-token rotation,
-CSRF - and [`docs/security.md`](docs/security.md) says who owns each protection.
+**Phase 4 complete** — foundation and seams, the API contract and a real mock
+backend, the application shell, the customer feature, authentication and
+authorization, and now the enterprise UX around them: live updates when someone
+else changes a customer, a notification centre, avatar upload with progress and
+cancel, a previewed CSV import with per-row results, CSV export, an audit trail
+that withholds sensitive values, and an optimistic status change that rolls back.
+See `docs/PROGRESS.md` for what exists and what comes next.
 
 ## Quick start
 
@@ -62,6 +56,9 @@ prompts/             the phase prompts this repository is built from
 | `docs/api-contract.md`          | the API shape, error envelope, permissions, concurrency               |
 | `docs/mock-backend.md`          | the mock server, fault injection, and who owns which security control |
 | `docs/security.md`              | authentication, authorization, and which protection belongs to whom   |
+| `docs/realtime.md`              | live updates: SSE, reconnect, duplicates, what an event does to state |
+| `docs/file-handling.md`         | avatar upload, CSV import and export, validation on both sides        |
+| `docs/state-management.md`      | who owns which state, and why the hand-written cache held up          |
 | `docs/decisions/`               | ADRs — the trade-offs behind each significant choice                  |
 | `docs/PROGRESS.md`              | phase log, deviations, technical-debt register                        |
 

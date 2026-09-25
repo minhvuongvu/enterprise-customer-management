@@ -4,6 +4,8 @@ import { ActivatedRouteSnapshot, provideRouter, Router, type Route } from '@angu
 import { routes } from './app.routes';
 import { AppConfigStore } from './core/config/app-config';
 import { provideSignedInAs } from './core/testing/session-testing';
+import { Logger } from './core/logging/logger';
+import { SilentLogger } from './core/testing/http-testing';
 
 /**
  * The route tree itself, exercised as a unit.
@@ -19,7 +21,13 @@ import { provideSignedInAs } from './core/testing/session-testing';
 describe('application routes', () => {
   function setUp() {
     TestBed.configureTestingModule({
-      providers: [provideRouter(routes), provideLocationMocks(), provideSignedInAs('admin')],
+      providers: [
+        provideRouter(routes),
+        provideLocationMocks(),
+        provideSignedInAs('admin'),
+        // The customers route starts the realtime sync, which logs.
+        { provide: Logger, useClass: SilentLogger },
+      ],
     });
     return TestBed.inject(Router);
   }

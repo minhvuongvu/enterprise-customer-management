@@ -94,4 +94,34 @@ describe('CustomerAuditPage', () => {
 
     expect(root.querySelector('[data-testid="audit-error"]')).not.toBeNull();
   });
+
+  it('names each changed field in words, and says when a value was withheld', async () => {
+    const root = await open();
+    backend.expectOne(`/api/customers/${customer.id}/audit`).flush({
+      items: [
+        {
+          ...entry,
+          action: 'CUSTOMER_UPDATED',
+          changes: [
+            { field: 'fullName', previousValue: 'Old Name', newValue: 'New Name', redacted: false },
+            { field: 'dateOfBirth', previousValue: null, newValue: null, redacted: true },
+          ],
+        },
+      ],
+    });
+    harness.detectChanges();
+
+    const changes = Array.from(root.querySelectorAll('[data-testid="audit-change"]')).map(
+      (item) => item.textContent ?? '',
+    );
+    // "Full name", not "fullName"; old and new value for an ordinary field.
+    expect(changes[0]).toContain('Full name');
+    expect(changes[0]).toContain('Old Name');
+    expect(changes[0]).toContain('New Name');
+    // The server sent no values for a sensitive field, and the page says so
+    // rather than rendering "not provided -> not provided".
+    expect(changes[1]).toContain('Date of birth');
+    expect(changes[1]).toContain('Changed (value not shown)');
+    expect(root.querySelector('[data-testid="audit-redacted"]')).not.toBeNull();
+  });
 });

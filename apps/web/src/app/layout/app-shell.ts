@@ -3,6 +3,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
   effect,
   ElementRef,
   inject,
@@ -15,10 +16,13 @@ import { TranslocoDirective } from '@jsverse/transloco';
 import { filter } from 'rxjs';
 import { SIGN_IN_PATH } from '../core/auth/return-url';
 import { SessionService } from '../core/auth/session.service';
+import { RealtimeClient } from '../core/realtime/realtime-client';
 import { AppHeader } from './app-header';
+import { ConfirmationHost } from './confirmation-host';
 import { AppSidebar } from './app-sidebar';
 import { Breadcrumbs } from './breadcrumbs';
 import { LayoutBreakpoints } from './layout-breakpoints';
+import { ToastRegion } from './toast-region';
 
 /**
  * The authenticated application shell (ADR-0011).
@@ -41,7 +45,16 @@ import { LayoutBreakpoints } from './layout-breakpoints';
  */
 @Component({
   selector: 'app-shell',
-  imports: [A11yModule, AppHeader, AppSidebar, Breadcrumbs, RouterOutlet, TranslocoDirective],
+  imports: [
+    A11yModule,
+    AppHeader,
+    AppSidebar,
+    Breadcrumbs,
+    ConfirmationHost,
+    RouterOutlet,
+    ToastRegion,
+    TranslocoDirective,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="shell" *transloco="let t" [attr.data-mode]="mode()">
@@ -81,6 +94,9 @@ import { LayoutBreakpoints } from './layout-breakpoints';
           <router-outlet />
         </main>
       </div>
+
+      <app-toast-region />
+      <app-confirmation-host />
 
       @if (drawerOpen()) {
         <div class="drawer">
@@ -210,6 +226,13 @@ export class AppShell {
   private readonly mainContent = viewChild.required<ElementRef<HTMLElement>>('mainContent');
 
   constructor() {
+    // Live updates exist exactly as long as the signed-in application does:
+    // opened with the shell, closed with it - which is also what happens on
+    // sign-out and on an expired session, both of which leave the shell.
+    const realtime = inject(RealtimeClient);
+    realtime.connect();
+    inject(DestroyRef).onDestroy(() => realtime.disconnect());
+
     // A window widened while the drawer is open would otherwise leave a modal
     // overlay covering a layout that already has a permanent sidebar.
     effect(() => {

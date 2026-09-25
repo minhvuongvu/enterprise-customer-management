@@ -1,8 +1,16 @@
+import { randomUUID } from 'node:crypto';
 import { parse as parseCsv } from 'csv-parse/sync';
 import {
   AVATAR_FILE_POLICY,
   IMPORT_FILE_POLICY,
   IMPORT_MAX_ROWS,
+  IMPORT_OPTIONAL_COLUMNS,
+  IMPORT_PREVIEW_ROWS,
+  IMPORT_REQUIRED_COLUMNS,
+  importModeSchema,
+  type CreateCustomerRequest,
+  type ImportPreview,
+  type UserId,
   checkFile,
   createCustomerRequestSchema,
   customerListQuerySchema,
@@ -100,16 +108,19 @@ export function fileRoutes(store: MockStore): Router {
     csvUpload,
     (req, res) => {
       const file = requireFile(req.file, IMPORT_FILE_POLICY);
+      const mode = parseOrThrow(importModeSchema, req.query['mode'] ?? 'commit', 'import mode');
+      const injectFailures = hasScenario(req, 'import-partial-failure');
 
+      // `mode=preview` validates every row and writes nothing; the default
+      // imports. Two requests with the same file, rather than a server-side
+      // pending import to confirm: nothing is held on the server between
+      // them, so an abandoned preview costs nothing and expires nothing.
       res
         .status(200)
         .json(
-          importCsv(
-            store,
-            file.buffer,
-            currentUser(req).id,
-            hasScenario(req, 'import-partial-failure'),
-          ),
+          mode === 'preview'
+            ? previewCsv(store, file.buffer, injectFailures)
+            : importCsv(store, file.buffer, currentUser(req).id, injectFailures),
         );
     },
   );
@@ -242,16 +253,25 @@ function csvCell(value: string): string {
   return /[",\n\r]/.test(neutralised) ? `"${neutralised.replace(/"/g, '""')}"` : neutralised;
 }
 
-function importCsv(
-  store: MockStore,
-  content: Buffer,
-  actorId: Parameters<MockStore['create']>[1],
-  injectFailures: boolean,
-): ImportResult {
+/** One data row, after reading and validating, before anything is written. */
+interface RowOutcome {
+  readonly row: number;
+  readonly record: Record<string, string>;
+  readonly input: CreateCustomerRequest | null;
+  readonly errors: readonly ImportRowError[];
+}
+
+interface ReadCsv {
+  readonly records: Record<string, string>[];
+  readonly columns: readonly string[];
+}
+
+function readCsv(content: Buffer): ReadCsv {
+  let columns: string[] = [];
   let records: Record<string, string>[];
   try {
     records = parseCsv(content, {
-      columns: true,
+      columns: (header: string[]) => (columns = header.map((column) => column.trim())),
       skip_empty_lines: true,
       trim: true,
       bom: true,
@@ -263,23 +283,42 @@ function importCsv(
   if (records.length > IMPORT_MAX_ROWS) {
     throw new ApiError('PAYLOAD_TOO_LARGE', `At most ${IMPORT_MAX_ROWS} rows per import.`);
   }
+  return { records, columns };
+}
 
-  const errors: ImportRowError[] = [];
-  let succeeded = 0;
+/**
+ * Validates every row without writing anything.
+ *
+ * The same function backs the preview and the import, which is what makes the
+ * preview a promise the import keeps: a row the preview called valid fails
+ * the import only if the world changed in between - someone created a
+ * customer with that email while the user was reading the preview.
+ *
+ * An email is checked against the customers that exist **and** against the
+ * rows above it in the same file. The second check is the one people forget,
+ * and it is why a preview cannot be computed in the browser.
+ */
+function validateRows(
+  store: MockStore,
+  records: readonly Record<string, string>[],
+  injectFailures: boolean,
+): RowOutcome[] {
+  const seenEmails = new Set<string>();
 
-  records.forEach((record, index) => {
+  return records.map((record, index) => {
     // Row 1 is the header, so a spreadsheet's row number is index + 2. Getting
     // this off by one makes every error message point at the wrong line.
     const row = index + 2;
 
     if (injectFailures && index % 3 === 2) {
-      pushError(errors, {
+      return {
         row,
-        column: null,
-        code: 'INVALID_FORMAT',
-        message: 'Injected import failure.',
-      });
-      return;
+        record,
+        input: null,
+        errors: [
+          { row, column: null, code: 'INVALID_FORMAT', message: 'Injected import failure.' },
+        ],
+      };
     }
 
     const parsed = createCustomerRequestSchema.safeParse({
@@ -293,23 +332,91 @@ function importCsv(
     });
 
     if (!parsed.success) {
-      for (const issue of parsed.error.issues) {
-        pushError(errors, {
+      return {
+        row,
+        record,
+        input: null,
+        errors: parsed.error.issues.map((issue): ImportRowError => ({
           row,
           column: issue.path[0] ? String(issue.path[0]) : null,
           code: issue.code === 'invalid_type' ? 'REQUIRED' : 'INVALID_FORMAT',
           message: issue.message,
-        });
-      }
-      return;
+        })),
+      };
     }
 
+    const email = parsed.data.email.toLowerCase();
+    if (store.hasEmail(email) || seenEmails.has(email)) {
+      return {
+        row,
+        record,
+        input: null,
+        errors: [
+          {
+            row,
+            column: 'email',
+            code: 'DUPLICATE_EMAIL',
+            message: `A customer with email ${parsed.data.email} already exists.`,
+          },
+        ],
+      };
+    }
+    seenEmails.add(email);
+    return { row, record, input: parsed.data, errors: [] };
+  });
+}
+
+function previewCsv(store: MockStore, content: Buffer, injectFailures: boolean): ImportPreview {
+  const { records, columns } = readCsv(content);
+  const outcomes = validateRows(store, records, injectFailures);
+  const known = new Set<string>([...IMPORT_REQUIRED_COLUMNS, ...IMPORT_OPTIONAL_COLUMNS]);
+
+  const errors: ImportRowError[] = [];
+  for (const outcome of outcomes) {
+    outcome.errors.forEach((error) => pushError(errors, error));
+  }
+  const invalidRows = outcomes.filter((outcome) => outcome.input === null).length;
+
+  return {
+    totalRows: records.length,
+    validRows: records.length - invalidRows,
+    invalidRows,
+    missingColumns: IMPORT_REQUIRED_COLUMNS.filter((column) => !columns.includes(column)),
+    unknownColumns: columns.filter((column) => !known.has(column)),
+    rows: outcomes.slice(0, IMPORT_PREVIEW_ROWS).map((outcome) => ({
+      row: outcome.row,
+      fullName: outcome.record['fullName'] ?? '',
+      email: outcome.record['email'] ?? '',
+      status: outcome.record['status'] ?? '',
+      valid: outcome.input !== null,
+    })),
+    errors,
+    errorsTruncated: errors.length >= MAX_REPORTED_IMPORT_ERRORS,
+  };
+}
+
+function importCsv(
+  store: MockStore,
+  content: Buffer,
+  actorId: UserId,
+  injectFailures: boolean,
+): ImportResult {
+  const { records } = readCsv(content);
+  const errors: ImportRowError[] = [];
+  let succeeded = 0;
+
+  for (const outcome of validateRows(store, records, injectFailures)) {
+    if (!outcome.input) {
+      outcome.errors.forEach((error) => pushError(errors, error));
+      continue;
+    }
     try {
-      store.create(parsed.data, actorId);
+      store.create(outcome.input, actorId);
       succeeded += 1;
     } catch (error) {
+      // Validation passed a moment ago; this is the world changing in between.
       pushError(errors, {
-        row,
+        row: outcome.row,
         column: 'email',
         code:
           error instanceof ApiError && error.code === 'CONFLICT'
@@ -318,13 +425,23 @@ function importCsv(
         message: error instanceof Error ? error.message : 'Unknown failure.',
       });
     }
+  }
+
+  const failed = records.length - succeeded;
+  store.publish({
+    type: 'import.completed',
+    id: randomUUID(),
+    at: new Date().toISOString() as Instant,
+    actorId,
+    succeeded,
+    failed,
   });
 
   return {
     totalRows: records.length,
     succeeded,
     // Rows, not errors: one bad row can produce several field errors.
-    failed: records.length - succeeded,
+    failed,
     errors,
     errorsTruncated: errors.length >= MAX_REPORTED_IMPORT_ERRORS,
     completedAt: new Date().toISOString() as Instant,

@@ -134,7 +134,7 @@ These are gaps, not oversights. Each has an owner.
 | No architecture/dependency tests                                       | Boundaries are enforced by review until there are boundaries worth automating                                                                                                | Phase 7   |
 | Search does not match across diacritics                                | The mock's index is a plain lowercase substring match                                                                                                                        | Phase 6   |
 | Layouts checked at three fixed widths                                  | Real devices differ in more than width; these three are where the shape changes                                                                                              | Phase 6   |
-| Bulk `CONFLICT` outcome only reached by injection                      | A natural version race needs two concurrent clients                                                                                                                          | Phase 4   |
+| Bulk `CONFLICT` outcome only reached by injection                      | A natural version race needs two concurrent clients                                                                                                                          | Phase 7   |
 | Typing into the prerendered sign-in form before hydration is discarded | The submit button is disabled until the app is live, so the credential cannot leak into the URL; the keystrokes are still lost. Phase 3 kept `/login` prerendered (ADR-0016) | Phase 5   |
 
 ## How this grows
@@ -145,5 +145,15 @@ independently (`apps/mock-api/test/authorization.spec.ts`, and a direct API call
 manager in the E2E suite). The refresh races are tested by counting requests at the
 transport (`auth-refresh.interceptor.spec.ts`), which is the only level at which "exactly
 one refresh" can be asserted. Session expiry is reproduced in E2E by removing the
-cookies the browser would have dropped, rather than by waiting. Phase 7 reviews the whole pyramid, adds coverage
+cookies the browser would have dropped, rather than by waiting.
+
+Phase 4 added two things that are about _time_: reconnection and duplicate
+delivery. Unit tests drive a hand-written fake `EventSource` (injected through
+`EVENT_SOURCE_FACTORY`) with fake timers, so "drops, gives up, backs off, renews,
+resumes from the last id" is asserted step by step. The E2E suite then proves the
+same against the real server, using two admin routes that end a session's
+streams and re-deliver an event on demand. Two-user scenarios use a second
+browser context signed in as another role; assertions about notifications count
+only the test's own customer, because parallel tests change others at the same
+time. Phase 7 reviews the whole pyramid, adds coverage
 gates and wires it into CI.

@@ -231,8 +231,15 @@ set by the server that serves `index.html`, which is not done yet.
 Output handling: Angular escapes on render; the server returns JSON with
 `nosniff`; the CSV export neutralises cells that a spreadsheet would evaluate
 as formulas (`=`, `+`, `-`, `@`, tab, CR get a leading apostrophe) and quotes
-cells containing separators; avatars are served with their stored type,
-`nosniff` and `Content-Disposition: inline`.
+cells containing separators; the import error report the browser builds does
+the same, because its column names come from the user's own file; avatars are
+served with their stored type, `nosniff` and `Content-Disposition: inline`. The
+audit trail withholds the values of sensitive fields (date of birth) on the
+server - the change is recorded, the values are never sent.
+
+Realtime events travel on the same session cookie as every other request
+(`GET /api/events` is behind `requireAuth`), carry identifiers and a customer
+code but no customer data, and are validated against the contract before use.
 
 ## File upload security
 
@@ -240,14 +247,14 @@ ADR-0019. One policy in `@ecm/contracts` (`checkFile`, `AVATAR_FILE_POLICY`,
 `IMPORT_FILE_POLICY`) run by both sides, and a content check only the server
 makes:
 
-| Check                                | Frontend (Phase 4 UI) | Backend                             |
-| ------------------------------------ | --------------------- | ----------------------------------- |
-| not empty                            | `checkFile` - UX      | `checkFile` → 400                   |
-| size ≤ limit (2 MB avatar, 5 MB CSV) | `checkFile` - UX      | multer limit + `checkFile` → 413    |
-| extension by the last dot            | `checkFile` - UX      | `checkFile` → 415                   |
-| declared MIME type on the allowlist  | `checkFile` - UX      | `checkFile` → 415                   |
-| **bytes match the declared type**    | -                     | `detectImageType` → 415             |
-| permission to upload                 | hidden control - UX   | `requirePermission`, before parsing |
+| Check                                | Frontend            | Backend                             |
+| ------------------------------------ | ------------------- | ----------------------------------- |
+| not empty                            | `checkFile` - UX    | `checkFile` → 400                   |
+| size ≤ limit (2 MB avatar, 5 MB CSV) | `checkFile` - UX    | multer limit + `checkFile` → 413    |
+| extension by the last dot            | `checkFile` - UX    | `checkFile` → 415                   |
+| declared MIME type on the allowlist  | `checkFile` - UX    | `checkFile` → 415                   |
+| **bytes match the declared type**    | -                   | `detectImageType` → 415             |
+| permission to upload                 | hidden control - UX | `requirePermission`, before parsing |
 
 The client's check tells a user at once; it is not the boundary. Every rule is
 enforced again by the server with the client out of the picture - the tests in

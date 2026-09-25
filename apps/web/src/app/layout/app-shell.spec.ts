@@ -8,6 +8,8 @@ import { provideSignedInAs } from '../core/testing/session-testing';
 import { AppShell } from './app-shell';
 import { LayoutBreakpoints, type LayoutMode } from './layout-breakpoints';
 import translations from '../core/i18n/translations/en.json';
+import { Logger } from '../core/logging/logger';
+import { SilentLogger } from '../core/testing/http-testing';
 
 /** Lets each test say which of the three layouts it is exercising. */
 class FakeLayoutBreakpoints {
@@ -39,6 +41,9 @@ describe('AppShell', () => {
         ]),
         provideLocationMocks(),
         { provide: LayoutBreakpoints, useValue: layout },
+        // The shell opens the realtime stream, which logs. jsdom has no
+        // EventSource, so the factory answers null and nothing connects.
+        { provide: Logger, useClass: SilentLogger },
         ...(extraProviders as []),
       ],
     }).compileComponents();

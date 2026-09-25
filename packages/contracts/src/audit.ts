@@ -26,7 +26,21 @@ export const auditFieldChangeSchema = z.object({
   field: z.string(),
   previousValue: z.string().nullable(),
   newValue: z.string().nullable(),
+  /**
+   * True when the server withheld both values because the field is sensitive.
+   * The trail still says *that* it changed, which is what an audit is for;
+   * *what it was* is not something every reader of the trail needs.
+   */
+  redacted: z.boolean().default(false),
 });
+
+/**
+ * Fields whose values never appear in an audit entry. A date of birth is
+ * personal data that identifies someone; knowing it changed is useful,
+ * knowing the old one is not. Decided by the server, shared so the client can
+ * explain the gap rather than render an empty cell.
+ */
+export const AUDIT_REDACTED_FIELDS = ['dateOfBirth'] as const;
 export type AuditFieldChange = z.infer<typeof auditFieldChangeSchema>;
 
 export const auditEntrySchema = z.object({

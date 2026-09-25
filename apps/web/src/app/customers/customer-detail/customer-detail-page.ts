@@ -14,7 +14,8 @@ import { Router } from '@angular/router';
 import type { Customer } from '@ecm/contracts';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
 import { IfPermitted } from '../../core/auth/if-permitted.directive';
-import { messageKeyOf } from '../../core/errors/app-error';
+import { isAppError, messageKeyOf } from '../../core/errors/app-error';
+import { NotificationService } from '../../core/notifications/notification.service';
 import { formatDateOnly } from '../../core/time/instant';
 import { PageContainer } from '../../layout/page-container';
 import { PageHeader } from '../../layout/page-header';
@@ -23,6 +24,7 @@ import { Button } from '../../shared/ui/button/button';
 import { Dialog } from '../../shared/ui/dialog/dialog';
 import { ErrorState } from '../../shared/ui/error-state/error-state';
 import { Skeleton } from '../../shared/ui/skeleton/skeleton';
+import { CustomerAvatar } from '../customer-avatar/customer-avatar';
 import { parseCustomerId } from '../data/customer-id';
 import { genderLabelKey, statusLabelKey, statusTone } from '../customer-vocabulary';
 import { CustomerStore } from '../state/customer-store';
@@ -48,6 +50,7 @@ import { valueOf } from '../state/remote-data';
   imports: [
     Badge,
     Button,
+    CustomerAvatar,
     DatePipe,
     Dialog,
     ErrorState,
@@ -89,6 +92,19 @@ import { valueOf } from '../state/remote-data';
               {{ t('pages.customers.detail.audit') }}
             </app-button>
             <app-button
+              *appIfPermitted="'CUSTOMER_UPDATE'"
+              variant="secondary"
+              [disabled]="statusChanging()"
+              (click)="toggleStatus(record)"
+              data-testid="toggle-status"
+            >
+              {{
+                record.status === 'ACTIVE'
+                  ? t('pages.customers.detail.deactivate')
+                  : t('pages.customers.detail.activate')
+              }}
+            </app-button>
+            <app-button
               *appIfPermitted="'CUSTOMER_DELETE'"
               variant="danger"
               (click)="confirmingDelete.set(true)"
@@ -128,6 +144,26 @@ import { valueOf } from '../state/remote-data';
 
         @case ('record') {
           @if (customer(); as record) {
+            @if (staleness(); as why) {
+              <!-- News from the realtime stream. The record below is left as
+                   it is - replacing it under the reader is worse than saying
+                   it may be out of date - and one click brings it current. -->
+              <div class="stale" role="status" data-testid="stale-record">
+                <p>{{ t('pages.customers.detail.stale.' + why, { code: record.customerCode }) }}</p>
+                @if (why === 'deleted') {
+                  <app-button size="sm" link="/customers">
+                    {{ t('pages.customers.detail.backToList') }}
+                  </app-button>
+                } @else {
+                  <app-button size="sm" (click)="refresh()" data-testid="stale-refresh">
+                    {{ t('pages.customers.detail.refresh') }}
+                  </app-button>
+                }
+              </div>
+            }
+
+            <app-customer-avatar [customer]="record" />
+
             <dl class="facts" data-testid="customer-facts">
               <div class="fact">
                 <dt>{{ t('customers.field.customerCode') }}</dt>
@@ -136,7 +172,14 @@ import { valueOf } from '../state/remote-data';
               <div class="fact">
                 <dt>{{ t('customers.field.status') }}</dt>
                 <dd>
-                  <app-badge [tone]="tone(record)">{{ t(statusKey(record)) }}</app-badge>
+                  <app-badge [tone]="tone(record)" data-testid="status-badge">{{
+                    t(statusKey(record))
+                  }}</app-badge>
+                  @if (statusChanging()) {
+                    <span class="saving" role="status">{{
+                      t('pages.customers.detail.statusSaving')
+                    }}</span>
+                  }
                 </dd>
               </div>
               <div class="fact">
@@ -225,6 +268,35 @@ import { valueOf } from '../state/remote-data';
   styles: `
     @use 'styles/breakpoints' as bp;
 
+    .stale {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-2);
+      margin-bottom: var(--space-4);
+      padding: var(--space-3);
+      border: var(--border-width) solid var(--warning);
+      border-radius: var(--radius-md);
+      background-color: var(--warning-subtle);
+      color: var(--warning-text);
+    }
+
+    .stale p {
+      margin: 0;
+    }
+
+    .saving {
+      margin-inline-start: var(--space-2);
+      color: var(--text-secondary);
+      font-size: var(--text-sm);
+    }
+
+    app-customer-avatar {
+      display: block;
+      margin-bottom: var(--space-4);
+    }
+
     .facts {
       display: grid;
       grid-template-columns: 1fr;
@@ -279,6 +351,7 @@ export class CustomerDetailPage {
   private readonly router = inject(Router);
   private readonly transloco = inject(TranslocoService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly notifications = inject(NotificationService);
 
   private readonly customerId = computed(() => parseCustomerId(this.id()));
   private readonly state = this.store.detail;
@@ -291,6 +364,12 @@ export class CustomerDetailPage {
   protected readonly pending = computed(
     () => this.state().status === 'loading' || this.state().status === 'refreshing',
   );
+
+  protected readonly staleness = this.store.detailStaleness;
+  protected readonly statusChanging = computed(() => {
+    const id = this.customerId();
+    return id !== null && this.store.statusPending().has(id);
+  });
 
   protected readonly confirmingDelete = signal(false);
   protected readonly deleting = signal(false);
@@ -361,6 +440,34 @@ export class CustomerDetailPage {
     return [address.line1, address.line2, address.city, address.postalCode, address.country]
       .filter(Boolean)
       .join(', ');
+  }
+
+  /**
+   * Activates or deactivates, optimistically: the badge changes at once and
+   * the server confirms it. If the server refuses, the store has already put
+   * the old status back, and the user is told - loudly, because the change
+   * they saw happen did not. A 409 means someone else changed the record, so
+   * it is reloaded as well. ADR-0023.
+   */
+  protected toggleStatus(record: Customer): void {
+    const next = record.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
+    this.store
+      .changeStatus(record.id, next)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        error: (error: unknown) => {
+          const conflict = isAppError(error) && error.kind === 'conflict';
+          this.notifications.toast(
+            conflict
+              ? 'pages.customers.detail.statusConflict'
+              : 'pages.customers.detail.statusRolledBack',
+            { tone: 'danger', params: { reason: this.transloco.translate(messageKeyOf(error)) } },
+          );
+          if (conflict) {
+            this.store.refreshDetail();
+          }
+        },
+      });
   }
 
   protected deleteCustomer(): void {

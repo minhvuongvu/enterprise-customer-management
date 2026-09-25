@@ -61,6 +61,46 @@ export const importResultSchema = z.object({
 });
 export type ImportResult = z.infer<typeof importResultSchema>;
 
+/**
+ * The answer to "what would importing this file do?", before anything is
+ * written.
+ *
+ * The import is two requests on purpose. The first (`?mode=preview`) parses
+ * and validates every row - including against the customers that already
+ * exist - and changes nothing. The user sees what will happen and confirms;
+ * the second request imports. Validating on the server rather than in the
+ * browser is what makes the preview honest: duplicate emails are only known
+ * to the server.
+ */
+export const IMPORT_PREVIEW_ROWS = 20;
+
+export const importPreviewRowSchema = z.object({
+  row: z.int().min(2),
+  fullName: z.string(),
+  email: z.string(),
+  status: z.string(),
+  valid: z.boolean(),
+});
+export type ImportPreviewRow = z.infer<typeof importPreviewRowSchema>;
+
+export const importPreviewSchema = z.object({
+  totalRows: z.int().nonnegative(),
+  validRows: z.int().nonnegative(),
+  invalidRows: z.int().nonnegative(),
+  /** Required columns the header does not have. Non-empty means nothing can import. */
+  missingColumns: z.array(z.string()),
+  /** Columns the importer will ignore. Worth telling the user; not an error. */
+  unknownColumns: z.array(z.string()),
+  /** The first rows, as the importer read them. */
+  rows: z.array(importPreviewRowSchema),
+  errors: z.array(importRowErrorSchema),
+  errorsTruncated: z.boolean(),
+});
+export type ImportPreview = z.infer<typeof importPreviewSchema>;
+
+export const importModeSchema = z.enum(['preview', 'commit']);
+export type ImportMode = z.infer<typeof importModeSchema>;
+
 export const exportFormatSchema = z.enum(['csv']);
 export type ExportFormat = z.infer<typeof exportFormatSchema>;
 

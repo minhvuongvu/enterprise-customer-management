@@ -3,6 +3,8 @@ import { RouterLink } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { Badge } from '../shared/ui/badge/badge';
 import { Button } from '../shared/ui/button/button';
+import { ConnectionStatus } from './connection-status';
+import { NotificationCenter } from './notification-center';
 import { ThemeToggle } from './theme-toggle';
 
 /**
@@ -15,7 +17,15 @@ import { ThemeToggle } from './theme-toggle';
  */
 @Component({
   selector: 'app-header',
-  imports: [Badge, Button, RouterLink, ThemeToggle, TranslocoDirective],
+  imports: [
+    Badge,
+    Button,
+    ConnectionStatus,
+    NotificationCenter,
+    RouterLink,
+    ThemeToggle,
+    TranslocoDirective,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <header class="header" *transloco="let t">
@@ -44,6 +54,10 @@ import { ThemeToggle } from './theme-toggle';
       <a class="header__brand" routerLink="/">{{ t('app.title') }}</a>
 
       <div class="header__actions">
+        @if (userName()) {
+          <app-connection-status />
+          <app-notification-center />
+        }
         <app-theme-toggle />
 
         @if (userName()) {

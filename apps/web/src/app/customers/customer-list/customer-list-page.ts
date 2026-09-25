@@ -16,11 +16,13 @@ import { TranslocoDirective } from '@jsverse/transloco';
 import { distinctUntilChanged } from 'rxjs';
 import { IfPermitted } from '../../core/auth/if-permitted.directive';
 import { SessionService } from '../../core/auth/session.service';
+import { messageKeyOf } from '../../core/errors/app-error';
 import { Logger } from '../../core/logging/logger';
+import { ConfirmationService } from '../../core/notifications/confirmation.service';
+import { NotificationService } from '../../core/notifications/notification.service';
 import { PageContainer } from '../../layout/page-container';
 import { PageHeader } from '../../layout/page-header';
 import { Button } from '../../shared/ui/button/button';
-import { Dialog } from '../../shared/ui/dialog/dialog';
 import { EmptyState } from '../../shared/ui/empty-state/empty-state';
 import { ErrorState } from '../../shared/ui/error-state/error-state';
 import { Pagination } from '../../shared/ui/pagination/pagination';
@@ -34,6 +36,8 @@ import {
   withFilterChange,
   type CustomerListCriteria,
 } from '../data/customer-list-criteria';
+import { fractionOf } from '../data/transfer';
+import { FileSaver } from '../files/file-saver';
 import { CustomerStore } from '../state/customer-store';
 import { valueOf } from '../state/remote-data';
 import { CustomerBulkBar } from './customer-bulk-bar';
@@ -71,7 +75,6 @@ import { CustomerTable } from './customer-table';
     CustomerBulkBar,
     CustomerFilters,
     CustomerTable,
-    Dialog,
     EmptyState,
     ErrorState,
     IfPermitted,
@@ -99,11 +102,39 @@ import { CustomerTable } from './customer-table';
           >
             {{ t('pages.customers.list.refresh') }}
           </app-button>
+          <app-button
+            *appIfPermitted="'CUSTOMER_EXPORT'"
+            variant="secondary"
+            [loading]="exporting()"
+            (click)="exportCsv()"
+            data-testid="export"
+          >
+            {{ t('pages.customers.list.export') }}
+          </app-button>
+          <app-button
+            *appIfPermitted="'CUSTOMER_IMPORT'"
+            variant="secondary"
+            link="/customers/import"
+          >
+            {{ t('pages.customers.list.import') }}
+          </app-button>
           <app-button *appIfPermitted="'CUSTOMER_CREATE'" variant="primary" link="/customers/new">
             {{ t('pages.customers.list.create') }}
           </app-button>
         </div>
       </app-page-header>
+
+      @if (exportProgress() !== null) {
+        <!-- Progress for a download the user started and can keep working
+             through: the list stays usable, nothing is blocked. -->
+        <p class="export" role="status" data-testid="export-progress">
+          {{
+            exportProgress() === -1
+              ? t('pages.customers.list.exporting')
+              : t('pages.customers.list.exportingPercent', { percent: exportProgress() })
+          }}
+        </p>
+      }
 
       <app-customer-filters [criteria]="criteria()" (criteriaChange)="applyCriteria($event)" />
 
@@ -114,7 +145,7 @@ import { CustomerTable } from './customer-table';
           [result]="bulkResult()"
           (activate)="runBulk('ACTIVATE')"
           (deactivate)="runBulk('DEACTIVATE')"
-          (remove)="confirmingBulkDelete.set(true)"
+          (remove)="confirmBulkDelete()"
           (clear)="clearSelection()"
         />
       }
@@ -219,31 +250,15 @@ import { CustomerTable } from './customer-table';
           }
         }
       </section>
-
-      <app-dialog
-        [open]="confirmingBulkDelete()"
-        [heading]="t('pages.customers.list.bulk.confirmHeading')"
-        (closed)="confirmingBulkDelete.set(false)"
-      >
-        <p>{{ t('pages.customers.list.bulk.confirmBody', { count: selectedCount() }) }}</p>
-
-        <div dialogActions>
-          <app-button (click)="confirmingBulkDelete.set(false)">{{
-            t('common.cancel')
-          }}</app-button>
-          <app-button
-            variant="danger"
-            (click)="confirmBulkDelete()"
-            data-testid="bulk-delete-confirm"
-          >
-            {{ t('pages.customers.list.bulk.delete') }}
-          </app-button>
-        </div>
-      </app-dialog>
     </app-page-container>
   `,
   styles: `
     @use 'styles/breakpoints' as bp;
+
+    .export {
+      color: var(--text-secondary);
+      font-size: var(--text-sm);
+    }
 
     .results {
       display: flex;
@@ -309,6 +324,9 @@ export class CustomerListPage {
   private readonly route = inject(ActivatedRoute);
   private readonly logger = inject(Logger);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly confirmation = inject(ConfirmationService);
+  private readonly notifications = inject(NotificationService);
+  private readonly files = inject(FileSaver);
 
   protected readonly criteria = computed<CustomerListCriteria>(() =>
     readCriteria({
@@ -379,7 +397,10 @@ export class CustomerListPage {
 
   protected readonly bulkRunning = signal(false);
   protected readonly bulkResult = signal<BulkResponse | null>(null);
-  protected readonly confirmingBulkDelete = signal(false);
+
+  /** `null` when no export is running; -1 while its size is unknown; else 0-100. */
+  protected readonly exportProgress = signal<number | null>(null);
+  protected readonly exporting = computed(() => this.exportProgress() !== null);
 
   // -------------------------------------------------------------- page size
 
@@ -392,6 +413,9 @@ export class CustomerListPage {
   }));
 
   constructor() {
+    // The store refetches the list on news only while someone is looking.
+    this.destroyRef.onDestroy(this.store.watchList());
+
     // One effect, so the order is not an accident: the selection belongs to
     // the page of results that is on screen, so it is cleared *before* the
     // store is asked for a different one.
@@ -482,9 +506,57 @@ export class CustomerListPage {
 
   // ------------------------------------------------------------------ bulk
 
+  /** Deleting many records is asked about once, through the shared confirmation. */
   protected confirmBulkDelete(): void {
-    this.confirmingBulkDelete.set(false);
-    this.runBulk('DELETE');
+    this.confirmation
+      .confirm({
+        headingKey: 'pages.customers.list.bulk.confirmHeading',
+        bodyKey: 'pages.customers.list.bulk.confirmBody',
+        confirmKey: 'pages.customers.list.bulk.delete',
+        params: { count: this.selectedCount() },
+        tone: 'danger',
+      })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((confirmed) => {
+        if (confirmed) {
+          this.runBulk('DELETE');
+        }
+      });
+  }
+
+  // ---------------------------------------------------------------- export
+
+  /**
+   * Exports every customer the current filters match - not only this page.
+   *
+   * The download runs beside the page: the list stays usable, and progress is
+   * reported where the button was pressed. A failure is a toast, because
+   * there is nothing on the page for it to belong to.
+   */
+  protected exportCsv(): void {
+    if (this.exporting()) {
+      return;
+    }
+    this.exportProgress.set(-1);
+    this.store
+      .exportCsv(this.criteria())
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (transfer) => {
+          if (transfer.kind === 'done') {
+            this.files.save(transfer.value.blob, transfer.value.fileName);
+            this.exportProgress.set(null);
+            this.notifications.toast('pages.customers.list.exported');
+            return;
+          }
+          const fraction = fractionOf(transfer);
+          this.exportProgress.set(fraction === null ? -1 : Math.round(fraction * 100));
+        },
+        error: (error: unknown) => {
+          this.exportProgress.set(null);
+          this.notifications.toast(messageKeyOf(error), { tone: 'danger' });
+        },
+      });
   }
 
   /**

@@ -1,5 +1,6 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import {
+  AUDIT_REDACTED_FIELDS,
   findFixtureUserById,
   parseSortParam,
   type AuditEntry,
@@ -34,6 +35,12 @@ import { generateCustomers } from './seed.ts';
 
 type ChangeListener = (event: RealtimeEvent) => void;
 
+/**
+ * How many events a reconnecting client can catch up on. Enough to cover a
+ * network blip; a client gone for longer revalidates instead (see eventsAfter).
+ */
+const REPLAY_BUFFER_SIZE = 200;
+
 const COLLATOR = new Intl.Collator('en', { sensitivity: 'base', numeric: true });
 
 function nowInstant(): Instant {
@@ -48,6 +55,8 @@ export class MockStore {
   private readonly auditLog = new Map<string, AuditEntry[]>();
   private readonly avatars = new Map<string, { data: Buffer; contentType: string }>();
   private readonly listeners = new Set<ChangeListener>();
+  /** Recent events, oldest first, so a reconnecting client can catch up. */
+  private readonly recentEvents: RealtimeEvent[] = [];
   private nextCodeNumber = 1;
 
   constructor(seed: number, count: number) {
@@ -62,6 +71,8 @@ export class MockStore {
     this.searchIndex.clear();
     this.auditLog.clear();
     this.avatars.clear();
+    // Events about the previous dataset describe records that no longer exist.
+    this.recentEvents.length = 0;
 
     for (const customer of this.customers) {
       this.index(customer);
@@ -79,9 +90,37 @@ export class MockStore {
   }
 
   private emit(event: RealtimeEvent): void {
+    // A re-delivered event is already in the buffer; storing it twice would
+    // make a later replay deliver it twice more.
+    if (!this.recentEvents.some((recent) => recent.id === event.id)) {
+      this.recentEvents.push(event);
+    }
+    if (this.recentEvents.length > REPLAY_BUFFER_SIZE) {
+      this.recentEvents.shift();
+    }
     for (const listener of this.listeners) {
       listener(event);
     }
+  }
+
+  /**
+   * The events published after `lastEventId`, for a client that reconnected.
+   *
+   * `null` when the id is not in the buffer - the client has been away longer
+   * than the buffer remembers, or the server restarted. The honest answer then
+   * is "cannot say what you missed", and the client must revalidate whatever
+   * it shows rather than trust a replay with a hole in it.
+   */
+  eventsAfter(lastEventId: string): readonly RealtimeEvent[] | null {
+    const index = this.recentEvents.findIndex((event) => event.id === lastEventId);
+    return index === -1 ? null : this.recentEvents.slice(index + 1);
+  }
+
+  /** The newest event about one customer, re-sent as-is by the duplicate-delivery route. */
+  lastEventAbout(customerId: string): RealtimeEvent | undefined {
+    return this.recentEvents.findLast(
+      (event) => 'customerId' in event && event.customerId === customerId,
+    );
   }
 
   /**
@@ -125,6 +164,11 @@ export class MockStore {
   }
 
   // ---------------------------------------------------------------- reading
+
+  /** Whether an email is taken. Case-insensitive, like the uniqueness rule. */
+  hasEmail(email: string): boolean {
+    return this.byEmail.has(email.toLowerCase());
+  }
 
   get(id: string): Customer | undefined {
     return this.byId.get(id);
@@ -220,6 +264,7 @@ export class MockStore {
       id: randomUUID(),
       at: timestamp,
       customerId: customer.id,
+      customerCode: customer.customerCode,
       actorId: actor,
     });
 
@@ -268,11 +313,9 @@ export class MockStore {
       id,
       changedFields.includes('status') ? 'CUSTOMER_STATUS_CHANGED' : 'CUSTOMER_UPDATED',
       actor,
-      changedFields.map((field) => ({
-        field,
-        previousValue: renderValue(existing[field as keyof Customer]),
-        newValue: renderValue(updated[field as keyof Customer]),
-      })),
+      changedFields.map((field) =>
+        fieldChange(field, existing[field as keyof Customer], updated[field as keyof Customer]),
+      ),
     );
 
     this.emit({
@@ -280,6 +323,7 @@ export class MockStore {
       id: randomUUID(),
       at: updated.updatedAt,
       customerId: updated.id,
+      customerCode: updated.customerCode,
       actorId: actor,
       changedFields,
     });
@@ -299,6 +343,7 @@ export class MockStore {
       id: randomUUID(),
       at: nowInstant(),
       customerId: existing.id,
+      customerCode: existing.customerCode,
       actorId: actor,
     });
   }
@@ -332,12 +377,18 @@ export class MockStore {
       version: existing.version + 1,
     };
     this.replace(existing, updated);
+    // Recorded as a change without values: the URL is the same string before
+    // and after a replacement, so "it changed" is the whole of the information.
+    this.appendAudit(id, 'CUSTOMER_UPDATED', actor, [
+      { field: 'avatarUrl', previousValue: null, newValue: null, redacted: false },
+    ]);
 
     this.emit({
       type: 'customer.updated',
       id: randomUUID(),
       at: updated.updatedAt,
       customerId: updated.id,
+      customerCode: updated.customerCode,
       actorId: actor,
       changedFields: ['avatarUrl'],
     });
@@ -395,7 +446,11 @@ export class MockStore {
     return [
       ...recorded,
       {
-        id: `seeded-${customer.id}`,
+        // A real UUID, derived from the customer so it is stable across
+        // requests. It used to be `seeded-<id>`, which the contract's uuid
+        // rule rejects - so the trail of every seeded customer failed to
+        // parse in the client and rendered as a server error.
+        id: derivedUuid(`seeded-audit:${customer.id}`),
         customerId: customer.id,
         action: 'CUSTOMER_CREATED',
         occurredAt: customer.createdAt,
@@ -424,6 +479,33 @@ function compareCustomers(a: Customer, b: Customer, field: string): number {
       // A collator, not `<`: "Đức" must sort next to "Duc", not after "Z".
       return COLLATOR.compare(a.fullName, b.fullName);
   }
+}
+
+/**
+ * One field's change, as the audit trail records it.
+ *
+ * Sensitive fields keep their place in the trail - that the date of birth was
+ * changed, and by whom, is exactly what an audit is for - but not their values,
+ * which are withheld here, on the server, rather than sent and hidden by the
+ * client. A value that is never sent cannot leak from a network log.
+ */
+function fieldChange(field: string, previous: unknown, next: unknown): AuditFieldChange {
+  if ((AUDIT_REDACTED_FIELDS as readonly string[]).includes(field)) {
+    return { field, previousValue: null, newValue: null, redacted: true };
+  }
+  return {
+    field,
+    previousValue: renderValue(previous),
+    newValue: renderValue(next),
+    redacted: false,
+  };
+}
+
+/** A deterministic, well-formed UUID (version 5 layout) from any string. */
+function derivedUuid(name: string): string {
+  const hex = createHash('sha1').update(name).digest('hex');
+  const variant = ((parseInt(hex[16], 16) & 0x3) | 0x8).toString(16);
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-5${hex.slice(13, 16)}-${variant}${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
 }
 
 function renderValue(value: unknown): string | null {

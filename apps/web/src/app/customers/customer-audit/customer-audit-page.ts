@@ -29,6 +29,19 @@ import { valueOf } from '../state/remote-data';
  *    at a type the entry does not carry - and would quietly rewrite history
  *    the first time a format changed.
  */
+/** Fields that have a translated label in `customers.field.*`. */
+const AUDITED_FIELDS = new Set([
+  'fullName',
+  'email',
+  'phone',
+  'dateOfBirth',
+  'gender',
+  'status',
+  'address',
+  'tags',
+  'avatarUrl',
+]);
+
 @Component({
   selector: 'app-customer-audit-page',
   imports: [
@@ -114,18 +127,32 @@ import { valueOf } from '../state/remote-data';
                 @if (entry.changes.length) {
                   <ul class="changes">
                     @for (change of entry.changes; track change.field) {
-                      <li>
-                        <span class="changes__field">{{ change.field }}</span>
-                        <span class="changes__value">{{
-                          change.previousValue ?? t('common.notProvided')
-                        }}</span>
-                        <span class="changes__arrow" aria-hidden="true"></span>
-                        <span class="visually-hidden">{{
-                          t('pages.customers.audit.becameSr')
-                        }}</span>
-                        <span class="changes__value">{{
-                          change.newValue ?? t('common.notProvided')
-                        }}</span>
+                      <li data-testid="audit-change">
+                        <span class="changes__field">{{ t(fieldKey(change.field)) }}</span>
+                        @if (change.redacted) {
+                          <!-- The server withheld both values (ADR-0019's
+                               sibling rule: what is not needed is not sent).
+                               Saying so beats an empty cell that reads as
+                               "was blank, is blank". -->
+                          <span class="changes__redacted" data-testid="audit-redacted">{{
+                            t('pages.customers.audit.redacted')
+                          }}</span>
+                        } @else if (change.previousValue === null && change.newValue === null) {
+                          <span class="changes__redacted">{{
+                            t('pages.customers.audit.changedNoValue')
+                          }}</span>
+                        } @else {
+                          <span class="changes__value">{{
+                            change.previousValue ?? t('common.notProvided')
+                          }}</span>
+                          <span class="changes__arrow" aria-hidden="true"></span>
+                          <span class="visually-hidden">{{
+                            t('pages.customers.audit.becameSr')
+                          }}</span>
+                          <span class="changes__value">{{
+                            change.newValue ?? t('common.notProvided')
+                          }}</span>
+                        }
                       </li>
                     }
                   </ul>
@@ -185,6 +212,11 @@ import { valueOf } from '../state/remote-data';
       color: var(--text-secondary);
     }
 
+    .changes__redacted {
+      color: var(--text-secondary);
+      font-style: italic;
+    }
+
     .changes__value {
       font-family: var(--font-mono);
       word-break: break-word;
@@ -198,6 +230,17 @@ import { valueOf } from '../state/remote-data';
   `,
 })
 export class CustomerAuditPage {
+  /**
+   * The label for a changed field. A field the vocabulary knows is shown by
+   * its translated name; one it does not - a field added to the API later -
+   * falls back to a generic label rather than the raw property name.
+   */
+  protected fieldKey(field: string): string {
+    return AUDITED_FIELDS.has(field)
+      ? `customers.field.${field}`
+      : 'pages.customers.audit.otherField';
+  }
+
   readonly id = input.required<string>();
 
   private readonly store = inject(CustomerStore);

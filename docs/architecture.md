@@ -93,6 +93,8 @@ the failure mode to avoid.
 | Errors          | `core/errors/`                     | the §4.7 taxonomy as a discriminated union, central HTTP mapping                   | every phase |
 | HTTP            | `core/http/`                       | five single-purpose interceptors, ordered (§5, ADR-0017)                           | **Phase 3** |
 | Auth            | `core/auth/`                       | session lifecycle, guards, permission directive (§5a, ADR-0016/0018)               | **Phase 3** |
+| Notifications   | `core/notifications/`              | toasts, snackbars, notification centre, confirmation (ADR-0022)                    | **Phase 4** |
+| Realtime        | `core/realtime/`                   | one SSE stream per tab: state, reconnect, de-duplication (ADR-0020)                | **Phase 4** |
 | Config          | `core/config/`                     | build-time `BuildEnvironment` + runtime `AppConfigStore` + feature flags           | Phase 7     |
 | Time            | `core/time/instant.ts`             | branded `Instant` (UTC) and `DateOnly` types                                       | Phase 6     |
 
@@ -142,8 +144,10 @@ The distinction that matters most in practice is between **server state** and
 it can be stale, it can fail, and it has to be invalidated. The other five cannot be
 stale, because nobody else can change them.
 
-No store library is installed. That decision is revisited once, at Phase 4 - see
-ANGULAR_PROJECT_CONTEXT.md §5.5 and [ADR-0013](decisions/0013-customer-server-state.md).
+No store library is installed. That decision was revisited, as planned, in Phase 4:
+realtime invalidation and an optimistic update with rollback fit the hand-written
+store without one. The reasoning is in [`state-management.md`](state-management.md);
+realtime in [`realtime.md`](realtime.md); files in [`file-handling.md`](file-handling.md).
 
 `resource()` was checked in Phase 0 and is still marked `@experimental` in Angular
 22.1.7, so Phase 2's server-state layer is written explicitly rather than built on it.
@@ -511,6 +515,7 @@ CustomerStore         server state: what is on screen, and the cache
 CustomerApi           one request, validated, with a per-endpoint policy
     |
 HttpClient            interceptors: correlation id, logging, refresh, CSRF, error mapping
+    |                 transport: fetch, or XHR for uploads that report progress (ADR-0021)
     |
 mock API
 ```

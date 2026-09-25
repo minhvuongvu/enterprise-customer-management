@@ -1,10 +1,11 @@
-import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/http';
+import { HttpBackend, provideHttpClient, withFetch, withInterceptors } from '@angular/common/http';
 import { EnvironmentProviders, makeEnvironmentProviders } from '@angular/core';
 import { authRefreshInterceptor } from './auth-refresh.interceptor';
 import { correlationIdInterceptor } from './correlation-id.interceptor';
 import { csrfInterceptor } from './csrf.interceptor';
 import { errorMappingInterceptor } from './error-mapping.interceptor';
 import { requestLoggingInterceptor } from './request-logging.interceptor';
+import { UploadAwareBackend } from './upload-aware.backend';
 
 /**
  * HTTP infrastructure.
@@ -32,6 +33,11 @@ import { requestLoggingInterceptor } from './request-logging.interceptor';
  *                       Last, so everything above it - refresh included -
  *                       reasons about kinds, never about status codes.
  *
+ * ## The transport
+ *
+ * `fetch`, except for a request that asks for upload progress, which goes
+ * through XHR - `fetch` has no upload progress. `UploadAwareBackend`, ADR-0021.
+ *
  * There is no "auth header" interceptor, and that is not an omission: the
  * credential is an `HttpOnly` cookie the browser attaches by itself (ADR-0016).
  *
@@ -53,5 +59,9 @@ export function provideAppHttp(): EnvironmentProviders {
         errorMappingInterceptor,
       ]),
     ),
+    // After provideHttpClient(), so it replaces the backend withFetch() chose.
+    // Uploads that report progress go through XHR; everything else is fetch.
+    UploadAwareBackend,
+    { provide: HttpBackend, useExisting: UploadAwareBackend },
   ]);
 }

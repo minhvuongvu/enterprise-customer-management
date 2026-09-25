@@ -12,12 +12,12 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { StatusChangeEvent } from '@angular/forms';
 import { Router } from '@angular/router';
 import type { Customer } from '@ecm/contracts';
-import { filter, take, Observable, Subject } from 'rxjs';
+import { filter, take, Observable } from 'rxjs';
 import { isAppError, messageKeyOf } from '../../core/errors/app-error';
 import { PageContainer } from '../../layout/page-container';
 import { PageHeader } from '../../layout/page-header';
 import { Button } from '../../shared/ui/button/button';
-import { Dialog } from '../../shared/ui/dialog/dialog';
+import { ConfirmationService } from '../../core/notifications/confirmation.service';
 import { ErrorState } from '../../shared/ui/error-state/error-state';
 import { Skeleton } from '../../shared/ui/skeleton/skeleton';
 import { TranslocoDirective } from '@jsverse/transloco';
@@ -74,7 +74,6 @@ export type CustomerFormMode = 'create' | 'edit';
   imports: [
     Button,
     CustomerFormFields,
-    Dialog,
     ErrorState,
     PageContainer,
     PageHeader,
@@ -126,6 +125,25 @@ export type CustomerFormMode = 'create' | 'edit';
             which cannot be translated and do not match the messages below.
           -->
           <form (submit)="handleSubmit($event)" novalidate>
+            @if (remoteChange(); as change) {
+              <!-- Realtime news about the record being edited. The form is not
+                   touched: the user's typing is theirs. What they are offered
+                   is the same reload the conflict panel offers - their fields
+                   kept, everyone else's refreshed (ADR-0015) - before saving,
+                   instead of a 409 after. -->
+              <div class="conflict" role="status" data-testid="remote-change">
+                <p class="conflict__heading">
+                  {{ t('pages.customers.form.remote.' + change + 'Heading') }}
+                </p>
+                <p>{{ t('pages.customers.form.remote.' + change + 'Body') }}</p>
+                @if (change !== 'deleted') {
+                  <app-button variant="secondary" (click)="reloadKeepingChanges()">
+                    {{ t('pages.customers.form.conflictReload') }}
+                  </app-button>
+                }
+              </div>
+            }
+
             @if (conflict()) {
               <div class="conflict" role="alert" data-testid="conflict">
                 <p class="conflict__heading">{{ t('pages.customers.form.conflictHeading') }}</p>
@@ -171,21 +189,6 @@ export type CustomerFormMode = 'create' | 'edit';
           </form>
         }
       }
-
-      <app-dialog
-        [open]="confirmingLeave()"
-        [heading]="t('pages.customers.form.leaveHeading')"
-        (closed)="answerLeave(false)"
-      >
-        <p>{{ t('pages.customers.form.leaveBody') }}</p>
-
-        <div dialogActions>
-          <app-button (click)="answerLeave(false)">{{ t('pages.customers.form.stay') }}</app-button>
-          <app-button variant="danger" (click)="answerLeave(true)" data-testid="discard-changes">
-            {{ t('pages.customers.form.discard') }}
-          </app-button>
-        </div>
-      </app-dialog>
     </app-page-container>
   `,
   styles: `
@@ -243,6 +246,7 @@ export class CustomerFormPage implements CanLeave {
   readonly id = input<string>();
 
   private readonly store = inject(CustomerStore);
+  private readonly confirmation = inject(ConfirmationService);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -267,8 +271,15 @@ export class CustomerFormPage implements CanLeave {
   protected readonly reloaded = signal(false);
   /** True between asking for the newest record and receiving it. */
   private readonly awaitingReload = signal(false);
-  protected readonly confirmingLeave = signal(false);
-  private leaveAnswer: Subject<boolean> | null = null;
+
+  /**
+   * Someone else changed or deleted this record since the form was filled -
+   * news from the realtime stream, shown in edit mode and only while no
+   * conflict panel is already saying the same thing.
+   */
+  protected readonly remoteChange = computed(() =>
+    this.mode() === 'edit' && !this.conflict() ? this.store.detailStaleness() : null,
+  );
 
   /** Bumped by the form's own events, so `dirty()` is reactive under OnPush. */
   private readonly formVersion = signal(0);
@@ -548,15 +559,12 @@ export class CustomerFormPage implements CanLeave {
       return true;
     }
 
-    this.confirmingLeave.set(true);
-    this.leaveAnswer = new Subject<boolean>();
-    return this.leaveAnswer.asObservable();
-  }
-
-  protected answerLeave(leave: boolean): void {
-    this.confirmingLeave.set(false);
-    this.leaveAnswer?.next(leave);
-    this.leaveAnswer?.complete();
-    this.leaveAnswer = null;
+    return this.confirmation.confirm({
+      headingKey: 'pages.customers.form.leaveHeading',
+      bodyKey: 'pages.customers.form.leaveBody',
+      confirmKey: 'pages.customers.form.discard',
+      cancelKey: 'pages.customers.form.stay',
+      tone: 'danger',
+    });
   }
 }

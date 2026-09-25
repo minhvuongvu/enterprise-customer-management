@@ -5,16 +5,32 @@ import type {
   BulkAction,
   BulkResponse,
   CreateCustomerRequest,
+  AvatarUploadResponse,
   Customer,
   CustomerId,
+  CustomerStatus,
+  ImportPreview,
+  ImportResult,
   PageResponse,
   Permission,
   UpdateCustomerRequest,
 } from '@ecm/contracts';
-import { catchError, EMPTY, map, Subject, switchMap, tap, throwError, type Observable } from 'rxjs';
+import {
+  catchError,
+  EMPTY,
+  finalize,
+  map,
+  of,
+  Subject,
+  switchMap,
+  tap,
+  throwError,
+  type Observable,
+} from 'rxjs';
 import { SessionService } from '../../core/auth/session.service';
 import { appError, isAppError, type AppError } from '../../core/errors/app-error';
-import { CustomerApi } from '../data/customer.api';
+import { CustomerApi, type ExportedFile } from '../data/customer.api';
+import type { Transfer } from '../data/transfer';
 import { criteriaKey, type CustomerListCriteria } from '../data/customer-list-criteria';
 import { CustomerCache } from './customer-cache';
 import { failed, idle, reloadFrom, success, valueOf, type RemoteData } from './remote-data';
@@ -79,6 +95,19 @@ export class CustomerStore {
   /** The page currently on screen, with its request state. */
   readonly list: Signal<RemoteData<PageResponse<Customer>>> = this.listState.asReadonly();
 
+  /**
+   * How many pages are showing the list right now, and whether what they
+   * would see is known to be out of date.
+   *
+   * A write used to refetch the list whether or not anyone was looking at it
+   * (debt row 15). With realtime events arriving for every change anyone
+   * makes, that would be a request per event for a list nobody is on. Now a
+   * write or an event marks the list stale; it is refetched immediately if it
+   * is on screen, and on the way back to it otherwise.
+   */
+  private listWatchers = 0;
+  private listStale = false;
+
   // ----------------------------------------------------------------- detail
 
   private readonly detailRequests = new Subject<CustomerId>();
@@ -86,6 +115,22 @@ export class CustomerStore {
   private activeId: CustomerId | null = null;
 
   readonly detail: Signal<RemoteData<Customer>> = this.detailState.asReadonly();
+
+  /**
+   * Why the open customer may no longer match the server, if it may not.
+   *
+   * A realtime event about the record on screen does **not** replace it. The
+   * user may be reading it - or editing it, in a form that was filled from it
+   * - and data that changes under the cursor is worse than data that is a
+   * minute old and says so. The page shows this and offers a refresh; the
+   * user decides. ADR-0020.
+   */
+  private readonly detailStalenessState = signal<DetailStaleness | null>(null);
+  readonly detailStaleness = this.detailStalenessState.asReadonly();
+
+  /** Customers whose status is being changed optimistically, awaiting the server. */
+  private readonly statusPendingState = signal<ReadonlySet<CustomerId>>(new Set());
+  readonly statusPending = this.statusPendingState.asReadonly();
 
   // ------------------------------------------------------------------ audit
 
@@ -137,16 +182,42 @@ export class CustomerStore {
       this.listState().status !== 'idle';
 
     this.activeCriteria = criteria;
-    if (!unchanged) {
+    if (!unchanged || this.listStale) {
+      this.listStale = false;
       this.listRequests.next(criteria);
     }
   }
 
-  /** Re-asks for the current page. The user pressed refresh, or a write landed. */
+  /**
+   * Declares that a page is showing the list. Returns the function that
+   * undeclares it; the list page calls it on destroy.
+   */
+  watchList(): () => void {
+    this.listWatchers += 1;
+    let released = false;
+    return () => {
+      if (!released) {
+        released = true;
+        this.listWatchers -= 1;
+      }
+    };
+  }
+
+  /**
+   * Re-asks for the current page - now, if the list is on screen, or on the
+   * next visit if it is not. The user pressed refresh, a write landed, or
+   * someone else changed a customer.
+   */
   refreshList(): void {
-    if (this.activeCriteria) {
-      this.listRequests.next(this.activeCriteria);
+    if (!this.activeCriteria) {
+      return;
     }
+    if (this.listWatchers === 0) {
+      this.listStale = true;
+      return;
+    }
+    this.listStale = false;
+    this.listRequests.next(this.activeCriteria);
   }
 
   selectCustomer(id: CustomerId): void {
@@ -155,6 +226,9 @@ export class CustomerStore {
       this.detailState().status !== 'idle' &&
       this.detailState().status !== 'error';
 
+    if (this.activeId !== id) {
+      this.detailStalenessState.set(null);
+    }
     this.activeId = id;
     if (!unchanged) {
       this.detailRequests.next(id);
@@ -163,7 +237,46 @@ export class CustomerStore {
 
   refreshDetail(): void {
     if (this.activeId) {
+      this.detailStalenessState.set(null);
       this.detailRequests.next(this.activeId);
+    }
+  }
+
+  // ------------------------------------------------------------ remote news
+
+  /**
+   * Someone else created, changed or deleted a customer.
+   *
+   * The rules, each chosen so an event never fights what the user is doing:
+   *
+   *  - every cached page is dropped, because any of them might contain it;
+   *  - the list refetches if it is on screen - a list holds nothing the user
+   *    typed, and its selection survives a refresh;
+   *  - the cached copy of that customer is dropped, so the next visit loads it;
+   *  - if it is the customer on screen, it is **flagged**, not replaced. See
+   *    `detailStaleness`.
+   */
+  applyRemoteChange(customerId: CustomerId, change: 'updated' | 'deleted' | 'created'): void {
+    this.cache.invalidatePages();
+    if (change !== 'created') {
+      this.cache.dropEntity(customerId);
+      if (this.activeId === customerId) {
+        this.detailStalenessState.set(change);
+      }
+    }
+    this.refreshList();
+  }
+
+  /**
+   * The event stream reconnected and could not say what was missed. Anything
+   * may have changed: drop what is cached, refetch what is visible, and flag
+   * the open record as unverified rather than claiming someone changed it.
+   */
+  revalidateAll(): void {
+    this.cache.invalidatePages();
+    this.refreshList();
+    if (this.activeId && valueOf(this.detailState()) && !this.detailStalenessState()) {
+      this.detailStalenessState.set('unverified');
     }
   }
 
@@ -270,6 +383,141 @@ export class CustomerStore {
     );
   }
 
+  // ------------------------------------------------------------- optimistic
+
+  /**
+   * Activates or deactivates a customer **optimistically**: the new status is
+   * on screen at once, and the request confirms it afterwards.
+   *
+   * Why this operation and no other (ADR-0023): a status change is one field,
+   * it is almost always accepted, the user can see and undo it, and nothing
+   * else waits on its outcome. A create has no id until the server gives it
+   * one; a delete cannot be shown and then un-shown without alarming the
+   * user; an edit of many fields can fail validation in ways only the server
+   * knows. For those, waiting is the honest UI.
+   *
+   * On success the server's record replaces the optimistic one - it carries
+   * the new version. On failure the previous record is put back **everywhere
+   * the optimistic one went**: the open detail, the cached entity, and the
+   * page of the list on screen - unless something newer has replaced it in
+   * the meantime, which must not be overwritten with something older.
+   */
+  changeStatus(id: CustomerId, status: CustomerStatus): Observable<Customer> {
+    const refused = this.refuseUnless('CUSTOMER_UPDATE');
+    if (refused) {
+      return refused;
+    }
+    const before = this.recordFor(id);
+    if (!before) {
+      return throwError(() => appError('not-found'));
+    }
+    if (before.status === status) {
+      return of(before);
+    }
+
+    const optimistic: Customer = { ...before, status };
+    this.show(optimistic);
+    this.statusPendingState.update((pending) => new Set(pending).add(id));
+
+    return this.api.update(id, { status, version: before.version }).pipe(
+      tap((saved) => {
+        this.show(saved);
+        this.cache.invalidatePages();
+        this.refreshList();
+      }),
+      catchError((error: unknown) => {
+        this.rollback(optimistic, before);
+        return throwError(() => error);
+      }),
+      finalize(() =>
+        this.statusPendingState.update((pending) => {
+          const next = new Set(pending);
+          next.delete(id);
+          return next;
+        }),
+      ),
+    );
+  }
+
+  /** The newest copy of a customer this store holds, from wherever it is. */
+  private recordFor(id: CustomerId): Customer | null {
+    const detail = this.activeId === id ? valueOf(this.detailState()) : null;
+    return (
+      detail ??
+      this.cache.getEntity(id) ??
+      valueOf(this.listState())?.items.find((item) => item.id === id) ??
+      null
+    );
+  }
+
+  /** Puts one customer's record everywhere it is shown. */
+  private show(customer: Customer): void {
+    this.cache.putEntity(customer);
+    if (this.activeId === customer.id && valueOf(this.detailState())) {
+      this.detailState.set(success(customer));
+    }
+    this.listState.update((state) => withItem(state, customer));
+  }
+
+  private rollback(optimistic: Customer, before: Customer): void {
+    if (this.cache.getEntity(before.id) === optimistic) {
+      this.cache.putEntity(before);
+    }
+    if (this.activeId === before.id && valueOf(this.detailState()) === optimistic) {
+      this.detailState.set(success(before));
+    }
+    this.listState.update((state) =>
+      valueOf(state)?.items.some((item) => item === optimistic) ? withItem(state, before) : state,
+    );
+  }
+
+  // ------------------------------------------------------------------ files
+
+  /**
+   * Uploads an avatar. Progress arrives as it happens; unsubscribing cancels
+   * the upload. On completion the record is refetched - the upload moved its
+   * version, and the next edit must start from the new one.
+   */
+  uploadAvatar(id: CustomerId, file: File): Observable<Transfer<AvatarUploadResponse>> {
+    return (
+      this.refuseUnless('CUSTOMER_UPDATE') ??
+      this.api.uploadAvatar(id, file).pipe(
+        tap((transfer) => {
+          if (transfer.kind === 'done') {
+            this.cache.invalidatePages();
+            if (this.activeId === id) {
+              this.refreshDetail();
+            }
+            this.refreshList();
+          }
+        }),
+      )
+    );
+  }
+
+  previewImport(file: File): Observable<Transfer<ImportPreview>> {
+    return this.refuseUnless('CUSTOMER_IMPORT') ?? this.api.previewImport(file);
+  }
+
+  importFile(file: File): Observable<Transfer<ImportResult>> {
+    return (
+      this.refuseUnless('CUSTOMER_IMPORT') ??
+      this.api.importFile(file).pipe(
+        tap((transfer) => {
+          if (transfer.kind === 'done') {
+            this.cache.invalidatePages();
+            this.refreshList();
+          }
+        }),
+      )
+    );
+  }
+
+  /** Exports what the list criteria describe - every page of it. */
+  exportCsv(criteria: CustomerListCriteria): Observable<Transfer<ExportedFile>> {
+    return this.refuseUnless('CUSTOMER_EXPORT') ?? this.api.exportCsv(criteria);
+  }
+
   /**
    * Is this email address free?
    *
@@ -366,6 +614,22 @@ export class CustomerStore {
       }),
     );
   }
+}
+
+/** Why the open record may be out of date. */
+export type DetailStaleness = 'updated' | 'deleted' | 'unverified';
+
+/** The same list state, with one customer's row replaced if it is on the page. */
+function withItem(
+  state: RemoteData<PageResponse<Customer>>,
+  customer: Customer,
+): RemoteData<PageResponse<Customer>> {
+  const page = valueOf(state);
+  if (!page || !page.items.some((item) => item.id === customer.id)) {
+    return state;
+  }
+  const items = page.items.map((item) => (item.id === customer.id ? customer : item));
+  return { ...state, value: { ...page, items } } as RemoteData<PageResponse<Customer>>;
 }
 
 /**

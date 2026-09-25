@@ -8,7 +8,7 @@ session that has the git history but none of the conversation that produced it.
 `docs/PROGRESS.md` about what is done, PROGRESS wins — it is updated as part of every
 phase's Definition of Done, and this file is updated only at a handoff.
 
-Last updated at **`phase-3-complete`**.
+Last updated at **`phase-4-complete`**.
 
 ---
 
@@ -80,6 +80,11 @@ The parts that come up most often:
 | 0017 | reactive refresh, single flight, one retry; one job per interceptor       |
 | 0018 | route, UI and action authorization by permission - none of it security    |
 | 0019 | one file policy for both sides; a byte check only the server makes        |
+| 0020 | realtime client: own reconnect, de-duplication, news never overwrites     |
+| 0021 | uploads with progress on XHR, everything else on fetch                    |
+| 0022 | notifications are justified global state; one confirmation service        |
+| 0023 | the one optimistic operation: status change, with rollback                |
+| 0024 | CSV import as preview + commit, nothing held on the server                |
 
 ### The ten rules
 
@@ -106,7 +111,8 @@ other eight are enforced by review, and the ones most often broken by accident a
 | 1     | Routing, Layout & Design System          | **Done**    |
 | 2     | Customer CRUD, Forms & Server State      | **Done**    |
 | 3     | Authentication, Authorization & Security | **Done**    |
-| 4–8   | see `docs/PROGRESS.md`                   | Not started |
+| 4     | Enterprise UX, Files, Notifications & RT | **Done**    |
+| 5–8   | see `docs/PROGRESS.md`                   | Not started |
 
 `docs/PROGRESS.md` is the phase-state file: what each phase built, what deviated, the
 technical-debt register and the open questions. **Read it before starting anything.**
@@ -116,7 +122,8 @@ technical-debt register and the open questions. **Read it before starting anythi
 History is linear; each phase branch contains everything before it.
 
 ```text
-phase-3           <- HEAD, everything is here
+phase-4           <- HEAD, everything is here
+phase-3  80a3703
 phase-2  8da182b
 phase-1  4d75b6c
 phase-0.5 c0791f9
@@ -126,12 +133,12 @@ master   ef498df  <- pre-Phase-0. Nothing has been merged into it.
 
 Two things a cloud session will trip over:
 
-- **`master` is stale on purpose.** No phase has been merged. Branch Phase 4 from
-  `phase-3`, not from `master`.
+- **`master` is stale on purpose.** No phase has been merged. Branch Phase 5 from
+  `phase-4`, not from `master`.
 - **Branches and `phase-N-complete` tags are both on the remote**, so a fresh clone
   sees the whole phase history. `git fetch --tags` if a clone predates them.
 
-### Verification at `phase-3-complete`
+### Verification at `phase-4-complete`
 
 `npm run verify` runs format → lint → typecheck → test → build → e2e.
 
@@ -139,12 +146,12 @@ Two things a cloud session will trip over:
 | ------------- | --------------------------------------------------- |
 | format, lint  | clean; 0 errors, 0 warnings                         |
 | typecheck     | clean across all three packages, templates included |
-| unit tests    | 447 — 303 web, 111 mock-api, 33 contracts           |
+| unit tests    | 509 — 354 web, 122 mock-api, 33 contracts           |
 | build         | succeeds, browser + server, 1 route prerendered     |
-| e2e           | 45, including the auth journey, expiry and axe      |
+| e2e           | 57, incl. two-user realtime, uploads, import, axe   |
 | import cycles | none (method in PROGRESS, Phase 3 checks)           |
 
-**One warning is expected and is not a regression:** the initial bundle is ~802 kB
+**One warning is expected and is not a regression:** the initial bundle is ~808 kB
 against a 500 kB budget. It is pre-existing, measured, and left failing so it stays
 visible — technical-debt row 8, to be paid in Phase 5. Do not silence it by raising
 the budget.
@@ -188,36 +195,31 @@ repository state. A Linux cloud session can ignore them.
 
 ## 5. What is still open
 
-### Next: Phase 4 — Enterprise UX, Files, Notifications & Realtime
+### Next: Phase 5 — Performance, Rendering, Offline & Browser APIs
 
-The prompt is `prompts/Phase 4 — Enterprise UX, Files, Notifications & Realtime.md`.
-Follow the workflow in `CLAUDE.md`. Read the Phase 3 entry in `docs/PROGRESS.md` first -
-its "For the next phase" list is written for you - and `docs/security.md`, which says
-who owns every protection and must stay true as Phase 4 adds uploads.
+The prompt is `prompts/Phase 5 — Performance, Rendering, Offline & Browser APIs.md`.
+Read the Phase 4 entry in `docs/PROGRESS.md` first - its "For the next phase" list is
+written for you - then `docs/realtime.md` and `docs/state-management.md`.
 
-Already in place, and meant to be built on:
+Things Phase 5 will meet directly:
 
-- **File validation.** `checkFile` with `AVATAR_FILE_POLICY` / `IMPORT_FILE_POLICY` in
-  `@ecm/contracts` is the client check the upload and import screens should call. The
-  server repeats it and also checks the avatar's bytes (ADR-0019). Debt row 19 says
-  use it or delete it.
-- **Authorization.** Hide controls with `*appIfPermitted`, refuse actions in the store
-  with `refuseUnless(...)`, guard routes with `requirePermission(...)` (ADR-0018).
-  Import and export need `CUSTOMER_IMPORT` / `CUSTOMER_EXPORT`.
-- **Sessions.** Features never handle an expired session - the refresh interceptor and
-  `provideSessionExpiryRedirect` do (ADR-0017). **Except SSE**: an `EventSource` does
-  not go through `HttpClient`, so realtime needs its own answer to a 401.
+- **One SSE stream per tab** (open question 5, debt rows 18 and 25). A leader tab
+  sharing one stream over `BroadcastChannel` would also carry sign-out between tabs.
+- **The initial bundle** (debt row 8) now includes the notification and realtime
+  code in the shell.
+- **Uploads use XHR and realtime a long-lived stream** (ADR-0020, ADR-0021) - the two
+  things a service worker or offline queue must not intercept naively.
+- `/login` is still prerendered, with pre-hydration typing lost (debt row 13).
 
 ### Debt and open questions
 
 Both live in `docs/PROGRESS.md` and are not duplicated here, because a second copy
-would drift. The ones a Phase 4 session will meet directly:
+would drift. The ones a Phase 5 session will meet directly:
 
-- row 9 - `app-dialog` renders inline, no scroll lock (open question 7);
-- row 15 - a mutation refetches the list even when nobody is looking (open question 9);
-- row 20 - an expiry while a form is dirty asks to discard on the way to sign-in;
-- open question 2 - whether the hand-written cache survives realtime and optimistic
-  updates.
+- row 8 - the initial bundle, now ~808 kB against a 500 kB budget;
+- row 13 - typing into the prerendered sign-in form before hydration is lost;
+- rows 18 and 25 - no cross-tab session or realtime coordination;
+- open question 5 - one SSE connection per tab, or one shared.
 
 ### Traps that have already cost time
 
@@ -243,6 +245,11 @@ fresh session recognises the symptom instead of re-deriving the cause:
 - **Every component that renders `*appIfPermitted` or uses `CustomerStore` needs a
   session in its test.** `provideSignedInAs('admin' | 'manager' | 'viewer')` in
   `core/testing/session-testing.ts` restores one before the first render.
+- **After changing `@ecm/contracts`' exports, delete `apps/web/.angular/cache`**
+  before `npm start` or the E2E suite, or the dev server serves a stale pre-bundle
+  and the app fails with "does not provide an export named …" (debt row 24).
+- **Notification and realtime assertions in E2E must be scoped to the test's own
+  customer** - parallel tests are changing other customers at the same time.
 - **Playwright's Chromium download may be blocked in a cloud session.** Phase 3 pointed
   `PLAYWRIGHT_BROWSERS_PATH` at symlinks to the preinstalled build; see PROGRESS.
 

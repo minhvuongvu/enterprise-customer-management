@@ -219,6 +219,68 @@ describe('CSV import', () => {
     expect(wrongType.status).toBe(415);
   });
 
+  describe('preview', () => {
+    async function preview(csv: string): Promise<ImportPreview> {
+      const response = await admin.uploadFile(
+        '/api/customers/import?mode=preview',
+        'preview.csv',
+        'text/csv',
+        csv,
+      );
+      expect(response.status).toBe(200);
+      return (await response.json()) as ImportPreview;
+    }
+
+    it('validates every row and writes nothing', async () => {
+      const before = await admin.json<PageResponse<Customer>>('/api/customers?size=1');
+      const result = await preview(
+        header +
+          'Preview One,preview1@example.test,,ACTIVE\n' +
+          'Preview Bad,not-an-email,,ACTIVE\n',
+      );
+
+      expect(result.totalRows).toBe(2);
+      expect(result.validRows).toBe(1);
+      expect(result.invalidRows).toBe(1);
+      expect(result.rows.map((row) => row.valid)).toEqual([true, false]);
+      expect(result.errors[0]).toMatchObject({ row: 3, column: 'email' });
+
+      const after = await admin.json<PageResponse<Customer>>('/api/customers?size=1');
+      // A preview is a question, not an action.
+      expect(after.body.totalItems).toBe(before.body.totalItems);
+    });
+
+    it('catches a duplicate email between two rows of the same file', async () => {
+      const result = await preview(
+        header + 'First,same@example.test,,ACTIVE\n' + 'Second,SAME@example.test,,ACTIVE\n',
+      );
+
+      // Only the server can know this about existing customers; this case -
+      // two rows of one file - is the one a client-side preview forgets.
+      expect(result.invalidRows).toBe(1);
+      expect(result.errors[0]).toMatchObject({ row: 3, code: 'DUPLICATE_EMAIL' });
+    });
+
+    it('names a missing required column and an ignored one', async () => {
+      const result = await preview('fullName,nickname\nNo Email,Nick\n');
+
+      expect(result.missingColumns).toEqual(['email']);
+      expect(result.unknownColumns).toEqual(['nickname']);
+    });
+
+    it('is kept by the import that follows it', async () => {
+      const csv = header + 'Kept Promise,kept@example.test,,ACTIVE\n' + 'Broken,x,,ACTIVE\n';
+      const previewed = await preview(csv);
+
+      const imported = (await (
+        await admin.uploadFile('/api/customers/import', 'kept.csv', 'text/csv', csv)
+      ).json()) as ImportResult;
+
+      expect(imported.succeeded).toBe(previewed.validRows);
+      expect(imported.failed).toBe(previewed.invalidRows);
+    });
+  });
+
   it('fails every third row under the injection scenario', async () => {
     const rows = Array.from(
       { length: 6 },

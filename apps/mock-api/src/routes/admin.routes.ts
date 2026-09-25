@@ -1,8 +1,9 @@
 import { randomUUID } from 'node:crypto';
-import type { Instant } from '@ecm/contracts';
+import { CSRF_COOKIE_NAME, type Instant } from '@ecm/contracts';
 import { Router } from 'express';
 import { z } from 'zod';
 import type { MockApiConfig, MockControls } from '../config.ts';
+import type { EventStreams } from '../domain/event-streams.ts';
 import type { MockStore } from '../domain/store.ts';
 import { parseOrThrow } from '../http/validate.ts';
 import { MOCK_SCENARIOS } from '../middleware/fault-injection.ts';
@@ -22,6 +23,7 @@ export function adminRoutes(
   store: MockStore,
   controls: MockControls,
   config: MockApiConfig,
+  streams: EventStreams,
 ): Router {
   const router = Router();
 
@@ -72,6 +74,38 @@ export function adminRoutes(
       messageKey,
     });
     res.status(202).end();
+  });
+
+  /**
+   * Ends open event streams from the server side - what a proxy timeout or a
+   * deploy looks like to a browser. Makes reconnection testable.
+   *
+   * A caller with a session ends only that session's streams, so a test that
+   * exercises reconnection does not disconnect every other test running
+   * beside it. A caller without one ends them all.
+   */
+  router.post('/events/disconnect', (req, res) => {
+    const sessionKey = req.cookies?.[CSRF_COOKIE_NAME] as string | undefined;
+    res.status(200).json({ closed: streams.close(sessionKey) });
+  });
+
+  const duplicateSchema = z.strictObject({ customerId: z.string().min(1) });
+
+  /**
+   * Delivers the newest event about one customer a second time, with the same
+   * id - what a replay after a reconnect does. Makes de-duplication testable
+   * without depending on the timing of a real reconnect. Scoped to a customer
+   * so parallel tests do not re-deliver each other's events.
+   */
+  router.post('/events/duplicate', (req, res) => {
+    const { customerId } = parseOrThrow(duplicateSchema, req.body, 'duplicate request');
+    const event = store.lastEventAbout(customerId);
+    if (!event) {
+      res.status(404).end();
+      return;
+    }
+    store.publish(event);
+    res.status(202).json({ id: event.id });
   });
 
   return router;

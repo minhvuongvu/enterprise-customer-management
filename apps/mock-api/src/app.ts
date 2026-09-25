@@ -1,6 +1,7 @@
 import cookieParser from 'cookie-parser';
 import express, { type Express } from 'express';
 import { defaultControls, loadConfig, type MockApiConfig, type MockControls } from './config.ts';
+import { EventStreams } from './domain/event-streams.ts';
 import { SessionRegistry } from './domain/sessions.ts';
 import { MockStore } from './domain/store.ts';
 import { authenticate } from './middleware/auth.ts';
@@ -31,6 +32,7 @@ export interface BuiltServer {
   readonly app: Express;
   readonly store: MockStore;
   readonly sessions: SessionRegistry;
+  readonly streams: EventStreams;
   readonly controls: MockControls;
   readonly config: MockApiConfig;
 }
@@ -40,6 +42,7 @@ export function createApp(overrides: Partial<MockApiConfig> = {}, logErrors = tr
   const controls = defaultControls();
   const store = new MockStore(config.seed, config.customerCount);
   const sessions = new SessionRegistry(config.accessTtlSeconds, config.refreshTtlSeconds);
+  const streams = new EventStreams();
 
   const app = express();
 
@@ -74,16 +77,16 @@ export function createApp(overrides: Partial<MockApiConfig> = {}, logErrors = tr
     res.status(200).json({ status: 'ok', customers: store.size, seed: config.seed });
   });
 
-  app.use('/api/_mock', adminRoutes(store, controls, config));
+  app.use('/api/_mock', adminRoutes(store, controls, config, streams));
   app.use('/api/auth', authRoutes(sessions, config));
   // Mounted before the customer router so `/api/customers/export` is not
   // swallowed by `/:id`.
   app.use('/api/customers', fileRoutes(store));
   app.use('/api/customers', customerRoutes(store));
-  app.use('/api/events', eventRoutes(store));
+  app.use('/api/events', eventRoutes(store, streams));
 
   app.use(notFoundHandler);
   app.use(errorHandler(logErrors));
 
-  return { app, store, sessions, controls, config };
+  return { app, store, sessions, streams, controls, config };
 }
