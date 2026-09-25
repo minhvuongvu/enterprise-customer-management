@@ -13,7 +13,7 @@ import type { LogLevel } from '../logging/logger';
  */
 
 /** Runtime feature flags. Add a member, then a key in `config.json`. */
-export type FeatureFlag = 'technicalLabs';
+export type FeatureFlag = 'technicalLabs' | 'routePreloading';
 
 export interface AppConfig {
   /** Base URL of the API. The mock API arrives in Phase 0.5. */
@@ -37,7 +37,16 @@ export const DEFAULT_APP_CONFIG: AppConfig = {
   logLevel: 'info',
   features: {
     technicalLabs: true,
+    routePreloading: true,
   },
+};
+
+/**
+ * What `config.json` may contain: any subset, flags included. A deployment
+ * that predates a flag omits it, and gets the default.
+ */
+export type AppConfigOverrides = Partial<Omit<AppConfig, 'features'>> & {
+  readonly features?: Partial<AppConfig['features']>;
 };
 
 @Injectable({ providedIn: 'root' })
@@ -53,7 +62,7 @@ export class AppConfigStore {
    * Shallow by design except for `features`: a partial `config.json` should add
    * to the defaults rather than silently blanking every flag it omits.
    */
-  apply(overrides: Partial<AppConfig>): void {
+  apply(overrides: AppConfigOverrides): void {
     this.current.set({
       ...DEFAULT_APP_CONFIG,
       ...overrides,

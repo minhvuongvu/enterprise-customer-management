@@ -1,0 +1,6 @@
+{
+  "name": "@ecm/perf",
+  "private": true,
+  "description": "Measurement scripts - not a workspace, not shipped",
+  "type": "module"
+}

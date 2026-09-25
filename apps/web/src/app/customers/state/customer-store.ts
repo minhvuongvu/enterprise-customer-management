@@ -80,6 +80,19 @@ import { failed, idle, reloadFrom, success, valueOf, type RemoteData } from './r
  * from a detail page to the list instant, and what stops one user's browsing
  * outliving the section it happened in.
  */
+/**
+ * A change this tab made. One customer, or `many` - a bulk action or an
+ * import, where the useful news is only "the list changed".
+ */
+export type OwnCustomerChange =
+  | {
+      readonly change: 'created' | 'updated' | 'deleted';
+      readonly customerId: CustomerId;
+      /** Null when the tab never loaded the record it deleted. */
+      readonly customerCode: string | null;
+    }
+  | { readonly change: 'many' };
+
 @Injectable()
 export class CustomerStore {
   private readonly api = inject(CustomerApi);
@@ -141,6 +154,19 @@ export class CustomerStore {
   private loadedAuditId: CustomerId | null = null;
 
   readonly audit: Signal<RemoteData<readonly AuditEntry[]>> = this.auditState.asReadonly();
+
+  // ------------------------------------------------------------ own changes
+
+  private readonly ownChanges = new Subject<OwnCustomerChange>();
+  /**
+   * Every change this tab made, once the server has accepted it.
+   *
+   * For telling the user's *other* tabs (`CustomerRealtimeSync`, debt row
+   * 25): the realtime stream cannot, because it names the user who made a
+   * change, not the tab. Emitted after the cache is updated, never for a
+   * change that failed or was rolled back.
+   */
+  readonly ownChanges$ = this.ownChanges.asObservable();
 
   constructor() {
     this.listRequests
@@ -316,6 +342,7 @@ export class CustomerStore {
           this.cache.invalidatePages();
           this.cache.putEntity(created);
           this.refreshList();
+          this.announce('created', created);
         }),
       )
     );
@@ -336,12 +363,15 @@ export class CustomerStore {
             this.detailState.set(success(updated));
           }
           this.refreshList();
+          this.announce('updated', updated);
         }),
       )
     );
   }
 
   remove(id: CustomerId): Observable<void> {
+    // Read before the request: afterwards there is no record left to name.
+    const removed = this.recordFor(id);
     return (
       this.refuseUnless('CUSTOMER_DELETE') ??
       this.api.remove(id).pipe(
@@ -353,6 +383,7 @@ export class CustomerStore {
             this.activeId = null;
           }
           this.refreshList();
+          this.announce('deleted', removed ?? { id, customerCode: null });
         }),
       )
     );
@@ -378,6 +409,7 @@ export class CustomerStore {
             }
           }
           this.refreshList();
+          this.ownChanges.next({ change: 'many' });
         }),
       )
     );
@@ -424,6 +456,7 @@ export class CustomerStore {
         this.show(saved);
         this.cache.invalidatePages();
         this.refreshList();
+        this.announce('updated', saved);
       }),
       catchError((error: unknown) => {
         this.rollback(optimistic, before);
@@ -437,6 +470,13 @@ export class CustomerStore {
         }),
       ),
     );
+  }
+
+  private announce(
+    change: 'created' | 'updated' | 'deleted',
+    customer: { id: CustomerId; customerCode: string | null },
+  ): void {
+    this.ownChanges.next({ change, customerId: customer.id, customerCode: customer.customerCode });
   }
 
   /** The newest copy of a customer this store holds, from wherever it is. */
@@ -489,6 +529,7 @@ export class CustomerStore {
               this.refreshDetail();
             }
             this.refreshList();
+            this.announce('updated', this.recordFor(id) ?? { id, customerCode: null });
           }
         }),
       )
@@ -507,6 +548,7 @@ export class CustomerStore {
           if (transfer.kind === 'done') {
             this.cache.invalidatePages();
             this.refreshList();
+            this.ownChanges.next({ change: 'many' });
           }
         }),
       )

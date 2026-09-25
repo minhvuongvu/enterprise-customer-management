@@ -2,7 +2,10 @@ import { computed, inject, Injectable, signal } from '@angular/core';
 import type { Permission, SessionResponse, SessionUser } from '@ecm/contracts';
 import {
   catchError,
+  defer,
   finalize,
+  firstValueFrom,
+  from,
   map,
   of,
   shareReplay,
@@ -13,6 +16,7 @@ import {
 } from 'rxjs';
 import { SessionApi } from '../api/session.api';
 import { isAppError } from '../errors/app-error';
+import { NAVIGATOR } from '../platform/platform.tokens';
 
 /**
  * The client's view of the session: who is signed in, what they may do, and
@@ -44,10 +48,18 @@ import { isAppError } from '../errors/app-error';
  */
 export type SessionStatus = 'unknown' | 'anonymous' | 'authenticated';
 
-/** Why a session that existed has ended. Drives what the user is told. */
-export type SessionEndReason = 'signed-out' | 'expired';
+/**
+ * Why a session that existed has ended. Drives what the user is told.
+ *
+ * `signed-out-elsewhere`: the user pressed sign out in another tab, which
+ * said so over the tab channel (`session-cross-tab.ts`).
+ */
+export type SessionEndReason = 'signed-out' | 'expired' | 'signed-out-elsewhere';
 
 export type { SessionUser };
+
+/** The Web Lock every tab's refresh runs under. */
+export const REFRESH_LOCK = 'ecm.session.refresh';
 
 interface SessionState {
   readonly status: SessionStatus;
@@ -62,6 +74,7 @@ const ANONYMOUS: SessionState = { status: 'anonymous', user: null, expiresAt: nu
 @Injectable({ providedIn: 'root' })
 export class SessionService {
   private readonly api = inject(SessionApi);
+  private readonly locks = inject(NAVIGATOR)?.locks ?? null;
 
   private readonly state = signal<SessionState>(UNKNOWN);
 
@@ -182,9 +195,21 @@ export class SessionService {
    * A failure ends the session: there is no second credential to fall back
    * on, and pretending otherwise leaves the user on a page that can no longer
    * load anything.
+   *
+   * ## Across tabs
+   *
+   * Single flight stops at the edge of this tab. Two tabs whose access tokens
+   * expire together would each send the same refresh token, and the second
+   * would be refused as a replay - debt row 18. So the request runs inside a
+   * Web Lock (`navigator.locks`), which the browser grants to one tab of the
+   * origin at a time: the second tab's refresh starts only after the first
+   * has finished, by which time the cookie jar - shared by both tabs - already
+   * holds the rotated token, and the second rotation succeeds. Where Web Locks
+   * do not exist the request runs unguarded, which is the old behaviour.
+   * ADR-0027.
    */
   refresh(): Observable<void> {
-    this.refreshing ??= this.api.refresh().pipe(
+    this.refreshing ??= this.oneTabAtATime(REFRESH_LOCK, () => this.api.refresh()).pipe(
       tap((response) => this.establish(response)),
       map(() => undefined),
       catchError((error: unknown) => {
@@ -213,6 +238,33 @@ export class SessionService {
     return this.state().status === 'authenticated'
       ? of(undefined)
       : throwError(() => new Error('The session ended while this request was in flight.'));
+  }
+
+  /**
+   * Ends the session because another tab signed out.
+   *
+   * No request: the server session is already gone, and this tab's cookies
+   * went with it - the browser shares them between tabs. What is left is the
+   * local state, and telling the user why they are on the sign-in page.
+   */
+  endedElsewhere(): void {
+    this.end('signed-out-elsewhere');
+  }
+
+  /**
+   * Runs `work` while holding the named Web Lock, so no other tab of this
+   * origin runs it at the same time.
+   *
+   * The lock is held until the request settles - `firstValueFrom` turns its
+   * completion into the promise the lock waits on. Where there are no Web
+   * Locks, the work simply runs.
+   */
+  private oneTabAtATime<T>(name: string, work: () => Observable<T>): Observable<T> {
+    const locks = this.locks;
+    if (!locks) {
+      return work();
+    }
+    return defer(() => from(locks.request(name, () => firstValueFrom(work()))));
   }
 
   private establish(response: SessionResponse): void {

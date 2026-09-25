@@ -1,0 +1,6 @@
+{
+  "name": "@ecm/e2e-production",
+  "private": true,
+  "description": "Production-build browser tests - not a workspace",
+  "type": "module"
+}

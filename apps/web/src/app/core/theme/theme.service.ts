@@ -1,8 +1,8 @@
 import { BreakpointObserver } from '@angular/cdk/layout';
-import { computed, DOCUMENT, effect, inject, Injectable, signal } from '@angular/core';
+import { computed, DestroyRef, DOCUMENT, effect, inject, Injectable, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { map } from 'rxjs';
-import { IS_BROWSER, LOCAL_STORAGE } from '../platform/platform.tokens';
+import { IS_BROWSER, LOCAL_STORAGE, WINDOW } from '../platform/platform.tokens';
 
 /**
  * What the user asked for. `system` is a real choice, not the absence of one:
@@ -69,6 +69,7 @@ export class ThemeService {
   constructor() {
     this.current.set(this.readStoredPreference());
     effect(() => this.applyPreference(this.current()));
+    this.followOtherTabs();
   }
 
   set(preference: ThemePreference): void {
@@ -99,6 +100,33 @@ export class ThemeService {
     } else {
       root.setAttribute('data-theme', preference);
     }
+  }
+
+  /**
+   * A theme chosen in another tab applies here too (docs/cross-tab.md).
+   *
+   * The `storage` event is the one cross-tab mechanism that needs no code in
+   * the sending tab: the browser fires it in every *other* tab of the origin
+   * whenever `localStorage` changes. That makes it right for exactly this
+   * kind of state - a preference that already lives in storage - and wrong
+   * for messages, which would have to be written into storage only to be
+   * noticed (that is what `TabChannel` is for).
+   *
+   * `key === null` is `localStorage.clear()`: the preference is gone, so the
+   * stored value - `system` - is read back like any other change.
+   */
+  private followOtherTabs(): void {
+    const win = inject(WINDOW);
+    if (!win) {
+      return;
+    }
+    const onStorage = (event: StorageEvent): void => {
+      if (event.key === STORAGE_KEY || event.key === null) {
+        this.current.set(this.readStoredPreference());
+      }
+    };
+    win.addEventListener('storage', onStorage);
+    inject(DestroyRef).onDestroy(() => win.removeEventListener('storage', onStorage));
   }
 
   private readStoredPreference(): ThemePreference {

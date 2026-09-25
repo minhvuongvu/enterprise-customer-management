@@ -117,7 +117,9 @@ unsubscribes when the route's injector is destroyed. All of this is unit tested.
 
 ## Known limits
 
-- One stream per tab; six tabs exhaust HTTP/1.1's per-origin connection limit
-  (open question 5, Phase 5).
-- A change the same user makes in another tab is not announced.
+- One stream per tab; six tabs exhaust HTTP/1.1's per-origin connection limit.
+  Kept deliberately in Phase 5 - HTTP/2 multiplexes, and a leader tab relaying
+  events is worse than the problem (ADR-0027, open question 5).
+- A change the same user makes in another tab is announced by the tab channel,
+  not by this stream (docs/cross-tab.md).
 - Customer events are only acted on inside the customers section.

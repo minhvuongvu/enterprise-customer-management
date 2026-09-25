@@ -22,6 +22,7 @@ import { ConfirmationHost } from './confirmation-host';
 import { AppSidebar } from './app-sidebar';
 import { Breadcrumbs } from './breadcrumbs';
 import { LayoutBreakpoints } from './layout-breakpoints';
+import { OfflineBanner } from './offline-banner';
 import { ToastRegion } from './toast-region';
 
 /**
@@ -51,6 +52,7 @@ import { ToastRegion } from './toast-region';
     AppSidebar,
     Breadcrumbs,
     ConfirmationHost,
+    OfflineBanner,
     RouterOutlet,
     ToastRegion,
     TranslocoDirective,
@@ -79,6 +81,8 @@ import { ToastRegion } from './toast-region';
         (menuToggled)="toggleDrawer()"
         (signOut)="signOut()"
       />
+
+      <app-offline-banner />
 
       <div class="shell__body">
         @if (!usesDrawer()) {

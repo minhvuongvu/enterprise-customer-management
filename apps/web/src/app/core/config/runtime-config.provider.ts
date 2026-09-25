@@ -7,7 +7,7 @@ import {
 } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { AppConfigStore } from './app-config';
-import type { AppConfig } from './app-config';
+import type { AppConfigOverrides } from './app-config';
 import { Logger } from '../logging/logger';
 import { IS_BROWSER } from '../platform/platform.tokens';
 
@@ -35,7 +35,7 @@ export function provideRuntimeConfig(): EnvironmentProviders {
       const logger = inject(Logger);
 
       try {
-        const overrides = await firstValueFrom(http.get<Partial<AppConfig>>(RUNTIME_CONFIG_URL));
+        const overrides = await firstValueFrom(http.get<AppConfigOverrides>(RUNTIME_CONFIG_URL));
         store.apply(overrides);
       } catch {
         // Starting with defaults beats not starting. The warning is what makes

@@ -1,0 +1,12 @@
+/* Web Workers run in a different global scope from the page: no `document`,
+ * no `window`, a `self` that is a DedicatedWorkerGlobalScope. Their own lib
+ * set, and excluded from tsconfig.app.json, so page code cannot accidentally
+ * type-check against worker globals or the reverse. */
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "lib": ["es2022", "webworker"],
+    "types": []
+  },
+  "include": ["src/**/*.worker.ts"]
+}

@@ -161,3 +161,40 @@ export const OBJECT_URLS = new InjectionToken<ObjectUrls>('ecm.objectUrls', {
     };
   },
 });
+
+/**
+ * The browser's `navigator`, or `null` on the server.
+ *
+ * The entry point to most of what Phase 5 touches - connectivity, clipboard,
+ * permissions, geolocation, locks, the service worker container. One token for
+ * the object rather than one per capability: each of those is already an
+ * object with its own feature test (`navigator.clipboard` may be undefined on
+ * an insecure origin), and wrapping each again would be an abstraction with a
+ * single caller. Callers test for the capability they need.
+ */
+export const NAVIGATOR = new InjectionToken<Navigator | null>('ecm.navigator', {
+  providedIn: 'root',
+  factory: () => inject(WINDOW)?.navigator ?? null,
+});
+
+/**
+ * Opens a `BroadcastChannel`, or answers `null` where there is none - on the
+ * server, and in the rare browser without it.
+ *
+ * A factory for the same reason as `EVENT_SOURCE_FACTORY`: two tabs cannot be
+ * opened inside a unit test, but two fake channels wired to each other can.
+ */
+export type BroadcastChannelFactory = (name: string) => BroadcastChannel | null;
+
+export const BROADCAST_CHANNEL_FACTORY = new InjectionToken<BroadcastChannelFactory>(
+  'ecm.broadcastChannelFactory',
+  {
+    providedIn: 'root',
+    factory: () => {
+      const win = inject(WINDOW) as
+        (Window & { BroadcastChannel?: typeof BroadcastChannel }) | null;
+      const ChannelCtor = win?.BroadcastChannel;
+      return (name) => (ChannelCtor ? new ChannelCtor(name) : null);
+    },
+  },
+);

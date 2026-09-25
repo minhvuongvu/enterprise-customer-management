@@ -1,0 +1,134 @@
+{
+  "measuredAt": "2026-09-25T17:53:36.563Z",
+  "runs": 7,
+  "profiles": [
+    {
+      "name": "unthrottled",
+      "cpuSlowdown": 1,
+      "latencyMs": 0,
+      "downloadBytesPerSecond": -1,
+      "uploadBytesPerSecond": -1
+    },
+    {
+      "name": "throttled",
+      "cpuSlowdown": 4,
+      "latencyMs": 150,
+      "downloadBytesPerSecond": 209715.2,
+      "uploadBytesPerSecond": 96000
+    }
+  ],
+  "results": {
+    "unthrottled": {
+      "/rendering-lab/client": {
+        "ttfb": 2,
+        "fcp": 208,
+        "lcp": 208,
+        "appStable": 151,
+        "bootstrapToStable": 75,
+        "htmlBytes": 4845,
+        "totalBytes": 571347
+      },
+      "/rendering-lab/server": {
+        "ttfb": 21,
+        "fcp": 148,
+        "lcp": 148,
+        "appStable": 269,
+        "bootstrapToStable": 97,
+        "htmlBytes": 149085,
+        "totalBytes": 715587
+      },
+      "/rendering-lab/prerender": {
+        "ttfb": 2,
+        "fcp": 112,
+        "lcp": 112,
+        "appStable": 208,
+        "bootstrapToStable": 88,
+        "htmlBytes": 149166,
+        "totalBytes": 715668
+      },
+      "/rendering-lab/prerender-no-hydration": {
+        "ttfb": 2,
+        "fcp": 104,
+        "lcp": 104,
+        "appStable": 216,
+        "bootstrapToStable": 98,
+        "htmlBytes": 141460,
+        "totalBytes": 707962
+      },
+      "/rendering-lab/prerender-incremental": {
+        "ttfb": 2,
+        "fcp": 104,
+        "lcp": 104,
+        "appStable": 190,
+        "bootstrapToStable": 74,
+        "htmlBytes": 152900,
+        "totalBytes": 719402
+      },
+      "/login": {
+        "ttfb": 1,
+        "fcp": 56,
+        "lcp": 56,
+        "appStable": 139,
+        "bootstrapToStable": 68,
+        "htmlBytes": 15474,
+        "totalBytes": 726840
+      }
+    },
+    "throttled": {
+      "/rendering-lab/client": {
+        "ttfb": 154,
+        "fcp": 3804,
+        "lcp": 3804,
+        "appStable": 3318,
+        "bootstrapToStable": 259,
+        "htmlBytes": 4845,
+        "totalBytes": 571347
+      },
+      "/rendering-lab/server": {
+        "ttfb": 154,
+        "fcp": 220,
+        "lcp": 4504,
+        "appStable": 4073,
+        "bootstrapToStable": 326,
+        "htmlBytes": 149085,
+        "totalBytes": 715587
+      },
+      "/rendering-lab/prerender": {
+        "ttfb": 154,
+        "fcp": 224,
+        "lcp": 4488,
+        "appStable": 4120,
+        "bootstrapToStable": 348,
+        "htmlBytes": 149166,
+        "totalBytes": 715668
+      },
+      "/rendering-lab/prerender-no-hydration": {
+        "ttfb": 153,
+        "fcp": 224,
+        "lcp": 4504,
+        "appStable": 4071,
+        "bootstrapToStable": 345,
+        "htmlBytes": 141460,
+        "totalBytes": 707962
+      },
+      "/rendering-lab/prerender-incremental": {
+        "ttfb": 153,
+        "fcp": 224,
+        "lcp": 4336,
+        "appStable": 4103,
+        "bootstrapToStable": 317,
+        "htmlBytes": 152900,
+        "totalBytes": 719402
+      },
+      "/login": {
+        "ttfb": 153,
+        "fcp": 264,
+        "lcp": 264,
+        "appStable": 4026,
+        "bootstrapToStable": 249,
+        "htmlBytes": 15474,
+        "totalBytes": 726840
+      }
+    }
+  }
+}

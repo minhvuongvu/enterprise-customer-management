@@ -126,16 +126,15 @@ of components already depend on.
 
 These are gaps, not oversights. Each has an owner.
 
-| Gap                                                                    | Why it is acceptable now                                                                                                                                                     | Closed in |
-| ---------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
-| No coverage thresholds                                                 | A number without a policy is not a signal; Phase 7 sets both at once                                                                                                         | Phase 7   |
-| One browser (Chromium)                                                 | There is not enough UI for cross-browser differences to exist                                                                                                                | Phase 6   |
-| No visual regression                                                   | Nothing has a stable visual identity yet                                                                                                                                     | Phase 7   |
-| No architecture/dependency tests                                       | Boundaries are enforced by review until there are boundaries worth automating                                                                                                | Phase 7   |
-| Search does not match across diacritics                                | The mock's index is a plain lowercase substring match                                                                                                                        | Phase 6   |
-| Layouts checked at three fixed widths                                  | Real devices differ in more than width; these three are where the shape changes                                                                                              | Phase 6   |
-| Bulk `CONFLICT` outcome only reached by injection                      | A natural version race needs two concurrent clients                                                                                                                          | Phase 7   |
-| Typing into the prerendered sign-in form before hydration is discarded | The submit button is disabled until the app is live, so the credential cannot leak into the URL; the keystrokes are still lost. Phase 3 kept `/login` prerendered (ADR-0016) | Phase 5   |
+| Gap                                               | Why it is acceptable now                                                        | Closed in |
+| ------------------------------------------------- | ------------------------------------------------------------------------------- | --------- |
+| No coverage thresholds                            | A number without a policy is not a signal; Phase 7 sets both at once            | Phase 7   |
+| One browser (Chromium)                            | There is not enough UI for cross-browser differences to exist                   | Phase 6   |
+| No visual regression                              | Nothing has a stable visual identity yet                                        | Phase 7   |
+| No architecture/dependency tests                  | Boundaries are enforced by review until there are boundaries worth automating   | Phase 7   |
+| Search does not match across diacritics           | The mock's index is a plain lowercase substring match                           | Phase 6   |
+| Layouts checked at three fixed widths             | Real devices differ in more than width; these three are where the shape changes | Phase 6   |
+| Bulk `CONFLICT` outcome only reached by injection | A natural version race needs two concurrent clients                             | Phase 7   |
 
 ## How this grows
 
@@ -155,5 +154,28 @@ same against the real server, using two admin routes that end a session's
 streams and re-deliver an event on demand. Two-user scenarios use a second
 browser context signed in as another role; assertions about notifications count
 only the test's own customer, because parallel tests change others at the same
-time. Phase 7 reviews the whole pyramid, adds coverage
-gates and wires it into CI.
+time.
+
+Phase 5 made the split between three kinds of browser-facing test explicit,
+because most of what it added is the browser's own behaviour:
+
+| Kind                | Runs against                         | Used for                                                                                                                                                                                                                 | Where                                            |
+| ------------------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------ |
+| Unit                | jsdom, fakes injected through tokens | the logic _around_ an API: the election algorithm (fake timers, shared fake storage, a hand-made race), payload validation, URL parsing, offline policy, the refresh lock                                                | next to the source                               |
+| Browser integration | real Chromium, `ng serve`            | the API itself: storage surviving a reload, IndexedDB, clipboard and geolocation with granted permissions, a Web Worker, `BroadcastChannel` and the `storage` event between two pages of one context, the offline switch | `e2e/labs.spec.ts`, `e2e/cross-tab.spec.ts`      |
+| E2E                 | real Chromium, `ng serve` + mock API | journeys: a change in one tab announced in the other; sign-out in one tab ending both; rendering specimens interactive in every mode                                                                                     | `e2e/cross-tab.spec.ts`, `e2e/rendering.spec.ts` |
+| Production build    | real Chromium, `dist/` + mock API    | what only the production build does: the service worker starting the app offline and caching no API response; route preloading                                                                                           | `e2e-production/` (`npm run e2e:production`)     |
+
+Two cross-tab fakes make the unit level possible: `FakeBroadcastNetwork`
+(`core/testing/broadcast-testing.ts`), which keeps the one rule that matters -
+never deliver to the sender - and a recording `LockManager`.
+
+**Speed is not asserted in tests.** A test that runs beside forty others
+measures the schedule. Performance claims come from the scripts in `perf/`,
+run on their own, against the production build, with repeated runs and
+medians; the numbers are in [performance.md](performance.md) and
+[rendering.md](rendering.md). The tests assert the _mechanism_ instead - a
+debounced search scans once, a `computed()` is not recomputed, a virtual list
+holds under 200 elements, the optimized images are the 400/800 px WebP files.
+
+Phase 7 reviews the whole pyramid, adds coverage gates and wires it into CI.

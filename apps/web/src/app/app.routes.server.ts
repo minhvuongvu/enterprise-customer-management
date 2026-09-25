@@ -1,4 +1,26 @@
 import { RenderMode, ServerRoute } from '@angular/ssr';
+import {
+  RENDERING_SPECIMENS,
+  SPECIMEN_BASE_PATH,
+  type RenderingSpecimen,
+} from './technical-labs/rendering/rendering-specimens';
+
+/**
+ * The rendering lab's specimens: the same page, each in a different mode, so
+ * Phase 5 can measure the modes against each other (ADR-0026). Public and
+ * data-free, so none of them needs a session on the server.
+ */
+function specimenRoute(specimen: RenderingSpecimen): ServerRoute {
+  const path = `${SPECIMEN_BASE_PATH}/${specimen.id}`;
+  switch (specimen.source) {
+    case 'client':
+      return { path, renderMode: RenderMode.Client };
+    case 'server':
+      return { path, renderMode: RenderMode.Server };
+    case 'build':
+      return { path, renderMode: RenderMode.Prerender };
+  }
+}
 
 /**
  * How each route is produced on the server.
@@ -18,6 +40,7 @@ export const serverRoutes: ServerRoute[] = [
     path: 'login',
     renderMode: RenderMode.Prerender,
   },
+  ...RENDERING_SPECIMENS.map(specimenRoute),
   {
     path: '**',
     renderMode: RenderMode.Client,

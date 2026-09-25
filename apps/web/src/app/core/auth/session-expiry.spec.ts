@@ -53,3 +53,27 @@ describe('provideSessionExpiryRedirect', () => {
     expect(router.url).toBe('/customers/42?tab=audit');
   });
 });
+
+describe('provideSessionExpiryRedirect, for a sign-out in another tab', () => {
+  it('sends the user to sign in with the reason, keeping the page', async () => {
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([
+          { path: 'login', component: PageStub },
+          { path: 'customers', component: PageStub },
+        ]),
+        provideLocationMocks(),
+        provideSignedInAs('manager'),
+        provideSessionExpiryRedirect(),
+      ],
+    });
+    const router = TestBed.inject(Router);
+    const session = TestBed.inject(SessionService);
+    await router.navigateByUrl('/customers');
+
+    session.endedElsewhere();
+    await new Promise((resolve) => setTimeout(resolve));
+
+    expect(router.url).toBe('/login?returnUrl=%2Fcustomers&reason=signed-out-elsewhere');
+  });
+});

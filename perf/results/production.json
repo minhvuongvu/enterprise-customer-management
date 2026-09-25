@@ -1,0 +1,54 @@
+{
+  "measuredAt": "2026-09-25T17:49:03.951Z",
+  "runs": 5,
+  "results": {
+    "preloading": {
+      "offMs": 1916,
+      "onMs": 531
+    },
+    "search": {
+      "immediateScans": 9,
+      "immediateMs": 52,
+      "debouncedScans": 1,
+      "debouncedMs": 6
+    },
+    "derived": {
+      "methodMs": 167,
+      "computedMs": 2
+    },
+    "list": {
+      "plain1000": {
+        "ms": 34,
+        "elements": 1019
+      },
+      "plain10000": {
+        "ms": 124,
+        "elements": 10019
+      },
+      "virtual100000": {
+        "ms": 29,
+        "elements": 21
+      }
+    },
+    "images": {
+      "unoptimized": {
+        "requests": 12,
+        "kilobytes": 16378
+      },
+      "optimized": {
+        "requests": 12,
+        "kilobytes": 53
+      }
+    },
+    "worker": {
+      "main": {
+        "totalMs": 172,
+        "longestFrameMs": 178
+      },
+      "worker": {
+        "totalMs": 194,
+        "longestFrameMs": 17
+      }
+    }
+  }
+}

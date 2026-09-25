@@ -364,6 +364,20 @@ describe('CustomerFormPage', () => {
       expect(TestBed.inject(Router).url).toContain('/edit');
     });
 
+    it('asks the browser to confirm closing the tab only while there are unsaved changes', async () => {
+      const root = await openEdit();
+      const unload = (): Event => {
+        const event = new Event('beforeunload', { cancelable: true });
+        document.defaultView?.dispatchEvent(event);
+        return event;
+      };
+
+      expect(unload().defaultPrevented).toBe(false);
+
+      type(root, 'Full name', 'Nguyễn Văn B');
+      expect(unload().defaultPrevented).toBe(true);
+    });
+
     it('leaves without asking when nothing was typed', async () => {
       await openEdit();
 

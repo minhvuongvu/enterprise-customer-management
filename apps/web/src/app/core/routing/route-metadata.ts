@@ -21,6 +21,12 @@ export interface RouteMetadata {
    * layout route, or `/customers/:id`'s empty child, stays out of the trail.
    */
   readonly breadcrumb?: string;
+  /**
+   * Download this route's code in the background, once the application is
+   * idle, before anyone navigates to it (`FlaggedPreloading`). For the one or
+   * two routes nearly every session visits next - not for everything.
+   */
+  readonly preload?: boolean;
 }
 
 /**

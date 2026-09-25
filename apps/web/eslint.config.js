@@ -154,6 +154,7 @@ module.exports = defineConfig([
             'app-button[link]',
             'app-button[size]',
             'app-button[type]',
+            'app-lab-section[sectionId]',
             'app-select[name]',
             'app-text-input[type]',
             'app-text-input[name]',

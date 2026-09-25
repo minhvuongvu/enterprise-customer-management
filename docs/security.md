@@ -294,6 +294,32 @@ script.
 local development, where a `Secure` cookie would be dropped. In production it is
 always on, and HSTS (reverse proxy) keeps the browser from ever trying HTTP.
 
+## Cross-tab and offline (Phase 5)
+
+- **A sign-out ends every tab.** The signing-out tab posts `signed-out` on the
+  tab channel; the others end their local session and go to sign-in
+  (docs/cross-tab.md). The server session was already gone - this is UX.
+- **An expiry is not broadcast.** One tab's failed refresh must not end
+  another tab's valid session.
+- **Refresh runs under a Web Lock**, so two tabs never present the same
+  single-use refresh token (debt row 18, paid). Rotation and replay detection
+  on the server are unchanged.
+- **Tab messages carry no data.** They say that something changed; each tab
+  refetches through its own HTTP layer and the server's authorization. Every
+  receiver validates the payload - another build of the application may be on
+  the channel.
+- **The service worker caches no API response** (ADR-0028), asserted by the
+  production test suite. Cache Storage outlives the session and belongs to the
+  next user of the browser.
+- **The one piece of data kept for offline use** - the offline lab's snapshot -
+  holds four fields, is tied to the user id, is never shown to another user,
+  and is deleted when the session ends in a tab that opened the lab
+  (ADR-0029). What remains after every such tab is closed is stated in
+  docs/offline.md.
+- **The rendering specimens are public** (`/rendering-lab/*`) so the server can
+  render them without a session. They contain generated rows only, and
+  `noindex` (ADR-0026).
+
 ## What is not done
 
 Stated here so that nothing above reads as more than it is.
@@ -305,5 +331,4 @@ Stated here so that nothing above reads as more than it is.
 | No brute-force protection on sign-in beyond the global rate limit                                                         | the mock verifies no password to guess                                                                             | a real backend                        |
 | Images are signature-checked, not decoded and re-encoded; no malware scan; user content not served from a separate origin | stated rather than implied                                                                                         | a real backend                        |
 | A sign-out that never reaches the server leaves the server session alive until it expires                                 | `HttpOnly` cookies cannot be deleted from script                                                                   | inherent to ADR-0016                  |
-| Tabs do not learn of a sign-out in another tab until their next request                                                   | cross-tab messaging is a browser-API concern                                                                       | Phase 5 (debt row 18)                 |
 | Dependency vulnerability scanning                                                                                         | no pipeline yet                                                                                                    | Phase 7                               |

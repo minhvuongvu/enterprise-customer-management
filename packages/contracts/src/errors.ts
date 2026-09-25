@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as z from 'zod';
 
 /**
  * The error envelope. Every non-2xx response from the mock API has this shape.

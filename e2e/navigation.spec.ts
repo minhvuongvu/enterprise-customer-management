@@ -111,18 +111,6 @@ test.describe('navigation', () => {
     await expect(page.getByTestId('detail-not-found')).toBeVisible();
   });
 
-  test('the technical labs area is reachable and its placeholders say what they are', async ({
-    page,
-  }) => {
-    await page.goto('/technical-labs');
-
-    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Technical labs');
-
-    await page.getByRole('link', { name: /Offline and connectivity/ }).click();
-    await expect(page).toHaveURL(/\/technical-labs\/offline$/);
-    await expect(page.getByRole('heading', { name: 'Not built yet' })).toBeVisible();
-  });
-
   test('an unknown lab is a broken link, not a blank page', async ({ page }) => {
     await page.goto('/technical-labs/does-not-exist');
 

@@ -5,9 +5,16 @@
     "moduleResolution": "bundler",
     "strict": true,
     "noEmit": true,
+    "allowImportingTsExtensions": true,
     "skipLibCheck": true,
     "esModuleInterop": true,
     "types": ["node"]
   },
-  "include": ["e2e/**/*.ts", "playwright.config.ts"]
+  "include": [
+    "e2e/**/*.ts",
+    "e2e-production/**/*.ts",
+    "perf/**/*.ts",
+    "playwright.config.ts",
+    "playwright.production.config.ts"
+  ]
 }

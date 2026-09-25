@@ -14,7 +14,7 @@
     "watch": "ng build --watch --configuration development",
     "test": "ng test --watch=false",
     "test:watch": "ng test",
-    "typecheck": "ngc -p tsconfig.app.json --noEmit && ngc -p tsconfig.spec.json --noEmit",
+    "typecheck": "ngc -p tsconfig.app.json --noEmit && ngc -p tsconfig.spec.json --noEmit && tsc -p tsconfig.worker.json --noEmit",
     "serve:ssr": "node dist/web/server/server.mjs",
     "lint": "ng lint"
   },
@@ -27,6 +27,7 @@
     "@angular/platform-browser": "^22.1.0",
     "@angular/platform-server": "^22.1.0",
     "@angular/router": "^22.1.0",
+    "@angular/service-worker": "22.1.7",
     "@angular/ssr": "^22.1.7",
     "@ecm/contracts": "*",
     "@jsverse/transloco": "8.4.0",

@@ -60,7 +60,8 @@
       "passwordHint": "The mock backend does not verify passwords, so any value works. There is no credential in this repository.",
       "passwordRequired": "Enter a password.",
       "submit": "Sign in",
-      "invalidCredentials": "That username and password were not accepted."
+      "invalidCredentials": "That username and password were not accepted.",
+      "signedOutElsewhere": "You signed out in another tab. Sign in again to continue."
     },
     "notFound": {
       "title": "Page not found",
@@ -294,23 +295,397 @@
       },
       "browserStorage": {
         "title": "Browser storage",
-        "description": "localStorage, sessionStorage and IndexedDB, and what each one survives."
+        "description": "localStorage, sessionStorage and IndexedDB: what each holds, what each survives, and how other tabs hear about a change.",
+        "breadcrumb": "Browser storage",
+        "heading": "Browser storage",
+        "empty": "(empty)",
+        "unsupported": "This browser does not offer it here - storage may be blocked for this site.",
+        "failed": "The browser refused the storage operation. Storage may be full or blocked for this site.",
+        "webStorage": {
+          "heading": "localStorage and sessionStorage",
+          "description": "Save a value to each, then reload the page, open a new tab, or close and reopen this one: localStorage survives all three and is shared; sessionStorage survives only the reload.",
+          "value": "Value to store",
+          "saveLocal": "Save to localStorage",
+          "saveSession": "Save to sessionStorage",
+          "local": "localStorage",
+          "session": "sessionStorage"
+        },
+        "events": {
+          "heading": "Storage events from other tabs",
+          "description": "Open this page in a second tab and save to localStorage there. The browser tells this tab - and never the tab that wrote.",
+          "none": "No storage event received yet.",
+          "entry": "{{key}}: {{from}} → {{to}}",
+          "cleared": "(storage cleared)"
+        },
+        "indexedDb": {
+          "heading": "IndexedDB",
+          "description": "A database in the browser: structured records, written in transactions, without blocking the page. Notes survive reloads and restarts.",
+          "note": "Note",
+          "add": "Add note",
+          "clear": "Delete all notes",
+          "empty": "No notes yet.",
+          "estimate": "This site uses about {{usage}} KB of a {{quota}} MB quota.",
+          "persisted": "Storage is persistent: the browser will not evict it under pressure.",
+          "bestEffort": "Storage is best-effort: the browser may evict it when the disk fills."
+        }
       },
       "crossTab": {
-        "title": "Cross-tab synchronisation",
-        "description": "BroadcastChannel and leader election between two tabs of the same application."
+        "title": "Cross-tab communication",
+        "description": "BroadcastChannel and storage events between tabs of the same application, and where the application itself uses them.",
+        "breadcrumb": "Cross-tab",
+        "heading": "Cross-tab communication",
+        "lede": "Open this page in a second tab to see messages and changes arrive. This tab is {{id}}.",
+        "unsupported": "This browser has no BroadcastChannel.",
+        "broadcast": {
+          "heading": "BroadcastChannel",
+          "description": "A message posted here reaches every other open tab of this application - not this one, and not a tab opened later.",
+          "message": "Message",
+          "send": "Send to the other tabs",
+          "entry": "{{from}} at {{at}}: {{text}}",
+          "none": "No message received yet."
+        },
+        "storage": {
+          "heading": "Storage events",
+          "description": "The counter lives in localStorage. Incrementing it in any tab updates every other tab - the browser announces the change; nothing is sent.",
+          "counter": "Shared counter: {{value}}",
+          "increment": "Increment"
+        },
+        "application": {
+          "heading": "In the application",
+          "description": "Four places the application itself coordinates tabs, outside this lab:",
+          "customers": "A customer created, changed or deleted in one tab is announced in the others, which refresh what they show.",
+          "signOut": "Signing out in one tab signs out every tab.",
+          "refresh": "Two tabs never renew the session at the same instant: the refresh runs under a Web Lock.",
+          "theme": "A theme chosen in one tab applies in the others, through the storage event."
+        }
       },
       "offline": {
         "title": "Offline and connectivity",
-        "description": "Detecting connectivity, queueing work, and reconciling it when the network returns."
-      },
-      "realtime": {
-        "title": "Realtime",
-        "description": "The server-sent event stream, reconnection, and what happens to data that changed while disconnected."
+        "description": "Detecting the network, a read-only list that survives losing it, and refreshing when it returns.",
+        "breadcrumb": "Offline",
+        "heading": "Offline and connectivity",
+        "lede": "One limited offline scenario: a read-only list of customers kept in IndexedDB. The rest of the application needs a network, and says so when there is none.",
+        "connectivity": {
+          "heading": "Connectivity",
+          "description": "What the browser reports. Offline is certain; online only means a network interface is up, not that the server answers.",
+          "online": "Online",
+          "offline": "Offline"
+        },
+        "directory": {
+          "heading": "Read-only customer list",
+          "description": "Fetched from the server while online and saved on this device; shown from the saved copy when the server cannot be reached.",
+          "fromNetwork": "Live from the server, fetched {{at}}.",
+          "fromSaved": "Saved copy from {{at}}. Read-only - it may be out of date.",
+          "loading": "Loading...",
+          "nothing": "Nothing to show: the server cannot be reached and no copy has been saved on this device.",
+          "refresh": "Refresh",
+          "forget": "Delete the saved copy",
+          "code": "Code",
+          "name": "Name",
+          "status": "Status",
+          "statuses": {
+            "ACTIVE": "Active",
+            "INACTIVE": "Inactive",
+            "PROSPECT": "Prospect"
+          }
+        },
+        "limits": {
+          "heading": "What this is not",
+          "description": "Changes are not queued, nothing is synchronised in the background, and pages you have not opened are not available offline. The saved copy belongs to the signed-in user and is deleted when the session ends in this tab. docs/offline.md has the details."
+        }
       },
       "rendering": {
-        "title": "Rendering and performance",
-        "description": "Measuring rendering strategies against each other instead of assuming one is faster."
+        "title": "Rendering",
+        "description": "The same page served five ways - client-rendered, server-rendered, prerendered, and prerendered with hydration switched off or deferred - and measured against each other.",
+        "breadcrumb": "Rendering",
+        "heading": "Rendering modes",
+        "lede": "Five specimens of one page. Only how each is rendered differs, so any difference in the numbers is a difference in rendering.",
+        "specimens": {
+          "heading": "Specimens",
+          "description": "Each link is a full page load from the server, not a navigation inside this application.",
+          "mode": "Mode",
+          "source": "Where the HTML comes from",
+          "hydration": "What the browser does with it"
+        },
+        "sources": {
+          "client": "Nowhere - an empty shell, rendered in the browser",
+          "server": "The server, on every request",
+          "build": "The build - a static file"
+        },
+        "hydrations": {
+          "none": "Renders from scratch",
+          "full": "Hydrates all of it",
+          "destructive": "Throws the catalogue away and re-renders it",
+          "incremental": "Hydrates the catalogue when it scrolls into view"
+        },
+        "thisPage": {
+          "heading": "This page",
+          "description": "The application behind sign-in is client-rendered. These are the numbers for the load that produced this page; reload to measure again."
+        },
+        "results": {
+          "heading": "Measured results",
+          "description": "Controlled measurements - repeated runs, throttled network and CPU, medians - are produced by perf/measure-rendering.ts and recorded in docs/rendering.md."
+        },
+        "modes": {
+          "client": {
+            "name": "Client-rendered (CSR)",
+            "summary": "The server sends an empty document. Nothing appears until the JavaScript has downloaded, run and rendered the page."
+          },
+          "server": {
+            "name": "Server-rendered (SSR)",
+            "summary": "The server renders the page for this request. It appears as soon as the HTML arrives, and becomes interactive once hydrated."
+          },
+          "prerender": {
+            "name": "Prerendered (SSG)",
+            "summary": "The page was rendered once, at build time, and is served as a static file. It appears as soon as the HTML arrives, and becomes interactive once hydrated."
+          },
+          "prerender-no-hydration": {
+            "name": "Prerendered, catalogue not hydrated",
+            "summary": "Prerendered, but the catalogue opts out of hydration: the browser discards the server's markup for it and renders it again."
+          },
+          "prerender-incremental": {
+            "name": "Prerendered, incremental hydration",
+            "summary": "Prerendered, and the catalogue stays inert server markup until it scrolls into view - then it is hydrated."
+          }
+        },
+        "metrics": {
+          "ttfb": "Time to first byte",
+          "fcp": "First contentful paint",
+          "lcp": "Largest contentful paint",
+          "appStable": "Application stable",
+          "bootstrapToStable": "Bootstrap to stable",
+          "htmlBytes": "Document transferred",
+          "totalBytes": "Everything transferred",
+          "milliseconds": "{{value}} ms",
+          "bytes": "{{value}} bytes",
+          "pending": "Not measured yet"
+        },
+        "specimen": {
+          "title": "Rendering specimen",
+          "heading": "Specimen: {{mode}}",
+          "intro": "Below the fold is a catalogue of 400 rows, each with a button - enough markup for hydration to cost something measurable.",
+          "clicks": "Clicked {{count}} times",
+          "otherModes": "Other rendering modes",
+          "backToLab": "Back to the rendering lab",
+          "catalogueCaption": "Generated catalogue, {{count}} rows",
+          "code": "Code",
+          "category": "Category",
+          "quantity": "Quantity",
+          "amount": "Amount",
+          "details": "Details",
+          "show": "Show",
+          "hide": "Hide",
+          "categories": {
+            "hardware": "Hardware",
+            "software": "Software",
+            "services": "Services",
+            "training": "Training"
+          }
+        }
+      },
+      "performance": {
+        "title": "Performance",
+        "breadcrumb": "Performance",
+        "heading": "Performance",
+        "description": "Debouncing, throttling, memoization, virtual scrolling, image optimization and code splitting - each measured against its absence on a large dataset.",
+        "lede": "Every demo on this page works on the same {{count}} generated rows, and reports what it cost. Controlled numbers are in docs/performance.md.",
+        "rate": {
+          "heading": "Debouncing and throttling",
+          "description": "Every keystroke runs the immediate search over all rows; the debounced one waits for typing to pause. The pad counts pointer events against those a throttle lets through.",
+          "searchLabel": "Search the dataset",
+          "searchHint": "Scans all {{count}} rows by name or code",
+          "strategy": "Strategy",
+          "scans": "Scans",
+          "scanTime": "Total scan time (ms)",
+          "matches": "Matches",
+          "immediate": "On every keystroke",
+          "debounced": "Debounced ({{ms}} ms)",
+          "padHint": "Move the pointer across this area",
+          "pointerEvents": "Pointer events received",
+          "pointerHandled": "Handled, throttled to one per {{ms}} ms"
+        },
+        "derived": {
+          "heading": "Memoization and derived state",
+          "description": "A summary of every row, derived by a template method and by a computed signal, while the component re-renders for an unrelated reason.",
+          "runMethod": "Re-render {{count}} times with a method",
+          "runComputed": "Re-render {{count}} times with computed()",
+          "total": "Total of all rows: {{cents}} cents (render {{tick}})",
+          "result": "{{strategy}}: summary recomputed {{recomputed}} times in {{renders}} renders, {{ms}} ms in total.",
+          "method": "Template method",
+          "computed": "computed()"
+        },
+        "images": {
+          "heading": "Image optimization",
+          "description": "Twelve pictures as the original upload in plain img tags, or through NgOptimizedImage: responsive WebP, lazy loading, reserved dimensions and a priority hint.",
+          "unoptimized": "Show original uploads",
+          "optimized": "Show with NgOptimizedImage",
+          "alt": "Generated landscape, card {{item}}"
+        },
+        "virtual": {
+          "heading": "Virtual scrolling",
+          "description": "A plain list renders every row it is given; CDK virtual scrolling renders only the rows in view, whatever the size of the list.",
+          "deferred": "This demo loads when it scrolls into view.",
+          "plain": "Plain list, {{count}} rows",
+          "virtual": "Virtual scroll, {{count}} rows",
+          "renderTime": "Render time (ms)",
+          "domElements": "Elements in this demo"
+        },
+        "splitting": {
+          "heading": "Lazy loading and code splitting",
+          "description": "Every page of the application is a lazy route, and the demo above is a deferred block with its own chunk. The bundle report in perf/bundle-report.ts says what the initial download holds and why; docs/performance.md has the numbers."
+        }
+      },
+      "browserApis": {
+        "title": "Browser APIs",
+        "breadcrumb": "Browser APIs",
+        "heading": "Browser APIs",
+        "description": "The URL, History, File, Clipboard, Permissions and Geolocation APIs - each feature-tested, and each with its refusals handled.",
+        "url": {
+          "heading": "URL API",
+          "description": "Parse an address the way the browser does, relative to a base, with its query parameters decoded.",
+          "label": "Address",
+          "hint": "Relative addresses resolve against {{base}}",
+          "href": "Resolved",
+          "host": "Host",
+          "path": "Path",
+          "params": "Query parameters",
+          "noParams": "None",
+          "origin": "Origin",
+          "sameOrigin": "Same origin as the base",
+          "crossOrigin": "A different origin",
+          "invalid": "Not an address the URL parser accepts."
+        },
+        "history": {
+          "heading": "History API",
+          "description": "Add history entries through the router - a query parameter that survives a reload, and navigation state that survives only back and forward.",
+          "push": "Add a history entry",
+          "back": "Go back",
+          "step": "Step in the URL",
+          "length": "Entries in this tab's history",
+          "state": "Navigation state",
+          "none": "None"
+        },
+        "file": {
+          "heading": "File API",
+          "description": "Read a file you choose - its size, its first bytes, a SHA-256 digest - entirely in the page. Nothing is uploaded.",
+          "choose": "Choose a file",
+          "name": "Name",
+          "size": "Size",
+          "bytes": "{{count}} bytes",
+          "type": "Type the browser reports",
+          "unknownType": "Not reported",
+          "signature": "First bytes",
+          "sha256": "SHA-256",
+          "tooLarge": "Skipped for files over 50 MB",
+          "preview": "Beginning of the text",
+          "failed": "The file could not be read."
+        },
+        "clipboard": {
+          "heading": "Clipboard API",
+          "description": "Writing is allowed from a click; reading asks for permission, because the clipboard may hold anything.",
+          "copy": "Copy {{value}}",
+          "read": "Read the clipboard",
+          "outcome": {
+            "copied": "Copied to the clipboard.",
+            "read": "The clipboard holds: {{value}}",
+            "denied": "The browser refused.",
+            "unsupported": "The Clipboard API is not available here."
+          }
+        },
+        "permissions": {
+          "heading": "Permissions API",
+          "description": "Ask the browser what it would do - grant, refuse or prompt - without prompting the user.",
+          "query": "Check permissions",
+          "state": {
+            "granted": "Granted",
+            "denied": "Refused",
+            "prompt": "Would ask",
+            "unsupported": "Not supported"
+          }
+        },
+        "geolocation": {
+          "heading": "Geolocation",
+          "description": "One position, when you ask. It is shown here and nowhere else.",
+          "locate": "Find my position",
+          "position": "Latitude {{latitude}}, longitude {{longitude}}, accurate to about {{accuracy}} m.",
+          "failure": {
+            "denied": "Location access was refused.",
+            "unavailable": "The position could not be determined.",
+            "timeout": "Finding the position took too long.",
+            "unsupported": "Geolocation is not available here."
+          }
+        }
+      },
+      "workers": {
+        "title": "Workers",
+        "breadcrumb": "Workers",
+        "heading": "Web workers and service workers",
+        "description": "A Web Worker keeps heavy work off the thread that draws the page; a service worker sits between the page and the network.",
+        "worker": {
+          "heading": "Web Worker",
+          "description": "Count the primes below twenty million on the main thread, then in a worker, and compare how long the page stopped drawing frames.",
+          "mainThread": "Count primes below {{limit}} on the main thread",
+          "worker": "Count primes below {{limit}} in a worker",
+          "result": "{{where}}: {{count}} primes, {{total}} ms in total; the page's longest frame took {{frame}} ms.",
+          "unsupported": "This browser cannot start a Web Worker here.",
+          "where": {
+            "main-thread": "Main thread",
+            "worker": "Worker"
+          }
+        },
+        "serviceWorker": {
+          "heading": "Service worker",
+          "description": "Angular's service worker caches the application shell so it starts without a network. It runs only in production builds.",
+          "supported": "Supported by this browser",
+          "enabled": "Registered by this build",
+          "controlled": "Serving this page",
+          "caches": "Caches",
+          "yes": "Yes",
+          "no": "No",
+          "none": "None",
+          "disabledInDev": "No - development builds do not register it",
+          "refresh": "Refresh status",
+          "checkUpdate": "Check for a new version",
+          "event": {
+            "VERSION_DETECTED": "A new version was detected and is downloading.",
+            "VERSION_READY": "A new version is ready; it will be used on the next load.",
+            "VERSION_INSTALLATION_FAILED": "A new version failed to install.",
+            "NO_NEW_VERSION_DETECTED": "No new version on the server.",
+            "UPDATE_FOUND": "The check found a new version.",
+            "NO_UPDATE": "The check found no new version."
+          }
+        }
+      },
+      "leaderElection": {
+        "title": "Leader election",
+        "breadcrumb": "Leader election",
+        "description": "Only one tab runs a periodic job; the others receive its result. A lease in localStorage, and its failure modes.",
+        "heading": "Leader election",
+        "lede": "Open this page in two or three tabs. One leads and polls the server; the others only listen. This is a learning experiment, not a production lock.",
+        "roles": {
+          "follower": "Follower",
+          "claiming": "Claiming the lease",
+          "leader": "Leader"
+        },
+        "thisTab": {
+          "heading": "This tab",
+          "description": "This tab is {{id}}.",
+          "holder": "The lease is held by {{holder}}.",
+          "noHolder": "Nobody holds the lease.",
+          "freeze": "Freeze heartbeat",
+          "resume": "Resume heartbeat"
+        },
+        "job": {
+          "heading": "The shared job",
+          "description": "Every {{seconds}} seconds the leader asks the server how many customers exist, and tells the other tabs.",
+          "result": "{{customers}} customers, checked by {{tab}} at {{at}}.",
+          "thisTab": "this tab",
+          "none": "No result yet.",
+          "runHere": "This tab has run the job {{count}} times."
+        },
+        "log": {
+          "heading": "Role changes in this tab"
+        }
       }
     }
   },
@@ -439,5 +814,22 @@
       "EXTENSION": "That kind of file is not accepted. Choose one of: {{types}}.",
       "MIME_TYPE": "That file's type is not accepted. Choose one of: {{types}}."
     }
+  },
+  "crossTab": {
+    "customer": {
+      "created": "Customer {{code}} was created in another tab.",
+      "updated": "Customer {{code}} was updated in another tab.",
+      "deleted": "Customer {{code}} was deleted in another tab.",
+      "createdUnnamed": "A customer was created in another tab.",
+      "updatedUnnamed": "A customer was updated in another tab.",
+      "deletedUnnamed": "A customer was deleted in another tab."
+    },
+    "customers": {
+      "many": "Customers were changed in another tab."
+    }
+  },
+  "connectivity": {
+    "offline": "You are offline. Nothing can be saved until the connection returns, and what you see may be out of date.",
+    "backOnline": "You are back online."
   }
 }

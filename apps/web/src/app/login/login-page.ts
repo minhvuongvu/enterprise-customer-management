@@ -4,6 +4,7 @@ import {
   Component,
   computed,
   DestroyRef,
+  DOCUMENT,
   inject,
   input,
   signal,
@@ -36,7 +37,8 @@ import { TextInput } from '../shared/ui/text-input/text-input';
  * has confirmed it is a path inside this application; see `return-url.ts` for
  * the open-redirect it prevents.
  *
- * `reason=expired` adds one sentence saying why they are here. Arriving at a
+ * `reason=expired` (or `signed-out-elsewhere`, from another tab) adds one
+ * sentence saying why they are here. Arriving at a
  * sign-in form unannounced, mid-task, reads as a malfunction.
  *
  * The mock backend does not verify passwords, which is documented in
@@ -72,6 +74,10 @@ import { TextInput } from '../shared/ui/text-input/text-input';
         @if (expired()) {
           <p class="login__notice" role="status" data-testid="session-expired">
             {{ t('pages.login.sessionExpired') }}
+          </p>
+        } @else if (signedOutElsewhere()) {
+          <p class="login__notice" role="status" data-testid="signed-out-elsewhere">
+            {{ t('pages.login.signedOutElsewhere') }}
           </p>
         }
 
@@ -180,9 +186,29 @@ export class LoginPage {
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
 
+  /**
+   * What the user typed into the prerendered form before the application
+   * was running (debt row 13, Phase 5).
+   *
+   * Hydration keeps the server's `<input>` elements - and the text typed into
+   * them - but the form controls start empty, and binding them writes that
+   * empty value into the inputs. On a throttled phone that window was
+   * measured at about four seconds (docs/rendering.md). Reading the elements
+   * *before* the controls exist, and starting the controls from what is
+   * there, keeps the typing. On the server, and on a client-side navigation
+   * to this page, there is nothing typed and both read as empty.
+   */
+  private readonly typedBeforeHydration = readTypedValues(inject(DOCUMENT));
+
   protected readonly form = new FormGroup({
-    username: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
-    password: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
+    username: new FormControl(this.typedBeforeHydration.username, {
+      nonNullable: true,
+      validators: [Validators.required],
+    }),
+    password: new FormControl(this.typedBeforeHydration.password, {
+      nonNullable: true,
+      validators: [Validators.required],
+    }),
   });
 
   /** False until the application is running in the browser. See the note above. */
@@ -191,6 +217,7 @@ export class LoginPage {
   protected readonly submitted = signal(false);
   protected readonly failure = signal<string | null>(null);
   protected readonly expired = computed(() => this.reason() === 'expired');
+  protected readonly signedOutElsewhere = computed(() => this.reason() === 'signed-out-elsewhere');
 
   constructor() {
     afterNextRender(() => this.ready.set(true));
@@ -236,4 +263,11 @@ export class LoginPage {
         },
       });
   }
+}
+
+/** The sign-in inputs' current values, read from the document before hydration binds them. */
+export function readTypedValues(document: Document): { username: string; password: string } {
+  const value = (name: string): string =>
+    document.querySelector<HTMLInputElement>(`app-login-page input[name="${name}"]`)?.value ?? '';
+  return { username: value('username'), password: value('password') };
 }

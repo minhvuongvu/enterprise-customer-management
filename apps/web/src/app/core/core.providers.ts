@@ -1,4 +1,5 @@
 import { ErrorHandler, EnvironmentProviders, makeEnvironmentProviders } from '@angular/core';
+import { provideSessionCrossTab } from './auth/session-cross-tab';
 import { provideSessionExpiryRedirect } from './auth/session-expiry';
 import { provideRuntimeConfig } from './config/runtime-config.provider';
 import { GlobalErrorHandler } from './errors/global-error-handler';
@@ -30,5 +31,6 @@ export function provideCore(): EnvironmentProviders {
     // Needs the router, which app.config provides alongside this; environment
     // initializers run once the whole injector exists.
     provideSessionExpiryRedirect(),
+    provideSessionCrossTab(),
   ]);
 }

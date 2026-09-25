@@ -8,7 +8,7 @@ session that has the git history but none of the conversation that produced it.
 `docs/PROGRESS.md` about what is done, PROGRESS wins — it is updated as part of every
 phase's Definition of Done, and this file is updated only at a handoff.
 
-Last updated at **`phase-4-complete`**.
+Last updated at **`phase-5-complete`**.
 
 ---
 
@@ -85,6 +85,13 @@ The parts that come up most often:
 | 0022 | notifications are justified global state; one confirmation service        |
 | 0023 | the one optimistic operation: status change, with rollback                |
 | 0024 | CSV import as preview + commit, nothing held on the server                |
+| 0025 | measure the bundle by package; zod namespace import; budget as a ratchet  |
+| 0026 | rendering modes measured on public, data-free specimen routes             |
+| 0027 | tabs: one versioned BroadcastChannel, Web Lock refresh, storage event     |
+| 0028 | the service worker caches the app shell, never API data                   |
+| 0029 | offline = one read-only, user-scoped snapshot + connectivity UI           |
+| 0030 | the leader-election lab uses a lease on purpose                           |
+| 0031 | preload only the routes flagged `preload: true`                           |
 
 ### The ten rules
 
@@ -112,7 +119,8 @@ other eight are enforced by review, and the ones most often broken by accident a
 | 2     | Customer CRUD, Forms & Server State      | **Done**    |
 | 3     | Authentication, Authorization & Security | **Done**    |
 | 4     | Enterprise UX, Files, Notifications & RT | **Done**    |
-| 5–8   | see `docs/PROGRESS.md`                   | Not started |
+| 5     | Performance, Rendering, Offline & APIs   | **Done**    |
+| 6–8   | see `docs/PROGRESS.md`                   | Not started |
 
 `docs/PROGRESS.md` is the phase-state file: what each phase built, what deviated, the
 technical-debt register and the open questions. **Read it before starting anything.**
@@ -122,7 +130,8 @@ technical-debt register and the open questions. **Read it before starting anythi
 History is linear; each phase branch contains everything before it.
 
 ```text
-phase-4           <- HEAD, everything is here
+phase-5           <- HEAD, everything is here
+phase-4  6863370
 phase-3  80a3703
 phase-2  8da182b
 phase-1  4d75b6c
@@ -133,28 +142,30 @@ master   ef498df  <- pre-Phase-0. Nothing has been merged into it.
 
 Two things a cloud session will trip over:
 
-- **`master` is stale on purpose.** No phase has been merged. Branch Phase 5 from
-  `phase-4`, not from `master`.
-- **Branches and `phase-N-complete` tags are both on the remote**, so a fresh clone
-  sees the whole phase history. `git fetch --tags` if a clone predates them.
+- **`master` is stale on purpose.** No phase has been merged. Branch Phase 6 from
+  `phase-5`, not from `master`.
+- **Branches are on the remote. The `phase-3-complete`, `phase-4-complete` and
+  `phase-5-complete` tags may not be**: the cloud session's git proxy refused
+  tag pushes (HTTP 403). If `git ls-remote --tags origin` does not list them,
+  create them on the phase branches' heads and push from a local machine.
 
-### Verification at `phase-4-complete`
+### Verification at `phase-5-complete`
 
-`npm run verify` runs format → lint → typecheck → test → build → e2e.
+`npm run verify` runs format → lint → typecheck → test → build → e2e →
+e2e:production.
 
-| Check         | Result                                              |
-| ------------- | --------------------------------------------------- |
-| format, lint  | clean; 0 errors, 0 warnings                         |
-| typecheck     | clean across all three packages, templates included |
-| unit tests    | 509 — 354 web, 122 mock-api, 33 contracts           |
-| build         | succeeds, browser + server, 1 route prerendered     |
-| e2e           | 57, incl. two-user realtime, uploads, import, axe   |
-| import cycles | none (method in PROGRESS, Phase 3 checks)           |
+| Check          | Result                                                                           |
+| -------------- | -------------------------------------------------------------------------------- |
+| format, lint   | clean; 0 errors, 0 warnings                                                      |
+| typecheck      | clean across all three packages, templates and worker included                   |
+| unit tests     | 574 — 419 web, 122 mock-api, 33 contracts                                        |
+| build          | succeeds, browser + server, 4 routes prerendered, no warning                     |
+| e2e            | 87, incl. cross-tab, labs, rendering specimens, axe                              |
+| e2e:production | 4 — service worker offline, no cached API data, preloading, pre-hydration typing |
+| import cycles  | none (method in PROGRESS, Phase 3 checks)                                        |
 
-**One warning is expected and is not a regression:** the initial bundle is ~808 kB
-against a 500 kB budget. It is pre-existing, measured, and left failing so it stays
-visible — technical-debt row 8, to be paid in Phase 5. Do not silence it by raising
-the budget.
+The initial bundle is 524.6 kB under a **ratchet** budget of 530 kB (ADR-0025).
+If it grows past it, measure with `node perf/bundle-report.ts` before raising it.
 
 ---
 
@@ -195,31 +206,26 @@ repository state. A Linux cloud session can ignore them.
 
 ## 5. What is still open
 
-### Next: Phase 5 — Performance, Rendering, Offline & Browser APIs
+### Next: Phase 6 — Accessibility, i18n, Design System & UX Quality
 
-The prompt is `prompts/Phase 5 — Performance, Rendering, Offline & Browser APIs.md`.
-Read the Phase 4 entry in `docs/PROGRESS.md` first - its "For the next phase" list is
-written for you - then `docs/realtime.md` and `docs/state-management.md`.
+The prompt is `prompts/Phase 6 — Accessibility, i18n, Design System & UX Quality.md`.
+Read the Phase 5 entry in `docs/PROGRESS.md` first - its "For the next phase" list is
+written for you.
 
-Things Phase 5 will meet directly:
+Things Phase 6 will meet directly:
 
-- **One SSE stream per tab** (open question 5, debt rows 18 and 25). A leader tab
-  sharing one stream over `BroadcastChannel` would also carry sign-out between tabs.
-- **The initial bundle** (debt row 8) now includes the notification and realtime
-  code in the shell.
-- **Uploads use XHR and realtime a long-lived stream** (ADR-0020, ADR-0021) - the two
-  things a service worker or offline queue must not intercept naively.
-- `/login` is still prerendered, with pre-hydration typing lost (debt row 13).
+- Nine lab pages, an offline banner and five public rendering specimens (with their
+  own `<main>`), none of them yet through an accessibility review beyond the E2E
+  suite's existing axe scans.
+- The i18n lint ignore list at 17 entries (debt row 16).
+- `beforeunload` shows the browser's own, untranslatable dialog.
+- Everything cross-tab and offline has run only in Chromium (debt row 28).
 
 ### Debt and open questions
 
 Both live in `docs/PROGRESS.md` and are not duplicated here, because a second copy
-would drift. The ones a Phase 5 session will meet directly:
-
-- row 8 - the initial bundle, now ~808 kB against a 500 kB budget;
-- row 13 - typing into the prerendered sign-in form before hydration is lost;
-- rows 18 and 25 - no cross-tab session or realtime coordination;
-- open question 5 - one SSE connection per tab, or one shared.
+would drift. Phase 5 paid rows 8, 13, 18 and 25 and answered open question 5; it
+added rows 26-28.
 
 ### Traps that have already cost time
 
@@ -250,6 +256,14 @@ fresh session recognises the symptom instead of re-deriving the cause:
   and the app fails with "does not provide an export named …" (debt row 24).
 - **Notification and realtime assertions in E2E must be scoped to the test's own
   customer** - parallel tests are changing other customers at the same time.
+- **The production server refuses unknown hosts**: start it with
+  `NG_ALLOWED_HOSTS=localhost`. It serves no `/api`; the perf scripts and
+  `e2e-production/` forward `/api` to the mock API with `route.fetch` + `fulfill`
+  (`route.continue` cannot change the host).
+- **`page.goto` resolves before a lazy page exists**: in a two-tab test, wait for the
+  receiving page to render before the other tab writes, or the event is missed.
+- **Performance numbers from a run beside anything else are noise.** Do not run the
+  `perf/` scripts while the E2E suite runs.
 - **Playwright's Chromium download may be blocked in a cloud session.** Phase 3 pointed
   `PLAYWRIGHT_BROWSERS_PATH` at symlinks to the preinstalled build; see PROGRESS.
 

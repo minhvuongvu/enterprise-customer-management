@@ -2,7 +2,7 @@ import { BreakpointObserver, type BreakpointState } from '@angular/cdk/layout';
 import { DOCUMENT } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { BehaviorSubject } from 'rxjs';
-import { LOCAL_STORAGE, type KeyValueStorage } from '../platform/platform.tokens';
+import { LOCAL_STORAGE, WINDOW, type KeyValueStorage } from '../platform/platform.tokens';
 import { ThemeService } from './theme.service';
 
 /** An in-memory stand-in for browser storage. */
@@ -132,6 +132,36 @@ describe('ThemeService', () => {
     const theme = configure('solarized');
 
     // Written by an older build, or by something else on the same origin.
+    expect(theme.preference()).toBe('system');
+  });
+});
+
+describe('ThemeService across tabs', () => {
+  it('applies a theme another tab stored, and forgets it when another tab clears it', () => {
+    const storage = new FakeStorage();
+    const backing = storage.values;
+    TestBed.configureTestingModule({ providers: [{ provide: LOCAL_STORAGE, useValue: storage }] });
+    const theme = TestBed.inject(ThemeService);
+    const win = TestBed.inject(WINDOW) as Window;
+
+    // Another tab wrote; this tab's storage now holds it, and the browser says so.
+    backing.set('ecm.theme', 'dark');
+    win.dispatchEvent(new StorageEvent('storage', { key: 'ecm.theme', newValue: 'dark' }));
+    expect(theme.preference()).toBe('dark');
+
+    backing.clear();
+    win.dispatchEvent(new StorageEvent('storage', { key: null }));
+    expect(theme.preference()).toBe('system');
+  });
+
+  it('ignores changes to keys that are not its own', () => {
+    TestBed.configureTestingModule({
+      providers: [{ provide: LOCAL_STORAGE, useValue: new FakeStorage() }],
+    });
+    const theme = TestBed.inject(ThemeService);
+    const win = TestBed.inject(WINDOW) as Window;
+
+    win.dispatchEvent(new StorageEvent('storage', { key: 'something.else', newValue: 'dark' }));
     expect(theme.preference()).toBe('system');
   });
 });

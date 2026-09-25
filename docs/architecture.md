@@ -85,18 +85,20 @@ Seven concerns do not retrofit cheaply, so Phase 0 builds the seam and a later p
 fills it. A seam is small on purpose; growing one into its phase's implementation is
 the failure mode to avoid.
 
-| Seam            | Where                              | Today                                                                              | Filled in   |
-| --------------- | ---------------------------------- | ---------------------------------------------------------------------------------- | ----------- |
-| Platform safety | `core/platform/platform.tokens.ts` | `IS_BROWSER`, `WINDOW`, `LOCAL_STORAGE`, `SESSION_STORAGE`; globals banned by lint | Phase 5/6   |
-| i18n            | `core/i18n/`                       | Transloco, English only, lazily imported chunks                                    | Phase 6     |
-| Logging         | `core/logging/`                    | `Logger` abstraction, `ConsoleLogger`, credential redaction, correlation IDs       | Phase 7     |
-| Errors          | `core/errors/`                     | the §4.7 taxonomy as a discriminated union, central HTTP mapping                   | every phase |
-| HTTP            | `core/http/`                       | five single-purpose interceptors, ordered (§5, ADR-0017)                           | **Phase 3** |
-| Auth            | `core/auth/`                       | session lifecycle, guards, permission directive (§5a, ADR-0016/0018)               | **Phase 3** |
-| Notifications   | `core/notifications/`              | toasts, snackbars, notification centre, confirmation (ADR-0022)                    | **Phase 4** |
-| Realtime        | `core/realtime/`                   | one SSE stream per tab: state, reconnect, de-duplication (ADR-0020)                | **Phase 4** |
-| Config          | `core/config/`                     | build-time `BuildEnvironment` + runtime `AppConfigStore` + feature flags           | Phase 7     |
-| Time            | `core/time/instant.ts`             | branded `Instant` (UTC) and `DateOnly` types                                       | Phase 6     |
+| Seam            | Where                              | Today                                                                                              | Filled in   |
+| --------------- | ---------------------------------- | -------------------------------------------------------------------------------------------------- | ----------- |
+| Platform safety | `core/platform/platform.tokens.ts` | `WINDOW`, `NAVIGATOR`, storage, `BroadcastChannel`/`EventSource` factories; globals banned by lint | **Phase 5** |
+| i18n            | `core/i18n/`                       | Transloco, English only, lazily imported chunks                                                    | Phase 6     |
+| Logging         | `core/logging/`                    | `Logger` abstraction, `ConsoleLogger`, credential redaction, correlation IDs                       | Phase 7     |
+| Errors          | `core/errors/`                     | the §4.7 taxonomy as a discriminated union, central HTTP mapping                                   | every phase |
+| HTTP            | `core/http/`                       | five single-purpose interceptors, ordered (§5, ADR-0017)                                           | **Phase 3** |
+| Auth            | `core/auth/`                       | session lifecycle, guards, permission directive (§5a, ADR-0016/0018)                               | **Phase 3** |
+| Notifications   | `core/notifications/`              | toasts, snackbars, notification centre, confirmation (ADR-0022)                                    | **Phase 4** |
+| Realtime        | `core/realtime/`                   | one SSE stream per tab: state, reconnect, de-duplication (ADR-0020)                                | **Phase 4** |
+| Cross-tab       | `core/cross-tab/`                  | one versioned `BroadcastChannel`, topics owned by features (ADR-0027)                              | **Phase 5** |
+| Connectivity    | `core/connectivity/`               | online/offline and reconnect, from the browser's events (ADR-0029)                                 | **Phase 5** |
+| Config          | `core/config/`                     | build-time `BuildEnvironment` + runtime `AppConfigStore` + feature flags                           | Phase 7     |
+| Time            | `core/time/instant.ts`             | branded `Instant` (UTC) and `DateOnly` types                                                       | Phase 6     |
 
 Phase 1 added two more that behave like seams, and are listed here for the same
 reason - they are small now and expensive to retrofit:
@@ -251,7 +253,11 @@ per-endpoint decisions and live in the data-access layer - `customers/data/reque
 ## 6. Rendering
 
 Decided in ADR-0003. `/login` is prerendered; everything else is client-rendered with
-hydration and event replay.
+hydration and event replay. Phase 5 added the rendering lab's five public specimens
+(`/rendering-lab/*`, ADR-0026) - one page in every mode, measured against each other
+in [rendering.md](rendering.md) - and incremental hydration, used only there.
+Route preloading is by flag (ADR-0031); the service worker caches the shell only
+(ADR-0028).
 
 The reason SSR exists in Phase 0 is enforcement. Because `npm run build` produces a
 server bundle and must succeed, a browser global that slips into application code
@@ -616,8 +622,9 @@ saves and navigates.
   and supplies its own translated sentence for _what to say_.
 - **Unsaved changes** are protected by a `CanDeactivate` guard that asks the
   component, because the component has the form and the dialog. It covers navigation
-  inside the application only; the tab-close case needs `beforeunload`, which is a
-  browser API and belongs to Phase 5.
+  inside the application. Closing the tab, reloading or typing an address is
+  covered since Phase 5 by a `window:beforeunload` host listener, which asks the
+  browser for its own (untranslatable) confirmation.
 
 ### Error handling
 

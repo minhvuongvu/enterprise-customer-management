@@ -49,6 +49,9 @@ export const customersRoutes: Routes = [
         path: '',
         pathMatch: 'full',
         title: 'pages.customers.list.title',
+        // The page nearly every session opens first: fetched in the
+        // background while the user is still signing in (Phase 5).
+        data: withMetadata({ preload: true }),
         loadComponent: () =>
           import('./customer-list/customer-list-page').then((m) => m.CustomerListPage),
       },

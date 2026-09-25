@@ -6,12 +6,41 @@ import {
   type Provider,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { filter } from 'rxjs';
 import { Router } from '@angular/router';
-import type { RealtimeEvent } from '@ecm/contracts';
+import { customerIdSchema, type CustomerId, type RealtimeEvent } from '@ecm/contracts';
 import { SessionService } from '../../core/auth/session.service';
+import { TabChannel } from '../../core/cross-tab/tab-channel';
 import { NotificationService } from '../../core/notifications/notification.service';
 import { RealtimeClient } from '../../core/realtime/realtime-client';
-import { CustomerStore } from './customer-store';
+import { CustomerStore, type OwnCustomerChange } from './customer-store';
+
+/** The customer feature's topic on the tab channel. */
+export const CUSTOMERS_TOPIC = 'customers';
+
+/** Who made a change this tab is hearing about. Decides the sentence. */
+type Origin = 'another-user' | 'another-tab';
+
+/**
+ * Checks a payload from another tab before believing it: that tab may be
+ * running a different build (`TabChannel`).
+ */
+export function isOwnCustomerChange(payload: unknown): payload is OwnCustomerChange {
+  if (typeof payload !== 'object' || payload === null) {
+    return false;
+  }
+  const candidate = payload as Record<string, unknown>;
+  if (candidate['change'] === 'many') {
+    return true;
+  }
+  return (
+    (candidate['change'] === 'created' ||
+      candidate['change'] === 'updated' ||
+      candidate['change'] === 'deleted') &&
+    customerIdSchema.safeParse(candidate['customerId']).success &&
+    (typeof candidate['customerCode'] === 'string' || candidate['customerCode'] === null)
+  );
+}
 
 /**
  * Turns realtime events into the customer feature's reactions.
@@ -28,12 +57,16 @@ import { CustomerStore } from './customer-store';
  *
  * ## Whose events
  *
- * The user's own changes are ignored: this tab already applied them when the
- * request returned, and "Customer C-000001 was updated by another user" would
- * be false. The cost is that a change made in *another tab* by the same user
- * is not announced here either; the list still catches up on its next fetch.
- * Telling tabs apart would need a per-tab id on every write, which the API
- * does not have. ADR-0020.
+ * The user's own changes are ignored on the realtime stream: this tab already
+ * applied them when the request returned, and "Customer C-000001 was updated
+ * by another user" would be false. The stream names the user, not the tab, so
+ * it cannot say more.
+ *
+ * Changes the same user makes in *another tab* arrive instead over the tab
+ * channel (Phase 5, debt row 25): each tab posts what its store changed
+ * (`CustomerStore.ownChanges$`), and every other tab reacts exactly as it
+ * does to another user's change - with a sentence that says "in another tab".
+ * A tab never receives its own post, so nothing is applied twice.
  *
  * ## Lifetime
  *
@@ -52,6 +85,24 @@ export class CustomerRealtimeSync {
     const realtime = inject(RealtimeClient);
     realtime.events$.pipe(takeUntilDestroyed()).subscribe((event) => this.apply(event));
     realtime.resync$.pipe(takeUntilDestroyed()).subscribe(() => this.store.revalidateAll());
+
+    const tabs = inject(TabChannel);
+    this.store.ownChanges$
+      .pipe(takeUntilDestroyed())
+      .subscribe((change) => tabs.post(CUSTOMERS_TOPIC, change));
+    tabs
+      .on(CUSTOMERS_TOPIC)
+      .pipe(filter(isOwnCustomerChange), takeUntilDestroyed())
+      .subscribe((change) => this.applyFromAnotherTab(change));
+  }
+
+  private applyFromAnotherTab(change: OwnCustomerChange): void {
+    if (change.change === 'many') {
+      this.store.revalidateAll();
+      this.notifications.record('crossTab.customers.many');
+      return;
+    }
+    this.react(change.change, change.customerId, change.customerCode, 'another-tab');
   }
 
   private apply(event: RealtimeEvent): void {
@@ -79,13 +130,28 @@ export class CustomerRealtimeSync {
         : event.type === 'customer.deleted'
           ? 'deleted'
           : 'updated';
-    const onScreen = this.isOnScreen(event.customerId);
+    this.react(change, event.customerId, event.customerCode, 'another-user');
+  }
 
-    this.store.applyRemoteChange(event.customerId, change);
+  /** The same reaction, whoever made the change; only the sentence differs. */
+  private react(
+    change: 'created' | 'updated' | 'deleted',
+    customerId: CustomerId,
+    customerCode: string | null,
+    origin: Origin,
+  ): void {
+    const onScreen = this.isOnScreen(customerId);
 
-    const messageKey = `realtime.customer.${change}`;
-    const params = { code: event.customerCode };
-    const link = change === 'deleted' ? null : ['/customers', event.customerId];
+    this.store.applyRemoteChange(customerId, change);
+
+    const messageKey =
+      origin === 'another-user'
+        ? `realtime.customer.${change}`
+        : customerCode
+          ? `crossTab.customer.${change}`
+          : `crossTab.customer.${change}Unnamed`;
+    const params = { code: customerCode ?? '' };
+    const link = change === 'deleted' ? null : ['/customers', customerId];
 
     this.notifications.record(messageKey, { params, link: link ?? undefined });
 

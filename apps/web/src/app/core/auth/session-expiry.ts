@@ -13,7 +13,9 @@ import { SessionService } from './session.service';
  * ten times, but `SessionService.ended$` emits once. Navigation happens once.
  *
  * A deliberate sign-out is not handled here. That is an action the user took,
- * and the component that took it decides where to go next.
+ * and the component that took it decides where to go next. A sign-out in
+ * *another* tab is handled here, like an expiry: from this tab's point of view
+ * the session simply ended (`session-cross-tab.ts`).
  *
  * `router.url` at the moment the session ended is the page the user is on -
  * pages load their data after they activate, so a request that discovers the
@@ -26,11 +28,11 @@ export function provideSessionExpiryRedirect(): EnvironmentProviders {
     const session = inject(SessionService);
     const router = inject(Router);
 
-    session.ended$.pipe(filter((reason) => reason === 'expired')).subscribe(() => {
+    session.ended$.pipe(filter((reason) => reason !== 'signed-out')).subscribe((reason) => {
       void router.navigate([SIGN_IN_PATH], {
         queryParams: {
           [RETURN_URL_PARAM]: safeReturnUrl(router.url),
-          [SIGN_IN_REASON_PARAM]: 'expired',
+          [SIGN_IN_REASON_PARAM]: reason,
         },
       });
     });

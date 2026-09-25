@@ -9,12 +9,14 @@ and educational, not only on whether the application works.
 
 ## Status
 
-**Phase 4 complete** — foundation and seams, the API contract and a real mock
+**Phase 5 complete** — foundation and seams, the API contract and a real mock
 backend, the application shell, the customer feature, authentication and
-authorization, and now the enterprise UX around them: live updates when someone
-else changes a customer, a notification centre, avatar upload with progress and
-cancel, a previewed CSV import with per-row results, CSV export, an audit trail
-that withholds sensitive values, and an optimistic status change that rolls back.
+authorization, enterprise UX (live updates, notifications, files, audit), and now
+performance, rendering and the browser: measured rendering modes, a bundle cut
+from 808 to 525 kB, route preloading, tabs that coordinate (sign-out, customer
+changes, session refresh), a service worker that starts the app offline, and
+nine technical labs - storage, browser APIs, workers, offline, cross-tab, leader
+election, performance and rendering - each with its numbers.
 See `docs/PROGRESS.md` for what exists and what comes next.
 
 ## Quick start
@@ -26,7 +28,7 @@ npx playwright install chromium
 
 npm run start:api                # mock API on http://localhost:4300
 npm start                        # the app on http://localhost:4200
-npm run verify                   # format, lint, typecheck, test, build, e2e
+npm run verify                   # format, lint, typecheck, test, build, e2e, e2e:production
 ```
 
 Node `^22.22.3 || ^24.15.0 || >=26.0.0` is required. `npm install` will refuse to run
@@ -39,6 +41,8 @@ apps/web/            Angular 22 application - standalone, signals, zoneless, SSR
 apps/mock-api/       Express mock backend - real cookies, CSRF, CORS, SSE
 packages/contracts/  Zod schemas + inferred types, shared by app and API
 e2e/                 Playwright specs, including accessibility scans
+e2e-production/      Playwright specs against the production build (service worker, preloading)
+perf/                measurement scripts and their recorded results
 docs/                architecture, guides, ADRs, progress log
 prompts/             the phase prompts this repository is built from
 ```
@@ -59,6 +63,11 @@ prompts/             the phase prompts this repository is built from
 | `docs/realtime.md`              | live updates: SSE, reconnect, duplicates, what an event does to state |
 | `docs/file-handling.md`         | avatar upload, CSV import and export, validation on both sides        |
 | `docs/state-management.md`      | who owns which state, and why the hand-written cache held up          |
+| `docs/performance.md`           | every optimization with its before/after numbers                      |
+| `docs/rendering.md`             | CSR, SSR, prerender, hydration - what each costs here, measured       |
+| `docs/offline.md`               | exactly what works offline, and what does not                         |
+| `docs/browser-capabilities.md`  | the browser APIs used, and how they are reached safely                |
+| `docs/cross-tab.md`             | tabs coordinating, and the leader-election experiment                 |
 | `docs/decisions/`               | ADRs — the trade-offs behind each significant choice                  |
 | `docs/PROGRESS.md`              | phase log, deviations, technical-debt register                        |
 

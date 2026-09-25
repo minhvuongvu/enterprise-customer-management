@@ -9,7 +9,7 @@ import { Logger } from '../core/logging/logger';
 import { provideTestHttp, SilentLogger } from '../core/testing/http-testing';
 import { provideTestTranslations } from '../core/testing/i18n-testing';
 import { sessionResponseFor } from '../core/testing/session-testing';
-import { LoginPage } from './login-page';
+import { LoginPage, readTypedValues } from './login-page';
 
 @Component({
   selector: 'app-page-stub',
@@ -120,6 +120,15 @@ describe('LoginPage', () => {
     );
   });
 
+  it('says so when another tab signed out, rather than calling it an expiry', async () => {
+    const root = await open('/login?returnUrl=%2Fcustomers&reason=signed-out-elsewhere');
+
+    expect(root.querySelector('[data-testid="signed-out-elsewhere"]')?.textContent).toContain(
+      'You signed out in another tab',
+    );
+    expect(root.querySelector('[data-testid="session-expired"]')).toBeNull();
+  });
+
   it('keeps the password out of the request URL and out of the logs', async () => {
     const root = await open('/login');
 
@@ -137,5 +146,23 @@ describe('LoginPage', () => {
     const logger = TestBed.inject(Logger) as SilentLogger;
     expect(logger.entries.length).toBeGreaterThan(0);
     expect(JSON.stringify(logger.entries)).not.toContain('value-that-must-not-leak');
+  });
+});
+
+describe('readTypedValues', () => {
+  it('reads what was typed into the prerendered form, and empty when there is no form yet', () => {
+    const host = document.createElement('app-login-page');
+    for (const name of ['username', 'password']) {
+      const input = document.createElement('input');
+      input.name = name;
+      host.append(input);
+    }
+    document.body.append(host);
+    host.querySelector<HTMLInputElement>('input[name="username"]')!.value = 'adm';
+
+    expect(readTypedValues(document)).toEqual({ username: 'adm', password: '' });
+
+    host.remove();
+    expect(readTypedValues(document)).toEqual({ username: '', password: '' });
   });
 });

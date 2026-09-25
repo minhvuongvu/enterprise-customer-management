@@ -66,15 +66,16 @@ snapshot/rollback helper.
 
 ## Cache invalidation rules, complete
 
-| Event                              | Pages           | Entity                                | List on screen | Open record                        |
-| ---------------------------------- | --------------- | ------------------------------------- | -------------- | ---------------------------------- |
-| create (this user)                 | drop            | put the new one                       | refetch        | -                                  |
-| update (this user)                 | drop            | put the saved one                     | refetch        | replaced with saved                |
-| delete (this user)                 | drop            | drop                                  | refetch        | cleared                            |
-| bulk (this user)                   | drop            | drop changed                          | refetch        | -                                  |
-| optimistic status (this user)      | drop on success | optimistic, then saved or rolled back | row patched    | patched, then saved or rolled back |
-| avatar upload / import (this user) | drop            | -                                     | refetch        | refetched (upload)                 |
-| any change by **another** user     | drop            | drop                                  | refetch        | **flagged**                        |
-| resync                             | drop            | -                                     | refetch        | flagged unverified                 |
+| Event                                                | Pages           | Entity                                | List on screen | Open record                        |
+| ---------------------------------------------------- | --------------- | ------------------------------------- | -------------- | ---------------------------------- |
+| create (this user)                                   | drop            | put the new one                       | refetch        | -                                  |
+| update (this user)                                   | drop            | put the saved one                     | refetch        | replaced with saved                |
+| delete (this user)                                   | drop            | drop                                  | refetch        | cleared                            |
+| bulk (this user)                                     | drop            | drop changed                          | refetch        | -                                  |
+| optimistic status (this user)                        | drop on success | optimistic, then saved or rolled back | row patched    | patched, then saved or rolled back |
+| avatar upload / import (this user)                   | drop            | -                                     | refetch        | refetched (upload)                 |
+| any change by **another** user                       | drop            | drop                                  | refetch        | **flagged**                        |
+| any change by this user in **another tab** (Phase 5) | drop            | drop                                  | refetch        | **flagged**                        |
+| resync, or a bulk/import in another tab              | drop            | -                                     | refetch        | flagged unverified                 |
 
 "Refetch" on a list nobody is watching means "refetch on the next visit".

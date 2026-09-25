@@ -41,6 +41,17 @@ export const routes: Routes = [
     loadComponent: () => import('./login/login-page').then((m) => m.LoginPage),
   },
   {
+    // Public, outside the shell: the rendering lab's specimens (ADR-0026).
+    // Server rendering needs a page that does not depend on who is asking,
+    // and every page inside the shell does. Their render modes are declared
+    // in app.routes.server.ts.
+    path: 'rendering-lab',
+    loadChildren: () =>
+      import('./technical-labs/rendering/rendering-specimen.routes').then(
+        (m) => m.renderingSpecimenRoutes,
+      ),
+  },
+  {
     // Phase 0's landing route. Kept as a redirect rather than deleted: a URL
     // that once worked and now 404s is indistinguishable from a broken
     // application, and redirects are the cheapest thing in a router.
@@ -50,11 +61,14 @@ export const routes: Routes = [
   {
     path: '',
     canActivate: [authGuard],
+    // Preloaded, with the customer list below: nearly every session goes
+    // from sign-in straight here (FlaggedPreloading).
+    data: withMetadata({ preload: true }),
     loadComponent: () => import('./layout/app-shell').then((m) => m.AppShell),
     children: [
       {
         path: 'customers',
-        data: withMetadata({ breadcrumb: 'nav.customers' }),
+        data: withMetadata({ breadcrumb: 'nav.customers', preload: true }),
         loadChildren: () => import('./customers/customers.routes').then((m) => m.customersRoutes),
       },
       {

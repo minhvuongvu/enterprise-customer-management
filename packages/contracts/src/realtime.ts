@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as z from 'zod';
 import { customerCodeSchema } from './customer.js';
 import { customerIdSchema, instantSchema, userIdSchema } from './primitives.js';
 

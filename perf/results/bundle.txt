@@ -1,0 +1,15 @@
+Initial JavaScript: 515.4 kB raw in 3 files
+
+   242.0 kB  @angular/core
+   129.6 kB  zod
+   102.2 kB  @angular/router
+    64.1 kB  @angular/common
+    34.0 kB  rxjs
+    21.0 kB  @jsverse/transloco
+    18.7 kB  @angular/platform-browser
+    16.4 kB  app:core
+     7.3 kB  @angular/service-worker
+     2.5 kB  tslib
+     2.2 kB  ../../packages/contracts/dist/customer.js
+     1.2 kB  app:app.routes.ts
+     1.1 kB  ../../packages/contracts/dist/operations.js

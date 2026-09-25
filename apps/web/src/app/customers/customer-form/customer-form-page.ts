@@ -71,6 +71,11 @@ export type CustomerFormMode = 'create' | 'edit';
  */
 @Component({
   selector: 'app-customer-form-page',
+  host: {
+    // Closing the tab, reloading or typing a new address is not a router
+    // navigation, so the guard below never hears of it (Phase 5).
+    '(window:beforeunload)': 'warnBeforeUnload($event)',
+  },
   imports: [
     Button,
     CustomerFormFields,
@@ -553,6 +558,23 @@ export class CustomerFormPage implements CanLeave {
   }
 
   // ----------------------------------------------------------- leaving
+
+  /**
+   * Asks the browser to confirm leaving the page with unsaved changes.
+   *
+   * The browser shows its own, untranslatable dialog - no page may choose
+   * the wording - and shows it only if the user has interacted with the
+   * page. `preventDefault()` is the standard way to ask; `returnValue` is
+   * what older Chromium and Safari still read. Registered through the
+   * host binding, never on `window` directly, so the page still renders on
+   * the server.
+   */
+  protected warnBeforeUnload(event: BeforeUnloadEvent): void {
+    if (this.form.dirty && !this.saving()) {
+      event.preventDefault();
+      event.returnValue = '';
+    }
+  }
 
   canLeave(): boolean | Observable<boolean> {
     if (!this.form.dirty || this.saving()) {

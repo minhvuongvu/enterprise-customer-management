@@ -26,17 +26,27 @@ npx playwright install chromium
 
 Run from the repository root.
 
-| Script                            | What it does                                     |
-| --------------------------------- | ------------------------------------------------ |
-| `npm start`                       | dev server on http://localhost:4200              |
-| `npm run start:api`               | mock API on http://localhost:4300                |
-| `npm run build`                   | production build, browser **and** server bundles |
-| `npm test`                        | unit and component tests (Vitest), single run    |
-| `npm run lint`                    | ESLint over TypeScript and templates             |
-| `npm run typecheck`               | `ngc --noEmit` — includes template type checking |
-| `npm run format` / `format:check` | Prettier                                         |
-| `npm run e2e`                     | Playwright; starts the dev server itself         |
-| `npm run verify`                  | everything above, in the order CI runs it        |
+| Script                            | What it does                                                                                    |
+| --------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `npm start`                       | dev server on http://localhost:4200                                                             |
+| `npm run start:api`               | mock API on http://localhost:4300                                                               |
+| `npm run build`                   | production build, browser **and** server bundles                                                |
+| `npm test`                        | unit and component tests (Vitest), single run                                                   |
+| `npm run lint`                    | ESLint over TypeScript and templates                                                            |
+| `npm run typecheck`               | `ngc --noEmit` — includes template type checking                                                |
+| `npm run format` / `format:check` | Prettier                                                                                        |
+| `npm run e2e`                     | Playwright; starts the dev server itself                                                        |
+| `npm run e2e:production`          | Playwright against the production build (service worker, preloading); run `npm run build` first |
+| `npm run verify`                  | everything above, in the order CI runs it                                                       |
+
+Measurement scripts (Phase 5), run with `node` from the root after `npm run build`:
+
+| Script                             | Measures                                                                    |
+| ---------------------------------- | --------------------------------------------------------------------------- |
+| `node perf/bundle-report.ts`       | what the initial download holds, by package (needs `ng build --stats-json`) |
+| `node perf/measure-rendering.ts`   | TTFB, FCP, LCP, hydration, bytes for each rendering specimen                |
+| `node perf/measure-production.ts`  | route preloading and the performance lab's before/after pairs               |
+| `node perf/generate-lab-images.ts` | regenerates the performance lab's images                                    |
 
 `npm run verify` is the one to run before calling a phase done.
 
@@ -153,6 +163,15 @@ server, and the rest of the code stays identical.
 **A template type error only appears during `npm run build`.** It should have appeared
 in `npm run typecheck` — that script runs `ngc`, not `tsc`, precisely so templates are
 checked. If it did not, the tsconfig project list has drifted.
+
+**The production server answers 400 "Header host ... is not allowed".** The SSR
+server only accepts the hosts in `security.allowedHosts`. Start it with
+`NG_ALLOWED_HOSTS=localhost node apps/web/dist/web/server/server.mjs`, as the
+measurement scripts do.
+
+**A stale application after a production build.** The service worker serves the
+cached shell until the new version is installed and the page reloaded. In
+DevTools → Application → Service workers, "Update on reload" or "Unregister".
 
 **`npm run e2e` cannot reach the server.** Playwright starts the dev server itself and
 reuses one that is already running. A stale process on port 4200 that is serving

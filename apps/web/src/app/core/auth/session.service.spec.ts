@@ -3,7 +3,13 @@ import { TestBed } from '@angular/core/testing';
 import { firstValueFrom } from 'rxjs';
 import { provideTestHttp } from '../testing/http-testing';
 import { sessionResponseFor } from '../testing/session-testing';
-import { SessionService, type SessionEndReason, type SessionStatus } from './session.service';
+import { NAVIGATOR } from '../platform/platform.tokens';
+import {
+  REFRESH_LOCK,
+  SessionService,
+  type SessionEndReason,
+  type SessionStatus,
+} from './session.service';
 
 const MANAGER = sessionResponseFor('manager');
 
@@ -156,5 +162,77 @@ describe('SessionService', () => {
       backend.expectOne('/api/auth/session').flush(MANAGER);
       expect(await again).toBe('authenticated');
     });
+  });
+});
+
+describe('SessionService refresh across tabs', () => {
+  /** A LockManager that records what it was asked and grants at once. */
+  function recordingLocks() {
+    const requested: string[] = [];
+    let held = false;
+    const locks = {
+      request: async (name: string, callback: () => Promise<unknown>) => {
+        requested.push(name);
+        held = true;
+        try {
+          return await callback();
+        } finally {
+          held = false;
+        }
+      },
+    };
+    return { locks, requested, isHeld: () => held };
+  }
+
+  it('renews inside a Web Lock, so two tabs never spend the same refresh token', async () => {
+    const { locks, requested, isHeld } = recordingLocks();
+    TestBed.configureTestingModule({
+      providers: [provideTestHttp(), { provide: NAVIGATOR, useValue: { locks } }],
+    });
+    const session = TestBed.inject(SessionService);
+    const backend = TestBed.inject(HttpTestingController);
+
+    const renewed = firstValueFrom(session.refresh());
+    await Promise.resolve();
+    const request = backend.expectOne('/api/auth/refresh');
+    // The lock is held while the request is in flight - that is the point.
+    expect(requested).toEqual([REFRESH_LOCK]);
+    expect(isHeld()).toBe(true);
+
+    request.flush(MANAGER);
+    await renewed;
+    expect(isHeld()).toBe(false);
+    expect(session.status()).toBe('authenticated');
+  });
+
+  it('still single-flights inside the tab: two callers, one lock, one request', async () => {
+    const { locks, requested } = recordingLocks();
+    TestBed.configureTestingModule({
+      providers: [provideTestHttp(), { provide: NAVIGATOR, useValue: { locks } }],
+    });
+    const session = TestBed.inject(SessionService);
+    const backend = TestBed.inject(HttpTestingController);
+
+    const first = firstValueFrom(session.refresh());
+    const second = firstValueFrom(session.refresh());
+    await Promise.resolve();
+    backend.expectOne('/api/auth/refresh').flush(MANAGER);
+    await Promise.all([first, second]);
+
+    expect(requested).toEqual([REFRESH_LOCK]);
+  });
+
+  it('refreshes unguarded where the browser has no Web Locks', async () => {
+    TestBed.configureTestingModule({
+      providers: [provideTestHttp(), { provide: NAVIGATOR, useValue: {} }],
+    });
+    const session = TestBed.inject(SessionService);
+    const backend = TestBed.inject(HttpTestingController);
+
+    const renewed = firstValueFrom(session.refresh());
+    backend.expectOne('/api/auth/refresh').flush(MANAGER);
+    await renewed;
+
+    expect(session.status()).toBe('authenticated');
   });
 });

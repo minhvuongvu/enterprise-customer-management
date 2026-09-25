@@ -19,7 +19,7 @@ skipped, or broke.
 | 2     | Customer CRUD, Forms & Server State             | **Done**    | `phase-2`    | 2026-09-20 |
 | 3     | Authentication, Authorization & Security        | **Done**    | `phase-3`    | 2026-09-25 |
 | 4     | Enterprise UX, Files, Notifications & Realtime  | **Done**    | `phase-4`    | 2026-09-25 |
-| 5     | Performance, Rendering, Offline & Browser APIs  | Not started | `phase-5`    | —          |
+| 5     | Performance, Rendering, Offline & Browser APIs  | **Done**    | `phase-5`    | 2026-09-25 |
 | 6     | Accessibility, i18n, Design System & UX Quality | Not started | `phase-6`    | —          |
 | 7     | Observability, Testing, CI/CD & Hardening       | Not started | `phase-7`    | —          |
 | 8     | Enterprise Codebase Review                      | Not started | `phase-8`    | —          |
@@ -62,6 +62,168 @@ Two things were fixed on 2026-09-20 and will look confusing if rediscovered late
 ## Phase log
 
 Newest entry first. One entry per phase, appended at the end of that phase.
+
+### Phase 5 - Performance, Rendering, Offline & Browser APIs
+
+**Completed:** 2026-09-25 - **Tag:** `phase-5-complete`
+
+**Built**
+
+- **Bundle analysis** (`perf/bundle-report.ts`): the initial download by
+  package. It found zod at 500.7 of 799 kB - every locale, never used. One
+  import change in the contracts (`import * as z`): **808.2 → 481.5 kB raw,
+  183.5 → 131.5 kB transferred**. Debt row 8 paid. ADR-0025.
+- **Rendering lab**: five public, data-free specimens of one page
+  (`/rendering-lab/{client,server,prerender,prerender-no-hydration,
+prerender-incremental}`), incremental hydration enabled, bootstrap and
+  stable marks in `main.ts`, a live metrics panel, and
+  `perf/measure-rendering.ts` (production server, 7 runs, two profiles).
+  Results and interpretation in docs/rendering.md. ADR-0026.
+- **Performance lab** on 100,000 generated rows: debounce and throttle,
+  `computed()` vs a template method, virtual vs plain list, `NgOptimizedImage`
+  vs original uploads, `@defer (on viewport)` code splitting. Every pair
+  measured by `perf/measure-production.ts` (docs/performance.md).
+- **Route preloading** by flag (`FlaggedPreloading`): the shell, customers and
+  the list page preload on the sign-in page. Sign-in → first row, throttled:
+  **1,916 → 531 ms**. Off with `Save-Data` or the `routePreloading` runtime
+  flag. ADR-0031.
+- **Browser storage lab**: localStorage vs sessionStorage, the storage event
+  log, IndexedDB notes with quota/persistence. **Browser APIs lab**: URL,
+  History (through the router), File (signature, SHA-256, never uploaded),
+  Clipboard, Permissions, Geolocation. **Workers lab**: a prime sieve on the
+  main thread vs a Web Worker (longest frame **178 → 17 ms**), and the service
+  worker's status.
+- **Service worker** (`@angular/service-worker`, production only): caches the
+  app shell and runtime config, network-first navigation, **no API data**.
+  The application starts offline once installed. ADR-0028.
+- **Offline**: `ConnectivityService` (core), an offline banner in the shell and
+  a "back online" toast; the offline lab keeps a four-field, user-scoped,
+  read-only customer snapshot in IndexedDB, refreshed on reconnect, deleted
+  when the session ends. No write queue. ADR-0029.
+- **Cross-tab** (ADR-0027): `TabChannel` (one versioned `BroadcastChannel`,
+  topics owned by features). A customer change in one tab is announced in the
+  others (debt row 25 paid); sign-out ends every tab; refresh runs under a Web
+  Lock so two tabs never spend one refresh token (debt row 18 paid); the theme
+  follows the `storage` event. Cross-tab lab shows both mechanisms.
+- **Leader election lab**: a localStorage lease with heartbeat,
+  settle-and-reread and `pagehide` resignation; one tab polls, all see the
+  result; "Freeze heartbeat" provokes the failure modes. ADR-0030.
+- **Debt row 13 paid**: typing into the prerendered sign-in form before
+  hydration is kept (reproduced on the production build: "admin" typed, `""`
+  after hydration; fixed by starting the form from the inputs' DOM values).
+- `beforeunload` on the customer form with unsaved changes - deferred to Phase
+  5 by architecture.md since Phase 2.
+- `npm run e2e:production` (`playwright.production.config.ts`,
+  `e2e-production/`): service worker offline start, no cached API response,
+  preloading, pre-hydration typing - against the real build. Part of
+  `npm run verify`.
+
+**Architectural decisions**
+
+- [ADR-0025](decisions/0025-bundle-budget-as-a-ratchet.md) - measure the bundle
+  by package; zod namespace import; the budget as a ratchet (530 kB).
+- [ADR-0026](decisions/0026-rendering-lab-specimens.md) - rendering measured on
+  public, data-free specimens.
+- [ADR-0027](decisions/0027-cross-tab-coordination.md) - BroadcastChannel, Web
+  Lock, storage event; one SSE stream per tab stays (open question 5).
+- [ADR-0028](decisions/0028-service-worker-caches-the-shell-only.md) - the
+  service worker caches the shell, never API data.
+- [ADR-0029](decisions/0029-offline-scope.md) - offline is one read-only,
+  user-scoped snapshot plus honest connectivity UI.
+- [ADR-0030](decisions/0030-leader-election-by-lease.md) - the leader lab uses
+  a lease on purpose; the application uses Web Locks.
+- [ADR-0031](decisions/0031-flagged-route-preloading.md) - preload only flagged
+  routes.
+
+**Deviated from the plan**
+
+- **The budget changed**, not only the bundle: `maximumWarning` 500 → 530 kB
+  as a ratchet over the measured size (ADR-0025). The initial download is
+  524.6 kB: the zod fix took it to 481.5, and Phase 5's own additions put back
+  +43 kB, each measured - the `@defer` runtime 9.6, `provideServiceWorker`
+  6.1, `NgOptimizedImage` 5.4 (though only a lazy page uses it: Angular's FESM
+  side effects land in the main chunk), the rest core additions
+  (cross-tab, connectivity, preloading, offline banner) and shared Angular
+  code.
+- **The customer feature changed in four places**, each justified by a debt
+  row or an earlier deferral: `CustomerStore.ownChanges$` (debt 25),
+  `CustomerRealtimeSync` handling tab messages (debt 25), the list route's
+  `preload` flag (ADR-0031), `beforeunload` on the form (architecture.md).
+- **Contracts changed** (import style only, no schema change) - 9 files.
+- **`AppConfigStore.apply` takes `AppConfigOverrides`** (partial flags):
+  adding the second flag showed that a `config.json` omitting any flag was
+  mistyped, though the merge always handled it.
+- **The `realtime` placeholder lab was removed** from the catalogue: realtime
+  was built into the product in Phase 4 (docs/realtime.md), and the
+  placeholder said "Phase 4".
+- **Root `tsconfig.json` allows `.ts` import extensions** (`perf/` runs under
+  Node's type stripping); `perf/` and `e2e-production/` are ESM packages
+  (`"type": "module"`), not workspaces.
+
+**Deliberately not done**
+
+- No write queue, no background sync, no offline-first claim (docs/offline.md).
+- No SSR for anything authenticated (§5.6).
+- No leader-elected shared SSE stream (ADR-0027).
+- No compression in the Express SSR server: the rendering numbers are
+  uncompressed and say so; a production proxy compresses.
+- No cross-browser runs - Phase 6 widens the matrix.
+
+**Checks**
+
+| Check                    | Result                                                                                      |
+| ------------------------ | ------------------------------------------------------------------------------------------- |
+| `npm run format:check`   | clean                                                                                       |
+| `npm run lint`           | clean - root + workspaces, 0 errors, 0 warnings                                             |
+| `npm run typecheck`      | clean across all three packages, templates and the worker config included                   |
+| `npm test`               | 574 passed - 419 web, 122 mock-api, 33 contracts (was 509)                                  |
+| `npm run build`          | succeeded, browser + server bundles, 4 routes prerendered, **no budget warning** (524.6 kB) |
+| `npm run e2e`            | 87 passed (was 57); a second full run also passed                                           |
+| `npm run e2e:production` | 4 passed - new suite against the production build                                           |
+| Import cycles            | none - `apps/web/src` 219 modules / 639 edges with specs (same method as Phase 3)           |
+| Labs isolated            | no import from `technical-labs/` into a feature or core; none from a feature into the labs  |
+
+The tests that guard the Phase 5 guarantees were checked for teeth: the
+pre-hydration typing test fails on the previous build (`""` instead of
+`admin`); removing the announcement from `changeStatus` fails the cross-tab
+store test; the unit suite covers the refresh lock, no-echo and payload
+validation.
+
+**Findings worth carrying forward**
+
+- **`import { z } from 'zod'` costs 370 kB.** zod 4's `z` export is a
+  namespace object esbuild cannot tree-shake. `import * as z` can.
+- **Lazy-only Angular APIs can still grow the initial bundle.** Top-level side
+  effects in Angular's shared FESM files must run when main first imports the
+  file. Measure new APIs with `perf/bundle-report.ts`.
+- **Hydration was not cheaper than client rendering** for 400 rows
+  (348 vs 259 ms throttled). Server HTML buys first paint (17x sooner), not
+  interactivity (0.8 s later on a slow link).
+- **Chrome's LCP reports hydration time on server-rendered pages under
+  throttling** - Angular re-sets bound text to identical values while
+  hydrating. FCP is the number that matches what the user saw.
+- **`requestAnimationFrame`'s timestamp argument hides main-thread freezes in
+  headless Chromium**; read `performance.now()` inside the callback.
+- **Lazy loading did nothing for the image grid**: Chromium fetches lazy images
+  within ~1,250 px of the viewport.
+- **`page.goto` resolves before a lazy page has subscribed to anything** - a
+  cross-tab test must wait for the page to render before the other tab writes.
+- **The production SSR server refuses unknown hosts** (`NG_ALLOWED_HOSTS`), and
+  `route.continue` cannot change the host - the perf scripts forward `/api`
+  with `route.fetch` + `fulfill` instead.
+
+**For the next phase (6)**
+
+- Offline banner, lab pages and the specimens get an accessibility pass; the
+  specimen page has its own `<main>` outside the shell.
+- The i18n lint ignore list grew to 17 (`app-lab-section[sectionId]`): debt row
+  16 is close to the "custom rule" threshold.
+- `beforeunload` shows the browser's own, untranslatable dialog - worth
+  mentioning in the i18n work.
+- Cross-browser: Web Locks, BroadcastChannel and the Permissions API names
+  differ in support; Firefox and Safari have not been run.
+
+---
 
 ### Phase 4 - Enterprise UX, Files, Notifications & Realtime
 
@@ -831,26 +993,25 @@ it. Recorded as debt row 8 rather than silenced by raising the budget.
 
 Debt is only acceptable when it is written down. Remove the row when it is paid.
 
-| #   | Debt                                                                                                                                                                                             | Added in  | Why accepted                                                                                                                                                                                                              | Pay by                                                       | Status |
-| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ | ------ |
-| 2   | Dependency direction is enforced by review, not by a tool                                                                                                                                        | Phase 0   | There is one package and few boundaries to break                                                                                                                                                                          | Phase 7                                                      | Open   |
-| 3   | Four npm packages have unapproved install scripts (`esbuild`, `lmdb`, `msgpackr-extract`, `@parcel/watcher`) under npm 11's new gating; builds work without them                                 | Phase 0   | No observed impact on build, test or serve                                                                                                                                                                                | Phase 7                                                      | Open   |
-| 5   | `packages/contracts` must be built before the apps typecheck; a bare `tsc` in `apps/web` fails on a fresh clone                                                                                  | Phase 0.5 | The root scripts handle it; only a hand-run command is affected                                                                                                                                                           | Phase 7 (CI)                                                 | Open   |
-| 6   | The mock API rate limiter is fixed-window, so a client can send up to twice the limit across a boundary                                                                                          | Phase 0.5 | It exists to make 429 a real code path, not to be a real limiter                                                                                                                                                          | not planned - documented instead                             | Open   |
-| 8   | The browser's initial bundle is 797 kB raw against a 500 kB budget                                                                                                                               | Phase 0.5 | Pre-existing and measured; Phase 2 added 15 kB of it, because every feature page is lazy                                                                                                                                  | Phase 5                                                      | Open   |
-| 9   | `app-dialog` renders inline rather than in a CDK overlay, and does not lock background scrolling                                                                                                 | Phase 1   | No page yet has a transformed ancestor or a scroll to lock                                                                                                                                                                | Phase 6 (confirmations never stack - ADR-0022)               | Open   |
-| 10  | "Components use only semantic tokens" is enforced by review and a grep, not by a linter                                                                                                          | Phase 1   | The grep for hex literals and `--palette-*` in components is clean today                                                                                                                                                  | Phase 6 (stylelint)                                          | Open   |
-| 12  | A `VALIDATION_FAILED` response names the field but not the reason in any machine-readable form                                                                                                   | Phase 2   | The envelope's messages are developer prose and cannot be translated, so the client says which field and supplies its own sentence                                                                                        | Phase 6 (contract change)                                    | Open   |
-| 13  | Typing into the prerendered sign-in form before hydration is discarded                                                                                                                           | Phase 2   | The submit button is disabled until the app is live, so the credential cannot reach the URL; only the keystrokes are lost. Phase 3 kept `/login` prerendered: every redirect to it is a client-side navigation (ADR-0016) | Phase 5                                                      | Open   |
-| 14  | Search does not match across diacritics - "nguyen" does not find "Nguyễn"                                                                                                                        | Phase 2   | The mock's index is a plain lowercase substring match, which is honest about what a naive search does                                                                                                                     | Phase 6                                                      | Open   |
-| 16  | The i18n lint rule's `ignoreAttributes` list has grown to 16 entries                                                                                                                             | Phase 2   | Every entry is genuinely not copy, and the rule still catches real violations                                                                                                                                             | Phase 6 (a custom rule is cheaper past ~20)                  | Open   |
-| 17  | No Content-Security-Policy on the application document                                                                                                                                           | Phase 3   | It belongs to the server that serves `index.html`, and needs nonces for Angular's inline styles and event-replay script                                                                                                   | Phase 7                                                      | Open   |
-| 18  | Tabs learn of a sign-out elsewhere only on their next request, and two tabs refreshing at the same instant can have one refused (rotation)                                                       | Phase 3   | The refused tab asks the user to sign in, which is safe; cross-tab messaging is a browser-API concern                                                                                                                     | Phase 5                                                      | Open   |
-| 20  | A session that ends - by expiry or by pressing sign out - while a form has unsaved changes asks whether to discard them on the way to sign-in; staying leaves a signed-out form that cannot save | Phase 3   | Nothing is lost silently, which is the property that matters; the better flow (re-authenticate in place) is a UX design question                                                                                          | Phase 6 (re-authenticating in place is a UX design question) | Open   |
-| 21  | A signed-out cold visit sends one refresh request that fails with 403 (no CSRF cookie) before settling on "anonymous"                                                                            | Phase 3   | One wasted request, handled correctly; skipping it would mean the client reasoning about cookies it is meant not to depend on                                                                                             | Phase 7                                                      | Open   |
-| 23  | Toasts dismiss on a timer and do not pause on hover or focus                                                                                                                                     | Phase 4   | Anything that must not be missed also goes to the notification centre, where it waits                                                                                                                                     | Phase 6                                                      | Open   |
-| 24  | Changing `@ecm/contracts`' exports needs `apps/web/.angular/cache` deleted before `npm start` / E2E see them                                                                                     | Phase 4   | A fresh clone and CI are unaffected; the symptom is loud ("does not provide an export named")                                                                                                                             | Phase 7 (tooling)                                            | Open   |
-| 25  | A change the same user makes in another tab is not announced by realtime; every tab holds its own event stream                                                                                   | Phase 4   | Own changes are ignored by actor id, which cannot tell tabs apart; the list still catches up on its next fetch                                                                                                            | Phase 5                                                      | Open   |
+| #   | Debt                                                                                                                                                                                             | Added in  | Why accepted                                                                                                                       | Pay by                                                       | Status |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------- | ---------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ | ------ |
+| 2   | Dependency direction is enforced by review, not by a tool                                                                                                                                        | Phase 0   | There is one package and few boundaries to break                                                                                   | Phase 7                                                      | Open   |
+| 3   | Four npm packages have unapproved install scripts (`esbuild`, `lmdb`, `msgpackr-extract`, `@parcel/watcher`) under npm 11's new gating; builds work without them                                 | Phase 0   | No observed impact on build, test or serve                                                                                         | Phase 7                                                      | Open   |
+| 5   | `packages/contracts` must be built before the apps typecheck; a bare `tsc` in `apps/web` fails on a fresh clone                                                                                  | Phase 0.5 | The root scripts handle it; only a hand-run command is affected                                                                    | Phase 7 (CI)                                                 | Open   |
+| 6   | The mock API rate limiter is fixed-window, so a client can send up to twice the limit across a boundary                                                                                          | Phase 0.5 | It exists to make 429 a real code path, not to be a real limiter                                                                   | not planned - documented instead                             | Open   |
+| 9   | `app-dialog` renders inline rather than in a CDK overlay, and does not lock background scrolling                                                                                                 | Phase 1   | No page yet has a transformed ancestor or a scroll to lock                                                                         | Phase 6 (confirmations never stack - ADR-0022)               | Open   |
+| 10  | "Components use only semantic tokens" is enforced by review and a grep, not by a linter                                                                                                          | Phase 1   | The grep for hex literals and `--palette-*` in components is clean today                                                           | Phase 6 (stylelint)                                          | Open   |
+| 12  | A `VALIDATION_FAILED` response names the field but not the reason in any machine-readable form                                                                                                   | Phase 2   | The envelope's messages are developer prose and cannot be translated, so the client says which field and supplies its own sentence | Phase 6 (contract change)                                    | Open   |
+| 14  | Search does not match across diacritics - "nguyen" does not find "Nguyễn"                                                                                                                        | Phase 2   | The mock's index is a plain lowercase substring match, which is honest about what a naive search does                              | Phase 6                                                      | Open   |
+| 16  | The i18n lint rule's `ignoreAttributes` list has grown to 17 entries                                                                                                                             | Phase 2   | Every entry is genuinely not copy, and the rule still catches real violations                                                      | Phase 6 (a custom rule is cheaper past ~20)                  | Open   |
+| 17  | No Content-Security-Policy on the application document                                                                                                                                           | Phase 3   | It belongs to the server that serves `index.html`, and needs nonces for Angular's inline styles and event-replay script            | Phase 7                                                      | Open   |
+| 20  | A session that ends - by expiry or by pressing sign out - while a form has unsaved changes asks whether to discard them on the way to sign-in; staying leaves a signed-out form that cannot save | Phase 3   | Nothing is lost silently, which is the property that matters; the better flow (re-authenticate in place) is a UX design question   | Phase 6 (re-authenticating in place is a UX design question) | Open   |
+| 21  | A signed-out cold visit sends one refresh request that fails with 403 (no CSRF cookie) before settling on "anonymous"                                                                            | Phase 3   | One wasted request, handled correctly; skipping it would mean the client reasoning about cookies it is meant not to depend on      | Phase 7                                                      | Open   |
+| 23  | Toasts dismiss on a timer and do not pause on hover or focus                                                                                                                                     | Phase 4   | Anything that must not be missed also goes to the notification centre, where it waits                                              | Phase 6                                                      | Open   |
+| 24  | Changing `@ecm/contracts`' exports needs `apps/web/.angular/cache` deleted before `npm start` / E2E see them                                                                                     | Phase 4   | A fresh clone and CI are unaffected; the symptom is loud ("does not provide an export named")                                      | Phase 7 (tooling)                                            | Open   |
+| 26  | The rendering measurements are uncompressed: the Express SSR server does not gzip, so server-rendered pages transfer 144 kB more HTML than a real deployment would                               | Phase 5   | Stated in docs/rendering.md; the comparison between modes holds, the absolute bytes do not                                         | Phase 7 (deployment / reverse proxy)                         | Open   |
+| 27  | The offline lab's snapshot survives on disk if every tab that opened the lab is closed before the session ends                                                                                   | Phase 5   | Four fields, never shown to another user, deleted on the next visit if the user differs                                            | not planned - documented in docs/offline.md                  | Open   |
+| 28  | Web Locks, BroadcastChannel and Permissions API names have been exercised only in Chromium                                                                                                       | Phase 5   | Each degrades explicitly where missing (unguarded refresh, no cross-tab messages, 'not supported')                                 | Phase 6 (browser matrix)                                     | Open   |
 
 ---
 
@@ -864,7 +1025,7 @@ Things that could not be decided yet and must be decided by a specific phase.
 | 2   | ~~Does the hand-written cache survive realtime + optimistic updates, or is NgRx SignalStore needed?~~ | ~~Phase 4~~         | **Answered 2026-09-25:** it survives; no library. See `docs/state-management.md` and ADR-0023                                                                                          |
 | 3   | ~~Is SSR-in-dev noisy enough to hurt early phases?~~                                                  | ~~Phase 1~~         | **Answered 2026-09-20:** no. Dev server, build and E2E all run normally with SSR enabled.                                                                                              |
 | 4   | ~~Should route titles use a translating `TitleStrategy`, or per-page metadata?~~                      | ~~Phase 1~~         | **Answered 2026-09-20:** a `TitleStrategy` reading route `title` as a translation key. See [ADR-0009](decisions/0009-translated-route-titles.md)                                       |
-| 5   | Does the client hold one SSE connection per tab, or elect one tab to hold it and share?               | Phase 5             | Phase 4 holds one per tab (ADR-0020); HTTP/1.1 allows six connections per origin. Debt row 25                                                                                          |
+| 5   | ~~Does the client hold one SSE connection per tab, or elect one tab to hold it and share?~~           | ~~Phase 5~~         | **Answered 2026-09-25:** one per tab stays - HTTP/2 multiplexes, and a relaying leader adds a failure mode. Same-user changes in other tabs travel on the tab channel. ADR-0027        |
 | 6   | ~~Where does DTO-to-domain mapping live once the customer feature exists?~~                           | ~~Phase 2~~         | **Answered 2026-09-20:** nowhere - the contract type is the domain type. See [ADR-0014](decisions/0014-no-dto-to-domain-mapping.md)                                                    |
 | 7   | ~~Does the dialog need a CDK overlay and a scroll lock once confirmations stack?~~                    | ~~Phase 4~~         | **Answered 2026-09-25:** confirmations never stack (ADR-0022), so no overlay is needed for that; the scroll lock is debt row 9                                                         |
 | 8   | ~~Should `/login` stop being prerendered, now that a prerendered form loses pre-hydration typing?~~   | ~~Phase 3~~         | **Answered 2026-09-25:** no. Every redirect to it is client-side, so only a cold load shows the prerendered form. See [ADR-0016](decisions/0016-session-tokens-in-httponly-cookies.md) |
