@@ -1,19 +1,21 @@
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
+import { Badge } from '../shared/ui/badge/badge';
+import { Button } from '../shared/ui/button/button';
 import { ThemeToggle } from './theme-toggle';
 
 /**
  * The application banner.
  *
- * Presentation only: it reports that the menu button was pressed and lets
- * `AppShell` decide what that means. A header that opened the drawer itself
+ * Presentation only: it reports that the menu button - or sign out - was
+ * pressed and lets `AppShell` decide what that means. A header that opened the drawer itself
  * would have to know about breakpoints, focus trapping and route changes -
  * three concerns that have nothing to do with a bar at the top of the page.
  */
 @Component({
   selector: 'app-header',
-  imports: [RouterLink, ThemeToggle, TranslocoDirective],
+  imports: [Badge, Button, RouterLink, ThemeToggle, TranslocoDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <header class="header" *transloco="let t">
@@ -43,10 +45,34 @@ import { ThemeToggle } from './theme-toggle';
 
       <div class="header__actions">
         <app-theme-toggle />
+
+        @if (userName()) {
+          <!-- Who is signed in, and as what. The role is shown because it
+               explains the UI: a manager who sees no delete button should be
+               able to tell why without asking. -->
+          <p class="header__user" data-testid="current-user">
+            <span class="header__user-name">{{ userName() }}</span>
+            @if (roleKey()) {
+              <app-badge>{{ t(roleKey()) }}</app-badge>
+            }
+          </p>
+
+          <app-button
+            size="sm"
+            variant="ghost"
+            [loading]="signingOut()"
+            (click)="signOut.emit()"
+            data-testid="sign-out"
+          >
+            {{ t('auth.signOut') }}
+          </app-button>
+        }
       </div>
     </header>
   `,
   styles: `
+    @use 'styles/breakpoints' as bp;
+
     /* Sticky so navigation and the theme control stay reachable while a long
        customer list scrolls. */
     :host {
@@ -110,11 +136,36 @@ import { ThemeToggle } from './theme-toggle';
       gap: var(--space-2);
       margin-inline-start: auto;
     }
+
+    .header__user {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      margin: 0;
+      color: var(--text-secondary);
+      font-size: var(--text-sm);
+    }
+
+    /* On a phone the header has room for the controls, not for a name. The
+       badge stays: it is the part that explains what the user can do. */
+    @media #{bp.$below-tablet} {
+      .header__user-name {
+        display: none;
+      }
+    }
   `,
 })
 export class AppHeader {
   readonly showMenuButton = input(false);
   readonly drawerOpen = input(false);
 
+  /** Empty when nobody is signed in, which hides the user area entirely. */
+  readonly userName = input('');
+  /** Translation key for the role, e.g. `auth.role.MANAGER`. */
+  readonly roleKey = input('');
+  readonly signingOut = input(false);
+
   readonly menuToggled = output<void>();
+  /** The header reports the intent; the shell owns what signing out means. */
+  readonly signOut = output<void>();
 }

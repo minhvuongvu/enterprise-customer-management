@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
   API_ERROR_STATUS,
+  AVATAR_FILE_POLICY,
+  AVATAR_MAX_BYTES,
+  IMPORT_FILE_POLICY,
+  checkFile,
+  fileExtensionOf,
   FIXTURE_USERS,
   ROLE_PERMISSIONS,
   apiErrorBodySchema,
@@ -276,5 +281,45 @@ describe('the bulk response', () => {
     });
 
     expect(parsed.success).toBe(false);
+  });
+});
+
+describe('the shared file policy', () => {
+  const avatar = (name: string, type: string, size = 1024) =>
+    checkFile({ name, type, size }, AVATAR_FILE_POLICY);
+
+  it('accepts a file that satisfies every rule', () => {
+    expect(avatar('portrait.PNG', 'image/png')).toBeNull();
+    expect(avatar('portrait.jpeg', 'image/jpeg')).toBeNull();
+  });
+
+  it('refuses an empty file before anything else', () => {
+    expect(avatar('portrait.png', 'image/png', 0)).toBe('EMPTY');
+  });
+
+  it('refuses a file over the limit, and accepts one exactly at it', () => {
+    expect(avatar('portrait.png', 'image/png', AVATAR_MAX_BYTES + 1)).toBe('TOO_LARGE');
+    expect(avatar('portrait.png', 'image/png', AVATAR_MAX_BYTES)).toBeNull();
+  });
+
+  it('judges the extension by the last dot, which is the one a system acts on', () => {
+    expect(fileExtensionOf('invoice.pdf.exe')).toBe('.exe');
+    expect(avatar('portrait.png.svg', 'image/png')).toBe('EXTENSION');
+    // A leading dot is a hidden file, not an extension.
+    expect(fileExtensionOf('.png')).toBe('');
+    expect(avatar('.png', 'image/png')).toBe('EXTENSION');
+  });
+
+  it('refuses a declared type outside the allowlist even with a good name', () => {
+    // SVG is an image to a person and a document with script to a browser.
+    expect(avatar('portrait.png', 'image/svg+xml')).toBe('MIME_TYPE');
+    expect(avatar('portrait.png', '')).toBe('MIME_TYPE');
+  });
+
+  it('ignores parameters on the declared type, and accepts what Windows calls a CSV', () => {
+    const csv = (type: string) => checkFile({ name: 'c.csv', type, size: 10 }, IMPORT_FILE_POLICY);
+    expect(csv('text/csv; charset=utf-8')).toBeNull();
+    expect(csv('application/vnd.ms-excel')).toBeNull();
+    expect(csv('application/json')).toBe('MIME_TYPE');
   });
 });

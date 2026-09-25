@@ -12,6 +12,7 @@ import { aCustomer, aPage } from '../testing/customer.fixture';
 import { CustomerFormPage } from './customer-form-page';
 import { EMAIL_CHECK_DEBOUNCE_MS } from './email-availability.validator';
 import { unsavedChangesGuard } from './unsaved-changes.guard';
+import { provideSignedInAs } from '../../core/testing/session-testing';
 
 @Component({
   selector: 'app-stub-page',
@@ -39,6 +40,7 @@ describe('CustomerFormPage', () => {
       imports: [provideTestTranslations()],
       providers: [
         provideTestHttp(),
+        provideSignedInAs('admin'),
         provideLocationMocks(),
         provideRouter(
           [

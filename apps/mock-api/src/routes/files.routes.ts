@@ -1,19 +1,21 @@
 import { parse as parseCsv } from 'csv-parse/sync';
 import {
-  AVATAR_ALLOWED_MIME_TYPES,
-  AVATAR_MAX_BYTES,
-  IMPORT_MAX_BYTES,
+  AVATAR_FILE_POLICY,
+  IMPORT_FILE_POLICY,
   IMPORT_MAX_ROWS,
+  checkFile,
   createCustomerRequestSchema,
   customerListQuerySchema,
+  type FilePolicy,
   type ImportResult,
   type ImportRowError,
   type Instant,
 } from '@ecm/contracts';
-import { Router } from 'express';
+import { Router, type RequestHandler } from 'express';
 import multer from 'multer';
 import type { MockStore } from '../domain/store.ts';
 import { ApiError, badRequest, notFound } from '../http/api-error.ts';
+import { detectImageType } from '../http/file-signature.ts';
 import { pathParam } from '../http/params.ts';
 import { parseOrThrow } from '../http/validate.ts';
 import { currentUser, requireAuth, requireCsrf, requirePermission } from '../middleware/auth.ts';
@@ -29,6 +31,9 @@ import { hasScenario } from '../middleware/fault-injection.ts';
  * **Client-side validation is repeated here, on purpose.** The application
  * checks the type and size so the user is told immediately; this checks them
  * again because the client's check is a convenience and this one is the rule.
+ * Both run the same `checkFile` from `@ecm/contracts`, so they cannot disagree
+ * about what is allowed - and this side adds the one check the client cannot
+ * be trusted with: the avatar's first bytes must match the type it claims.
  */
 
 /** Errors returned per import; beyond this the response is the problem. */
@@ -37,40 +42,27 @@ const MAX_REPORTED_IMPORT_ERRORS = 100;
 export function fileRoutes(store: MockStore): Router {
   const router = Router();
 
-  const avatarUpload = multer({
-    storage: multer.memoryStorage(),
-    limits: { fileSize: AVATAR_MAX_BYTES, files: 1 },
-    fileFilter: (_req, file, callback) => {
-      if (
-        !AVATAR_ALLOWED_MIME_TYPES.includes(
-          file.mimetype as (typeof AVATAR_ALLOWED_MIME_TYPES)[number],
-        )
-      ) {
-        // The declared type is the client's claim, not proof. A real backend
-        // would also inspect the bytes; docs/mock-backend.md says so rather
-        // than letting this look like sufficient protection.
-        callback(new ApiError('UNSUPPORTED_MEDIA_TYPE', `Unsupported file type ${file.mimetype}.`));
-        return;
-      }
-      callback(null, true);
-    },
-  });
-
-  const csvUpload = multer({
-    storage: multer.memoryStorage(),
-    limits: { fileSize: IMPORT_MAX_BYTES, files: 1 },
-  });
+  const avatarUpload = singleFile(AVATAR_FILE_POLICY);
+  const csvUpload = singleFile(IMPORT_FILE_POLICY);
 
   router.post(
     '/:id/avatar',
     requireAuth,
     requireCsrf,
     requirePermission('CUSTOMER_UPDATE'),
-    avatarUpload.single('file'),
+    avatarUpload,
     (req, res) => {
-      const file = req.file;
-      if (!file) {
-        throw badRequest('Expected a multipart field named "file".');
+      const file = requireFile(req.file, AVATAR_FILE_POLICY);
+
+      // The declared type is the client's claim; the first bytes are the file.
+      // An HTML page renamed to avatar.png and sent as image/png passes every
+      // check above and fails this one.
+      const detected = detectImageType(file.buffer);
+      if (detected !== file.mimetype) {
+        throw new ApiError(
+          'UNSUPPORTED_MEDIA_TYPE',
+          `The file content does not match its declared type ${file.mimetype}.`,
+        );
       }
 
       const url = store.setAvatar(
@@ -105,12 +97,9 @@ export function fileRoutes(store: MockStore): Router {
     requireAuth,
     requireCsrf,
     requirePermission('CUSTOMER_IMPORT'),
-    csvUpload.single('file'),
+    csvUpload,
     (req, res) => {
-      const file = req.file;
-      if (!file) {
-        throw badRequest('Expected a multipart field named "file".');
-      }
+      const file = requireFile(req.file, IMPORT_FILE_POLICY);
 
       res
         .status(200)
@@ -143,9 +132,12 @@ export function fileRoutes(store: MockStore): Router {
       .map((customer) =>
         [
           customer.customerCode,
+          // Every value a user typed goes through csvCell. A phone number is
+          // free text, and `+84...` gains an apostrophe - the OWASP guidance,
+          // accepted because the alternative is guessing which text is safe.
           csvCell(customer.fullName),
-          customer.email,
-          customer.phone ?? '',
+          csvCell(customer.email),
+          csvCell(customer.phone ?? ''),
           customer.status,
           customer.gender,
           customer.createdAt,
@@ -159,9 +151,95 @@ export function fileRoutes(store: MockStore): Router {
   return router;
 }
 
-/** Quotes a value that would otherwise break the row. */
+/**
+ * One multipart file, held in memory, with the policy's name and type rules
+ * applied before a byte of it is buffered.
+ *
+ * Multer reports its own failures as `MulterError`, which the error handler
+ * does not know and would answer with a 500. The two a client can cause are
+ * translated here into the envelope's codes - a file over the limit is the
+ * client's 413, not the server's fault.
+ */
+function singleFile(policy: FilePolicy): RequestHandler {
+  const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: policy.maxBytes, files: 1 },
+    fileFilter: (_req, file, callback) => {
+      // The size is not known yet - the body is still streaming - so the size
+      // rule is left to the limit above and to `requireFile`. A size of 1 is
+      // a stand-in that satisfies it.
+      const rejection = checkFile(
+        { name: file.originalname, type: file.mimetype, size: 1 },
+        policy,
+      );
+      if (rejection) {
+        callback(rejectionError(rejection, file.originalname, file.mimetype));
+        return;
+      }
+      callback(null, true);
+    },
+  }).single('file');
+
+  return (req, res, next) => {
+    upload(req, res, (error: unknown) => {
+      if (error instanceof multer.MulterError) {
+        next(
+          error.code === 'LIMIT_FILE_SIZE'
+            ? new ApiError('PAYLOAD_TOO_LARGE', `A file may be at most ${policy.maxBytes} bytes.`)
+            : badRequest(`Upload rejected: ${error.code}.`),
+        );
+        return;
+      }
+      next(error);
+    });
+  };
+}
+
+/** The uploaded file, checked against the whole policy now that its size is known. */
+function requireFile(file: Express.Multer.File | undefined, policy: FilePolicy) {
+  if (!file) {
+    throw badRequest('Expected a multipart field named "file".');
+  }
+  const rejection = checkFile(
+    { name: file.originalname, type: file.mimetype, size: file.size },
+    policy,
+  );
+  if (rejection) {
+    throw rejectionError(rejection, file.originalname, file.mimetype);
+  }
+  return file;
+}
+
+function rejectionError(
+  rejection: NonNullable<ReturnType<typeof checkFile>>,
+  name: string,
+  type: string,
+): ApiError {
+  switch (rejection) {
+    case 'TOO_LARGE':
+      return new ApiError('PAYLOAD_TOO_LARGE', 'The file is larger than allowed.');
+    case 'EMPTY':
+      return badRequest('The file is empty.');
+    case 'EXTENSION':
+      return new ApiError('UNSUPPORTED_MEDIA_TYPE', `Files named like "${name}" are not accepted.`);
+    case 'MIME_TYPE':
+      return new ApiError('UNSUPPORTED_MEDIA_TYPE', `Unsupported file type ${type}.`);
+  }
+}
+
+/**
+ * One CSV cell, safe to open in a spreadsheet.
+ *
+ * Two different problems. Quoting keeps a comma or a newline inside the cell
+ * instead of breaking the row. The leading apostrophe defends against formula
+ * injection: a customer named `=HYPERLINK("https://evil.test", "Click")` is a
+ * string to this server and a live formula to Excel the moment someone opens
+ * the export. Any value a user typed can start with `=`, `+`, `-`, `@`, a tab
+ * or a carriage return, and each of those makes a spreadsheet evaluate it.
+ */
 function csvCell(value: string): string {
-  return /[",\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
+  const neutralised = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
+  return /[",\n\r]/.test(neutralised) ? `"${neutralised.replace(/"/g, '""')}"` : neutralised;
 }
 
 function importCsv(

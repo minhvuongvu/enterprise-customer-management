@@ -8,9 +8,11 @@ import type {
   Customer,
   CustomerId,
   PageResponse,
+  Permission,
   UpdateCustomerRequest,
 } from '@ecm/contracts';
-import { catchError, EMPTY, map, Subject, switchMap, tap, type Observable } from 'rxjs';
+import { catchError, EMPTY, map, Subject, switchMap, tap, throwError, type Observable } from 'rxjs';
+import { SessionService } from '../../core/auth/session.service';
 import { appError, isAppError, type AppError } from '../../core/errors/app-error';
 import { CustomerApi } from '../data/customer.api';
 import { criteriaKey, type CustomerListCriteria } from '../data/customer-list-criteria';
@@ -66,6 +68,7 @@ import { failed, idle, reloadFrom, success, valueOf, type RemoteData } from './r
 export class CustomerStore {
   private readonly api = inject(CustomerApi);
   private readonly cache = inject(CustomerCache);
+  private readonly session = inject(SessionService);
 
   // ------------------------------------------------------------------- list
 
@@ -193,43 +196,52 @@ export class CustomerStore {
    * "save and add another".
    */
   create(input: CreateCustomerRequest): Observable<Customer> {
-    return this.api.create(input).pipe(
-      tap((created) => {
-        this.cache.invalidatePages();
-        this.cache.putEntity(created);
-        this.refreshList();
-      }),
+    return (
+      this.refuseUnless('CUSTOMER_CREATE') ??
+      this.api.create(input).pipe(
+        tap((created) => {
+          this.cache.invalidatePages();
+          this.cache.putEntity(created);
+          this.refreshList();
+        }),
+      )
     );
   }
 
   /** Updates, then replaces the cached entity and drops every cached page. */
   update(id: CustomerId, input: UpdateCustomerRequest): Observable<Customer> {
-    return this.api.update(id, input).pipe(
-      tap((updated) => {
-        this.cache.invalidatePages();
-        this.cache.putEntity(updated);
-        if (this.activeId === updated.id) {
-          // The response is the newest version there is, including the
-          // concurrency token. Setting it directly means the next edit starts
-          // from it rather than from whatever was fetched before the save.
-          this.detailState.set(success(updated));
-        }
-        this.refreshList();
-      }),
+    return (
+      this.refuseUnless('CUSTOMER_UPDATE') ??
+      this.api.update(id, input).pipe(
+        tap((updated) => {
+          this.cache.invalidatePages();
+          this.cache.putEntity(updated);
+          if (this.activeId === updated.id) {
+            // The response is the newest version there is, including the
+            // concurrency token. Setting it directly means the next edit starts
+            // from it rather than from whatever was fetched before the save.
+            this.detailState.set(success(updated));
+          }
+          this.refreshList();
+        }),
+      )
     );
   }
 
   remove(id: CustomerId): Observable<void> {
-    return this.api.remove(id).pipe(
-      tap(() => {
-        this.cache.invalidatePages();
-        this.cache.dropEntity(id);
-        if (this.activeId === id) {
-          this.detailState.set(idle);
-          this.activeId = null;
-        }
-        this.refreshList();
-      }),
+    return (
+      this.refuseUnless('CUSTOMER_DELETE') ??
+      this.api.remove(id).pipe(
+        tap(() => {
+          this.cache.invalidatePages();
+          this.cache.dropEntity(id);
+          if (this.activeId === id) {
+            this.detailState.set(idle);
+            this.activeId = null;
+          }
+          this.refreshList();
+        }),
+      )
     );
   }
 
@@ -241,16 +253,20 @@ export class CustomerStore {
    * lie or re-check every record.
    */
   runBulk(action: BulkAction, ids: readonly CustomerId[]): Observable<BulkResponse> {
-    return this.api.bulk({ action, ids: [...ids] }).pipe(
-      tap((response) => {
-        this.cache.invalidatePages();
-        for (const result of response.results) {
-          if (result.outcome === 'SUCCEEDED') {
-            this.cache.dropEntity(result.id);
+    const permission = action === 'DELETE' ? 'CUSTOMER_DELETE' : 'CUSTOMER_UPDATE';
+    return (
+      this.refuseUnless(permission) ??
+      this.api.bulk({ action, ids: [...ids] }).pipe(
+        tap((response) => {
+          this.cache.invalidatePages();
+          for (const result of response.results) {
+            if (result.outcome === 'SUCCEEDED') {
+              this.cache.dropEntity(result.id);
+            }
           }
-        }
-        this.refreshList();
-      }),
+          this.refreshList();
+        }),
+      )
     );
   }
 
@@ -270,6 +286,26 @@ export class CustomerStore {
     return this.api
       .findByEmail(email)
       .pipe(map((match) => match === null || match.id === excludeId));
+  }
+
+  /**
+   * Action authorization: a write the user may not perform fails here, as the
+   * same `authorization` error the server would have produced, and no request
+   * is sent.
+   *
+   * The buttons for these actions are already hidden from users who lack the
+   * permission, so this looks redundant, and the difference is the point. A
+   * hidden button is one route to an action; a keyboard shortcut, a bulk bar,
+   * a future "duplicate" menu entry are others. Checking at the action rather
+   * than at each control means a new control cannot forget to.
+   *
+   * It is still not security - the server refuses the request on its own - but
+   * it keeps a denied action from costing a round trip and a 403 in the logs.
+   */
+  private refuseUnless(permission: Permission): Observable<never> | null {
+    return this.session.hasPermission(permission)
+      ? null
+      : throwError(() => appError('authorization'));
   }
 
   // ---------------------------------------------------------------- fetching

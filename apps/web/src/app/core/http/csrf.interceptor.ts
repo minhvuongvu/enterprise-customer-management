@@ -27,7 +27,9 @@ const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
  *    and no mutation happens there either.
  *
  * This is transport mechanics, so it is an interceptor. It is *not*
- * authentication: Phase 3 owns sessions, refresh and expiry. See ADR-0012.
+ * authentication: sessions, refresh and expiry belong to `SessionService` and
+ * `authRefreshInterceptor` (ADR-0016, ADR-0017). It sits below the refresh
+ * interceptor so that a retried request is stamped again from the cookie.
  */
 export const csrfInterceptor: HttpInterceptorFn = (req, next) => {
   const isBrowser = inject(IS_BROWSER);

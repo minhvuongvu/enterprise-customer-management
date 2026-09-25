@@ -3,6 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { CORRELATION_ID_HEADER, correlationIdInterceptor } from './correlation-id.interceptor';
 import { errorMappingInterceptor } from './error-mapping.interceptor';
+import { requestLoggingInterceptor } from './request-logging.interceptor';
 import { isAppError } from '../errors/app-error';
 import { Logger } from '../logging/logger';
 import type { LogFields, LogLevel } from '../logging/logger';
@@ -51,7 +52,13 @@ describe('HTTP interceptors', () => {
     TestBed.configureTestingModule({
       providers: [
         { provide: Logger, useValue: logger },
-        provideHttpClient(withInterceptors([correlationIdInterceptor, errorMappingInterceptor])),
+        provideHttpClient(
+          withInterceptors([
+            correlationIdInterceptor,
+            requestLoggingInterceptor,
+            errorMappingInterceptor,
+          ]),
+        ),
         provideHttpClientTesting(),
       ],
     });
@@ -111,5 +118,45 @@ describe('HTTP interceptors', () => {
     expect(logger.errors).toHaveLength(1);
     expect(logger.errors[0].fields?.['correlationId']).toBe(sentId);
     expect(logger.errors[0].fields?.['kind']).toBe('server');
+  });
+
+  it('logs a failure exactly once - classifying it and reporting it are separate jobs', async () => {
+    const failure = new Promise<unknown>((resolve) => {
+      http.get('/api/customers/1').subscribe({ error: resolve });
+    });
+    backend.expectOne('/api/customers/1').flush(null, { status: 403, statusText: 'Forbidden' });
+    await failure;
+
+    expect(logger.errors).toHaveLength(1);
+    expect(logger.errors[0].fields?.['kind']).toBe('authorization');
+    expect(logger.errors[0].fields?.['status']).toBe(403);
+  });
+
+  it('times a request that succeeds, at debug level', () => {
+    http.get('/api/customers').subscribe();
+    backend.expectOne('/api/customers').flush({});
+
+    const completed = logger.entries.find((entry) => entry.message === 'HTTP request completed');
+    expect(completed?.level).toBe('debug');
+    expect(completed?.fields?.['status']).toBe(200);
+    expect(typeof completed?.fields?.['durationMs']).toBe('number');
+  });
+
+  it('never logs the query string, which carries what users searched for', () => {
+    http.get('/api/customers?search=nguyen%20van%20a&status=ACTIVE').subscribe();
+    backend.expectOne(() => true).flush({});
+
+    const logged = JSON.stringify(logger.entries);
+    expect(logged).toContain('/api/customers');
+    expect(logged).not.toContain('nguyen');
+  });
+
+  it('records a superseded request as cancelled, not as a failure', () => {
+    const subscription = http.get('/api/customers').subscribe();
+    backend.expectOne('/api/customers');
+    subscription.unsubscribe();
+
+    expect(logger.errors).toHaveLength(0);
+    expect(logger.entries.some((entry) => entry.message === 'HTTP request cancelled')).toBe(true);
   });
 });

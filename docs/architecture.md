@@ -91,8 +91,8 @@ the failure mode to avoid.
 | i18n            | `core/i18n/`                       | Transloco, English only, lazily imported chunks                                    | Phase 6     |
 | Logging         | `core/logging/`                    | `Logger` abstraction, `ConsoleLogger`, credential redaction, correlation IDs       | Phase 7     |
 | Errors          | `core/errors/`                     | the §4.7 taxonomy as a discriminated union, central HTTP mapping                   | every phase |
-| HTTP            | `core/http/`                       | correlation-id, CSRF and error-mapping interceptors, ordered                       | Phase 3–4   |
-| Auth            | `core/auth/`                       | `SessionService.signIn()` only; `authGuard` still returns `true` and says so       | Phase 3     |
+| HTTP            | `core/http/`                       | five single-purpose interceptors, ordered (§5, ADR-0017)                           | **Phase 3** |
+| Auth            | `core/auth/`                       | session lifecycle, guards, permission directive (§5a, ADR-0016/0018)               | **Phase 3** |
 | Config          | `core/config/`                     | build-time `BuildEnvironment` + runtime `AppConfigStore` + feature flags           | Phase 7     |
 | Time            | `core/time/instant.ts`             | branded `Instant` (UTC) and `DateOnly` types                                       | Phase 6     |
 
@@ -104,9 +104,11 @@ reason - they are small now and expensive to retrofit:
 | Route metadata | `core/routing/` | typed `withMetadata()` / `routeMetadata()`; breadcrumb keys  | Phase 3   |
 | Document head  | `core/seo/`     | translated `TitleStrategy`; `<html lang>` follows the locale | Phase 6/7 |
 
-Phase 2 filled the **Auth** seam only as far as making a request possible - one
-`signIn()` method and a CSRF interceptor. What it deliberately left empty, and why,
-is [ADR-0012](decisions/0012-phase-2-session-boundary.md).
+Phase 2 filled the **Auth** seam only as far as making a request possible
+([ADR-0012](decisions/0012-phase-2-session-boundary.md)). Phase 3 filled the rest and
+superseded that ADR with [ADR-0016](decisions/0016-session-tokens-in-httponly-cookies.md).
+Everything security-related, and who owns each part of it, is in
+[`security.md`](security.md).
 
 ---
 
@@ -191,19 +193,38 @@ that both sides depend on it and it depends on nothing of theirs.
 
 ## 5. HTTP and errors
 
-A request passes through, in order:
+A request passes through, in order - one responsibility each
+([ADR-0017](decisions/0017-refresh-single-flight-and-interceptor-chain.md)):
 
 1. `correlationIdInterceptor` — generates an ID, sets the `X-Correlation-Id` header,
    and publishes the ID on the request context.
-2. `csrfInterceptor` — echoes the readable CSRF cookie in a header, on unsafe,
-   same-origin requests only. It is transport mechanics, not authentication; see
-   [ADR-0012](decisions/0012-phase-2-session-boundary.md).
-3. `errorMappingInterceptor` — catches the failure, reads that context, maps to an
-   `AppError`, logs it, rethrows the mapped value.
+2. `requestLoggingInterceptor` — times the request and logs how it ended, once:
+   completed (debug), failed (error, with the `AppError` kind), cancelled (debug).
+   Path only; never the query string, a body or a header.
+3. `authRefreshInterceptor` — on an `authentication` failure, joins or starts the
+   single refresh in `SessionService` and retries the request once.
+4. `csrfInterceptor` — echoes the readable CSRF cookie in a header, on unsafe,
+   same-origin requests only.
+5. `errorMappingInterceptor` — maps an `HttpErrorResponse` to an `AppError` and
+   rethrows it. It no longer logs; that is the logging interceptor's job.
 
-Error mapping stays last, so a failure caused by anything the earlier interceptors
-did is still classified. The first two are independent of each other.
-`provideAppHttp()` is the only place the list exists.
+Error mapping stays last, so everything above it reasons about kinds, not status
+codes. Logging sits above the refresh, so a renewed-and-retried request is one log
+line. `provideAppHttp()` is the only place the list exists.
+
+### 5a. Session and authorization
+
+`SessionService` holds the client's view of the session - status, user,
+permissions, access-token expiry - and **no token**: the tokens are `HttpOnly`
+cookies ([ADR-0016](decisions/0016-session-tokens-in-httponly-cookies.md)).
+`restore()` and `refresh()` are single-flight. `ended$` emits once when a session
+ends; `provideSessionExpiryRedirect()` turns an expiry into
+`/login?returnUrl=…&reason=expired`.
+
+Authorization is checked by permission, never by role, at three client levels -
+`requirePermission()` on routes, `*appIfPermitted` on controls, `CustomerStore` on
+actions - and at the one level that is security, the API
+([ADR-0018](decisions/0018-client-authorization-layers.md)).
 
 The mapper **validates** the error body against the published envelope rather than
 trusting it: a 422 whose body is a proxy's HTML error page is a real possibility, and
@@ -276,16 +297,17 @@ Selectors are prefixed `app-`, enforced by lint.
 
 /                             AppShell + authGuard
 ├── /customers                lazy: customers.routes.ts
-│   └── ''                    providers: CustomerCache, CustomerStore
+│   └── ''                    providers: CustomerCache, CustomerStore; requirePermission(READ)
 │       ├── ''                list      ?page &size &sort &search &status &gender &createdFrom &createdTo
-│       ├── /new              form      data.mode = 'create', canDeactivate
+│       ├── /new              form      data.mode = 'create', requirePermission(CREATE), canDeactivate
 │       └── /:id              detail
-│           ├── /edit         form      data.mode = 'edit',   canDeactivate
+│           ├── /edit         form      data.mode = 'edit',   requirePermission(UPDATE), canDeactivate
 │           └── /audit        audit trail
 ├── /technical-labs           lazy, canMatch: technicalLabsEnabled
 │   ├── ''                    index, rendered from lab-catalog.ts
 │   ├── /api-connectivity     a real lab
 │   └── /:labId               placeholder for a planned lab
+├── /forbidden                "not permitted", rendered by requirePermission with browserUrl
 └── **                        not found, inside the shell
 ```
 
@@ -294,8 +316,10 @@ Five decisions are encoded in that shape.
 **Public and authenticated are different branches.** `/login` sits outside the
 shell, and is the one route that is prerendered (ADR-0003). Everything else
 lives under a path-less route that renders `AppShell` and carries `authGuard`,
-so the guard is stated once rather than repeated on every page — and Phase 3
-changes a function body, not the tree.
+so the guard is stated once rather than repeated on every page. Phase 3 changed
+its body, not the tree. What a signed-in user may _do_ is stated by each feature's
+own routes with `requirePermission()`, because only the feature knows which of its
+pages need which permission.
 
 **Every route is lazy**, and a feature owns its own route file. The application
 composes it with one `loadChildren` and learns nothing about its internals;
@@ -338,7 +362,14 @@ a parent's data into an empty-path child, so the other one would produce
 
 ### Guards
 
-`authGuard` (Phase 0, still returning `true`) sits on the shell branch.
+`authGuard` sits on the shell branch. It waits on `SessionService.restore()` - a
+reload must not treat "not checked yet" as "signed out" - and sends anyone without a
+session to `/login?returnUrl=<where they were going>`.
+
+`requirePermission(permission)` is a guard factory used on feature routes. A denied
+route renders `/forbidden` via `RedirectCommand` with `browserUrl`, so the address
+bar keeps the refused URL. Both are UX; the API enforces the same rules
+([`security.md`](security.md)).
 
 `unsavedChangesGuard` is a **`CanDeactivate`** guard on the two routes that can
 hold a half-typed record. It asks the component, because the component has the
@@ -479,7 +510,7 @@ CustomerStore         server state: what is on screen, and the cache
     |
 CustomerApi           one request, validated, with a per-endpoint policy
     |
-HttpClient            interceptors: correlation id, CSRF, error mapping
+HttpClient            interceptors: correlation id, logging, refresh, CSRF, error mapping
     |
 mock API
 ```

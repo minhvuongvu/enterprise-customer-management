@@ -69,6 +69,28 @@ module.exports = defineConfig([
         { type: 'element', prefix: 'app', style: 'kebab-case' },
       ],
       'no-restricted-globals': ['error', ...BROWSER_GLOBALS],
+      // Angular escapes every interpolation and sanitises every property
+      // binding. These are the ways around that, and each one turns a string
+      // into markup or script. None is needed today; a future one must be an
+      // inline disable with the reason next to it, where a reviewer sees it.
+      // docs/security.md, "XSS".
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'MemberExpression[property.name=/^bypassSecurityTrust/]',
+          message:
+            'Bypassing the sanitiser makes this value trusted markup or script. See docs/security.md.',
+        },
+        {
+          selector:
+            'AssignmentExpression > MemberExpression.left[property.name=/^(innerHTML|outerHTML)$/]',
+          message: 'Writing HTML into the DOM skips Angular escaping. Bind text instead.',
+        },
+        {
+          selector: 'CallExpression[callee.property.name="insertAdjacentHTML"]',
+          message: 'Writing HTML into the DOM skips Angular escaping. Bind text instead.',
+        },
+      ],
       // Logging goes through the Logger abstraction so Phase 7 can add a sink
       // without touching call sites. core/logging/logger.ts opts out inline.
       'no-console': 'error',

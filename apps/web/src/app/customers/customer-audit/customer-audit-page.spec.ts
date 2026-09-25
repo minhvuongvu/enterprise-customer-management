@@ -9,6 +9,7 @@ import { CustomerCache } from '../state/customer-cache';
 import { CustomerStore } from '../state/customer-store';
 import { aCustomer } from '../testing/customer.fixture';
 import { CustomerAuditPage } from './customer-audit-page';
+import { provideSignedInAs } from '../../core/testing/session-testing';
 
 describe('CustomerAuditPage', () => {
   let backend: HttpTestingController;
@@ -30,6 +31,7 @@ describe('CustomerAuditPage', () => {
       imports: [provideTestTranslations()],
       providers: [
         provideTestHttp(),
+        provideSignedInAs('admin'),
         provideLocationMocks(),
         provideRouter(
           [

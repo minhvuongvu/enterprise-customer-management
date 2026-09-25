@@ -3,6 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { ActivatedRouteSnapshot, provideRouter, Router, type Route } from '@angular/router';
 import { routes } from './app.routes';
 import { AppConfigStore } from './core/config/app-config';
+import { provideSignedInAs } from './core/testing/session-testing';
 
 /**
  * The route tree itself, exercised as a unit.
@@ -18,7 +19,7 @@ import { AppConfigStore } from './core/config/app-config';
 describe('application routes', () => {
   function setUp() {
     TestBed.configureTestingModule({
-      providers: [provideRouter(routes), provideLocationMocks()],
+      providers: [provideRouter(routes), provideLocationMocks(), provideSignedInAs('admin')],
     });
     return TestBed.inject(Router);
   }
@@ -61,6 +62,7 @@ describe('application routes', () => {
     '/technical-labs',
     '/technical-labs/api-connectivity',
     '/technical-labs/offline',
+    '/forbidden',
   ])('resolves %s', async (url) => {
     const router = setUp();
 
@@ -118,6 +120,21 @@ describe('application routes', () => {
     // The detail page holds nothing unsaved, so guarding it would only train
     // users to click through the dialog.
     expect(deepestConfig(router)?.canDeactivate).toBeUndefined();
+  });
+
+  it('asks for the permission to write on the pages that exist only to write', async () => {
+    const router = setUp();
+
+    // Asserted on the real tree, so removing a guard from a route is caught
+    // here even though the guard's own behaviour is tested elsewhere.
+    for (const url of ['/customers/new', '/customers/c-42/edit']) {
+      await router.navigateByUrl(url);
+      expect(deepestConfig(router)?.canActivate ?? []).toHaveLength(1);
+    }
+
+    await router.navigateByUrl('/customers/c-42/audit');
+    // Reading is covered once, on the section's parent route.
+    expect(deepestConfig(router)?.canActivate).toBeUndefined();
   });
 
   it('never resolves a route without a title', async () => {

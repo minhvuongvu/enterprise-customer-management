@@ -120,7 +120,11 @@ export function authRoutes(sessions: SessionRegistry, config: MockApiConfig): Ro
 
   router.get('/session', requireAuth, (req, res) => {
     const user = currentUser(req);
-    res.status(200).json({
+    const session = sessions.resolveAccess(req.cookies?.[ACCESS_COOKIE_NAME] as string | undefined);
+    if (!session) {
+      throw unauthenticated();
+    }
+    const body: SessionResponse = {
       user: {
         id: user.id,
         username: user.username,
@@ -128,14 +132,25 @@ export function authRoutes(sessions: SessionRegistry, config: MockApiConfig): Ro
         role: user.role,
         permissions: [...permissionsForRole(user.role)],
       },
-      // The client already holds a cookie; this echoes the shape of /login so
-      // both paths produce the same state.
-      expiresAt: new Date(Date.now() + config.accessTtlSeconds * 1000).toISOString(),
-    });
+      // The real expiry of the access token the browser holds, not "now plus
+      // the TTL". A client restoring its session after a reload must be told
+      // the truth, or it believes it has fifteen minutes it does not have.
+      expiresAt: new Date(session.expiresAt).toISOString(),
+    };
+    res.status(200).json(body);
   });
 
   router.post('/logout', requireCsrf, (req, res) => {
-    sessions.destroy(req.cookies?.[ACCESS_COOKIE_NAME] as string | undefined);
+    // By the access token when the browser still has one, and by the CSRF
+    // token when it does not. The second case is the ordinary one after a long
+    // idle: the access cookie has expired and the browser dropped it, but the
+    // refresh token is alive on the server - and the refresh cookie is scoped
+    // to /api/auth/refresh, so it never reaches this endpoint. Without the
+    // fallback, "sign out" would leave a refresh token that still works.
+    sessions.destroy(
+      req.cookies?.[ACCESS_COOKIE_NAME] as string | undefined,
+      req.cookies?.[CSRF_COOKIE_NAME] as string | undefined,
+    );
     res.clearCookie(ACCESS_COOKIE_NAME, { path: '/' });
     res.clearCookie(REFRESH_COOKIE_NAME, { path: '/api/auth/refresh' });
     res.clearCookie(CSRF_COOKIE_NAME, { path: '/' });

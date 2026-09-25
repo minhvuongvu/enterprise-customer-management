@@ -1,4 +1,9 @@
-import type { Customer, ImportResult, PageResponse } from '@ecm/contracts';
+import {
+  AVATAR_MAX_BYTES,
+  type Customer,
+  type ImportResult,
+  type PageResponse,
+} from '@ecm/contracts';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { startTestServer, type TestClient, type TestServer } from './helpers.ts';
 
@@ -74,6 +79,60 @@ describe('avatar upload', () => {
     expect(response.status).toBe(415);
   });
 
+  it('rejects a file whose bytes are not the image it claims to be', async () => {
+    const customer = await anyCustomer();
+    // Every claim a client can make is right: the name, the declared type and
+    // the size. Only the content is wrong - and only the server can check it.
+    const response = await admin.uploadFile(
+      `/api/customers/${customer.id}/avatar`,
+      'avatar.png',
+      'image/png',
+      '<html><script>alert(1)</script></html>',
+    );
+    expect(response.status).toBe(415);
+  });
+
+  it('rejects real image bytes declared as a different image type', async () => {
+    const customer = await anyCustomer();
+    const response = await admin.uploadFile(
+      `/api/customers/${customer.id}/avatar`,
+      'avatar.jpg',
+      'image/jpeg',
+      PNG_BYTES,
+    );
+    // Served back with the declared type, a mismatch is a file the browser is
+    // told one thing about and receives another.
+    expect(response.status).toBe(415);
+  });
+
+  it('rejects an allowed type under a name the policy does not accept', async () => {
+    const customer = await anyCustomer();
+    const response = await admin.uploadFile(
+      `/api/customers/${customer.id}/avatar`,
+      'avatar.png.html',
+      'image/png',
+      PNG_BYTES,
+    );
+    expect(response.status).toBe(415);
+  });
+
+  it('answers an oversized file with 413, not a server error', async () => {
+    const customer = await anyCustomer();
+    const oversized = Buffer.concat([PNG_BYTES, Buffer.alloc(AVATAR_MAX_BYTES)]);
+    const response = await admin.uploadFile(
+      `/api/customers/${customer.id}/avatar`,
+      'huge.png',
+      'image/png',
+      oversized,
+    );
+
+    // The upload library reports this as its own error type. Left untranslated
+    // it became a 500 - the server blaming itself for the client's file.
+    expect(response.status).toBe(413);
+    const body = (await response.json()) as { error: { code: string } };
+    expect(body.error.code).toBe('PAYLOAD_TOO_LARGE');
+  });
+
   it('404s when a customer has no avatar', async () => {
     const created = await admin.json<Customer>('/api/customers', {
       method: 'POST',
@@ -141,6 +200,25 @@ describe('CSV import', () => {
     expect(response.status).toBe(400);
   });
 
+  it('rejects a file that is not named or typed as CSV', async () => {
+    const csv = header + 'Named Wrong,named-wrong@example.test,,ACTIVE\n';
+    const wrongName = await admin.uploadFile(
+      '/api/customers/import',
+      'people.txt',
+      'text/csv',
+      csv,
+    );
+    expect(wrongName.status).toBe(415);
+
+    const wrongType = await admin.uploadFile(
+      '/api/customers/import',
+      'people.csv',
+      'application/json',
+      csv,
+    );
+    expect(wrongType.status).toBe(415);
+  });
+
   it('fails every third row under the injection scenario', async () => {
     const rows = Array.from(
       { length: 6 },
@@ -178,6 +256,23 @@ describe('export', () => {
     const text = await response.text();
     expect(text.split('\n')[0]).toBe('customerCode,fullName,email,phone,status,gender,createdAt');
     expect(text.split('\n').length).toBeGreaterThan(2);
+  });
+
+  it('neutralises a value a spreadsheet would run as a formula', async () => {
+    const formula = '=HYPERLINK("https://evil.test","Click me")';
+    const created = await admin.json<Customer>('/api/customers', {
+      method: 'POST',
+      body: { fullName: formula, email: 'formula@example.test' },
+    });
+    expect(created.status).toBe(201);
+
+    const response = await admin.call('/api/customers/export?search=formula%40example.test');
+    const row = (await response.text()).trim().split('\n')[1];
+
+    // Stored as typed - the server does not rewrite what a user entered - but
+    // exported with a leading apostrophe, which makes a spreadsheet show it as
+    // text instead of evaluating it. Quoted, because it contains a comma.
+    expect(row).toContain(`"'=HYPERLINK(""https://evil.test"",""Click me"")"`);
   });
 
   it('honours the same filters as the list', async () => {

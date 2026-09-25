@@ -11,6 +11,7 @@ import { CustomerCache } from '../state/customer-cache';
 import { CustomerStore } from '../state/customer-store';
 import { aCustomer } from '../testing/customer.fixture';
 import { CustomerDetailPage } from './customer-detail-page';
+import { provideSignedInAs } from '../../core/testing/session-testing';
 
 @Component({
   selector: 'app-list-stub',
@@ -29,6 +30,7 @@ describe('CustomerDetailPage', () => {
       imports: [provideTestTranslations()],
       providers: [
         provideTestHttp(),
+        provideSignedInAs('admin'),
         provideLocationMocks(),
         provideRouter(
           [
@@ -86,6 +88,21 @@ describe('CustomerDetailPage', () => {
     // The bug this guards against renders 31 December 1989 west of UTC.
     expect(root.textContent).toContain('1990');
     expect(root.textContent).not.toContain('1989');
+  });
+
+  it('renders markup in a customer record as text, never as markup', async () => {
+    const root = await open();
+    // Anyone who can create a customer chooses what this field contains, and
+    // everyone who opens the record renders it.
+    backend
+      .expectOne(`/api/customers/${customer.id}`)
+      .flush(aCustomer({ fullName: '<img src=x onerror="alert(1)">' }));
+    harness.detectChanges();
+
+    // Interpolation escapes: the characters are on screen, and no element was
+    // created from them.
+    expect(root.querySelector('img')).toBeNull();
+    expect(root.querySelector('h1')?.textContent).toContain('<img src=x onerror="alert(1)">');
   });
 
   it('says a customer does not exist rather than showing a generic failure', async () => {

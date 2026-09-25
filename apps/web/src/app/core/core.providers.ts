@@ -1,4 +1,5 @@
 import { ErrorHandler, EnvironmentProviders, makeEnvironmentProviders } from '@angular/core';
+import { provideSessionExpiryRedirect } from './auth/session-expiry';
 import { provideRuntimeConfig } from './config/runtime-config.provider';
 import { GlobalErrorHandler } from './errors/global-error-handler';
 import { provideAppHttp } from './http/http.providers';
@@ -26,5 +27,8 @@ export function provideCore(): EnvironmentProviders {
     // After provideI18n(): it subscribes to the translation service.
     provideDocumentLanguage(),
     provideRuntimeConfig(),
+    // Needs the router, which app.config provides alongside this; environment
+    // initializers run once the whole injector exists.
+    provideSessionExpiryRedirect(),
   ]);
 }

@@ -85,6 +85,55 @@ describe('session', () => {
     expect((await client.call('/api/auth/logout', { method: 'POST' })).status).toBe(204);
     expect((await client.call('/api/auth/session')).status).toBe(401);
   });
+
+  it('reports the real expiry of the access token, not a fresh one', async () => {
+    const client = server.client();
+    const login = (await (await client.login('viewer')).json()) as SessionResponse;
+
+    // A reload asks /session, and must be told the same expiry /login gave -
+    // otherwise every reload would appear to extend the session.
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    const { body } = await client.json<SessionResponse>('/api/auth/session');
+    expect(body.expiresAt).toBe(login.expiresAt);
+  });
+});
+
+describe('logout', () => {
+  it('kills the refresh token too, even when the access cookie is already gone', async () => {
+    const client = server.client();
+    await client.login('admin');
+    const refresh = client.cookie(REFRESH_COOKIE_NAME);
+    const csrf = client.csrfToken;
+
+    // After a long idle the browser drops the expired access cookie. The
+    // refresh cookie is scoped to /api/auth/refresh, so logout never sees it -
+    // the session has to be found another way.
+    const response = await fetch(`${server.baseUrl}/api/auth/logout`, {
+      method: 'POST',
+      headers: { cookie: `${CSRF_COOKIE_NAME}=${csrf}`, 'x-csrf-token': csrf ?? '' },
+    });
+    expect(response.status).toBe(204);
+
+    const refreshed = await fetch(`${server.baseUrl}/api/auth/refresh`, {
+      method: 'POST',
+      headers: {
+        cookie: `${REFRESH_COOKIE_NAME}=${refresh}; ${CSRF_COOKIE_NAME}=${csrf}`,
+        'x-csrf-token': csrf ?? '',
+      },
+    });
+    expect(refreshed.status).toBe(401);
+  });
+
+  it('refuses a cross-site logout that cannot produce the CSRF header', async () => {
+    const client = server.client();
+    await client.login('admin');
+
+    expect((await client.call('/api/auth/logout', { method: 'POST', csrf: false })).status).toBe(
+      403,
+    );
+    // Still signed in: a forced logout is a denial of service, however small.
+    expect((await client.call('/api/auth/session')).status).toBe(200);
+  });
 });
 
 describe('CSRF', () => {

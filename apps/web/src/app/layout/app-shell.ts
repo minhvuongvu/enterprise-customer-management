@@ -2,6 +2,7 @@ import { A11yModule } from '@angular/cdk/a11y';
 import {
   ChangeDetectionStrategy,
   Component,
+  computed,
   effect,
   ElementRef,
   inject,
@@ -12,6 +13,8 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { filter } from 'rxjs';
+import { SIGN_IN_PATH } from '../core/auth/return-url';
+import { SessionService } from '../core/auth/session.service';
 import { AppHeader } from './app-header';
 import { AppSidebar } from './app-sidebar';
 import { Breadcrumbs } from './breadcrumbs';
@@ -57,7 +60,11 @@ import { LayoutBreakpoints } from './layout-breakpoints';
       <app-header
         [showMenuButton]="usesDrawer()"
         [drawerOpen]="drawerOpen()"
+        [userName]="session.user()?.displayName ?? ''"
+        [roleKey]="roleKey()"
+        [signingOut]="signingOut()"
         (menuToggled)="toggleDrawer()"
+        (signOut)="signOut()"
       />
 
       <div class="shell__body">
@@ -185,6 +192,14 @@ import { LayoutBreakpoints } from './layout-breakpoints';
 })
 export class AppShell {
   private readonly breakpoints = inject(LayoutBreakpoints);
+  private readonly router = inject(Router);
+  protected readonly session = inject(SessionService);
+
+  protected readonly roleKey = computed(() => {
+    const role = this.session.user()?.role;
+    return role ? `auth.role.${role}` : '';
+  });
+  protected readonly signingOut = signal(false);
 
   protected readonly mode = this.breakpoints.mode;
   protected readonly usesDrawer = this.breakpoints.usesDrawerNavigation;
@@ -205,8 +220,8 @@ export class AppShell {
 
     // Link clicks are handled by the sidebar's own output; this covers the
     // back button, which changes the route without anyone clicking anything.
-    inject(Router)
-      .events.pipe(
+    this.router.events
+      .pipe(
         filter((event) => event instanceof NavigationEnd),
         takeUntilDestroyed(),
       )
@@ -230,5 +245,27 @@ export class AppShell {
 
   protected closeDrawer(): void {
     this.drawerOpen.set(false);
+  }
+
+  /**
+   * Signs out, then leaves the application for the sign-in page.
+   *
+   * Navigating away is also what discards the customer data on screen: the
+   * feature's store and cache are provided by its route, so leaving the shell
+   * destroys them. Nothing one user loaded survives into the next session in
+   * the same tab.
+   *
+   * `replaceUrl`, so the back button does not return to a page of customer
+   * data the user has just signed out of.
+   */
+  protected signOut(): void {
+    if (this.signingOut()) {
+      return;
+    }
+    this.signingOut.set(true);
+    this.session.signOut().subscribe(() => {
+      this.signingOut.set(false);
+      void this.router.navigateByUrl(SIGN_IN_PATH, { replaceUrl: true });
+    });
   }
 }

@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { requirePermission } from '../core/auth/permission.guard';
 import { withMetadata } from '../core/routing/route-metadata';
 import { unsavedChangesGuard } from './customer-form/unsaved-changes.guard';
 import { CustomerCache } from './state/customer-cache';
@@ -36,6 +37,11 @@ export const customersRoutes: Routes = [
   {
     path: '',
     providers: [CustomerCache, CustomerStore],
+    // Route authorization. Reading is the floor for the whole section; the two
+    // pages that exist only to write ask for the permission to write. Each
+    // guard names a permission, never a role. UX only - the API checks the
+    // same permission on every request (ADR-0018).
+    canActivate: [requirePermission('CUSTOMER_READ')],
     children: [
       {
         path: '',
@@ -56,6 +62,7 @@ export const customersRoutes: Routes = [
           // them is which data it starts from, not what it looks like.
           mode: 'create',
         },
+        canActivate: [requirePermission('CUSTOMER_CREATE')],
         canDeactivate: [unsavedChangesGuard],
         loadComponent: () =>
           import('./customer-form/customer-form-page').then((m) => m.CustomerFormPage),
@@ -78,6 +85,7 @@ export const customersRoutes: Routes = [
               ...withMetadata({ breadcrumb: 'pages.customers.edit.breadcrumb' }),
               mode: 'edit',
             },
+            canActivate: [requirePermission('CUSTOMER_UPDATE')],
             canDeactivate: [unsavedChangesGuard],
             loadComponent: () =>
               import('./customer-form/customer-form-page').then((m) => m.CustomerFormPage),

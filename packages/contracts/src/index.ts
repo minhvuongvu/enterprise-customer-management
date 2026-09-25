@@ -19,5 +19,6 @@ export * from './auth.js';
 export * from './customer.js';
 export * from './audit.js';
 export * from './operations.js';
+export * from './file-policy.js';
 export * from './realtime.js';
 export * from './fixtures.js';

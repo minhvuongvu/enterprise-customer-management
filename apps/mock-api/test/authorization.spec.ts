@@ -83,6 +83,29 @@ describe('VIEWER', () => {
     const { client } = await sessionFor('viewer');
     expect((await client.call('/api/customers/export')).status).toBe(403);
   });
+
+  it('may not import or upload, and is refused before the file is even read', async () => {
+    const id = await anyCustomerId();
+    const { client } = await sessionFor('viewer');
+
+    // Authorization runs before the upload is parsed, so a refused user cannot
+    // make the server buffer five megabytes on their behalf.
+    const imported = await client.uploadFile(
+      '/api/customers/import',
+      'people.csv',
+      'text/csv',
+      'fullName,email\nX,x@example.test\n',
+    );
+    expect(imported.status).toBe(403);
+
+    const avatar = await client.uploadFile(
+      `/api/customers/${id}/avatar`,
+      'a.png',
+      'image/png',
+      'not really a png',
+    );
+    expect(avatar.status).toBe(403);
+  });
 });
 
 describe('MANAGER', () => {

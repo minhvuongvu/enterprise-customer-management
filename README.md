@@ -9,16 +9,19 @@ and educational, not only on whether the application works.
 
 ## Status
 
-**Phase 2 complete** — foundation and seams, the API contract and a real mock
-backend, the application shell, and now the customer feature itself: a server-paged
-list with search, filters and sorting held in the URL, create and edit with reactive
-forms, delete, bulk actions that report per item, an audit trail, and a server-state
-layer with an explicit cache. See `docs/PROGRESS.md` for what exists and what comes
-next.
+**Phase 3 complete** — foundation and seams, the API contract and a real mock
+backend, the application shell, the customer feature (a server-paged list with
+search, filters and sorting held in the URL, create and edit with reactive forms,
+delete, bulk actions, an audit trail, an explicit server-state cache), and now the
+session and its security: sign-in and sign-out, expiry and single-flight token
+refresh, route, UI and action authorization by permission, and file validation shared
+with the server. See `docs/PROGRESS.md` for what exists and what comes next.
 
 Sign in with `admin`, `manager` or `viewer` and any password — the mock backend does
-not verify one, which is why there is no credential in this repository. Real
-authentication is Phase 3.
+not verify one, which is why there is no credential in this repository. Each role sees
+a different application: a viewer can only read, a manager can edit but not delete.
+Everything else about the session is real - `HttpOnly` cookies, refresh-token rotation,
+CSRF - and [`docs/security.md`](docs/security.md) says who owns each protection.
 
 ## Quick start
 
@@ -58,6 +61,7 @@ prompts/             the phase prompts this repository is built from
 | `docs/testing-strategy.md`      | what is tested where, and the gaps that are known                     |
 | `docs/api-contract.md`          | the API shape, error envelope, permissions, concurrency               |
 | `docs/mock-backend.md`          | the mock server, fault injection, and who owns which security control |
+| `docs/security.md`              | authentication, authorization, and which protection belongs to whom   |
 | `docs/decisions/`               | ADRs — the trade-offs behind each significant choice                  |
 | `docs/PROGRESS.md`              | phase log, deviations, technical-debt register                        |
 

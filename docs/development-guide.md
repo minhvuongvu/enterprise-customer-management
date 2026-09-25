@@ -132,14 +132,12 @@ watching lint reject it — in Phase 0 for text, and again in Phase 1 for attrib
 
 | Missing                                          | Arrives in |
 | ------------------------------------------------ | ---------- |
-| Real authentication, refresh and authorization   | Phase 3    |
 | File upload, CSV import, notifications, realtime | Phase 4    |
 | A second language                                | Phase 6    |
 | CI pipeline                                      | Phase 7    |
 
-The sign-in page is a Phase 2 placeholder: it establishes the session the customer
-API requires and nothing else. [ADR-0012](decisions/0012-phase-2-session-boundary.md)
-states exactly what it does not do.
+Authentication, refresh and authorization arrived in Phase 3; how they work and what
+protects what is in [`security.md`](security.md).
 
 If you need one of these now, that is a signal the phase order is wrong — raise it
 rather than building it early.

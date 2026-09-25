@@ -12,8 +12,10 @@ import { technicalLabsEnabled } from './technical-labs/technical-labs.guard';
  *     outside the shell and is the one route that is prerendered
  *     (`app.routes.server.ts`). Everything else lives under a path-less route
  *     that renders `AppShell` and carries `authGuard`, so the guard is stated
- *     once for the whole application rather than repeated on every page - and
- *     Phase 3 changes a function body, not this file.
+ *     once for the whole application rather than repeated on every page.
+ *     Signing in is checked here; what a user may *do* is checked by each
+ *     feature's own routes (`requirePermission`), because only the feature
+ *     knows which of its pages need which permission.
  *
  *  2. **Every route is lazy.** Adding a feature never grows the initial
  *     bundle by default, and a feature owns its own route file: the
@@ -63,6 +65,14 @@ export const routes: Routes = [
         data: withMetadata({ breadcrumb: 'nav.technicalLabs' }),
         loadChildren: () =>
           import('./technical-labs/technical-labs.routes').then((m) => m.technicalLabsRoutes),
+      },
+      {
+        // Rendered by `requirePermission` with `browserUrl`, so the address
+        // bar shows the URL that was refused. Reachable directly too,
+        // which is harmless: it says nothing a user could not already see.
+        path: 'forbidden',
+        title: 'pages.forbidden.title',
+        loadComponent: () => import('./forbidden/forbidden-page').then((m) => m.ForbiddenPage),
       },
       {
         path: '**',

@@ -3,6 +3,8 @@ import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { TranslocoTestingModule } from '@jsverse/transloco';
+import { SessionService } from '../core/auth/session.service';
+import { provideSignedInAs } from '../core/testing/session-testing';
 import { AppShell } from './app-shell';
 import { LayoutBreakpoints, type LayoutMode } from './layout-breakpoints';
 import translations from '../core/i18n/translations/en.json';
@@ -17,7 +19,7 @@ class FakeLayoutBreakpoints {
 describe('AppShell', () => {
   let layout: FakeLayoutBreakpoints;
 
-  async function render(mode: LayoutMode) {
+  async function render(mode: LayoutMode, extraProviders: unknown[] = []) {
     layout = new FakeLayoutBreakpoints();
     layout.current.set(mode);
 
@@ -31,9 +33,13 @@ describe('AppShell', () => {
         }),
       ],
       providers: [
-        provideRouter([{ path: 'customers', children: [] }]),
+        provideRouter([
+          { path: 'customers', children: [] },
+          { path: 'login', children: [] },
+        ]),
         provideLocationMocks(),
         { provide: LayoutBreakpoints, useValue: layout },
+        ...(extraProviders as []),
       ],
     }).compileComponents();
 
@@ -143,5 +149,30 @@ describe('AppShell', () => {
     // permanent sidebar.
     expect(root(fixture).querySelector('.drawer__panel')).toBeNull();
     expect(root(fixture).querySelector('.shell__sidebar')).not.toBeNull();
+  });
+
+  describe('the signed-in user', () => {
+    it('is named in the header with their role, which explains what they can do', async () => {
+      const fixture = await render('desktop', [provideSignedInAs('manager')]);
+
+      const user = root(fixture).querySelector('[data-testid="current-user"]');
+      expect(user?.textContent).toContain('Morgan Manager');
+      expect(user?.textContent).toContain('Manager');
+    });
+
+    it('signs out, and leaves the application for the sign-in page', async () => {
+      const fixture = await render('desktop', [provideSignedInAs('manager')]);
+      const router = TestBed.inject(Router);
+      await router.navigateByUrl('/customers');
+
+      root(fixture).querySelector<HTMLElement>('[data-testid="sign-out"] button')?.click();
+      await fixture.whenStable();
+
+      expect(TestBed.inject(SessionService).status()).toBe('anonymous');
+      expect(router.url).toBe('/login');
+      fixture.detectChanges();
+      // Nobody is signed in, so there is nobody to name.
+      expect(root(fixture).querySelector('[data-testid="current-user"]')).toBeNull();
+    });
   });
 });

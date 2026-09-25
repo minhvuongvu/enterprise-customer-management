@@ -13,6 +13,7 @@ import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
 import type { Customer } from '@ecm/contracts';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
+import { IfPermitted } from '../../core/auth/if-permitted.directive';
 import { messageKeyOf } from '../../core/errors/app-error';
 import { formatDateOnly } from '../../core/time/instant';
 import { PageContainer } from '../../layout/page-container';
@@ -50,6 +51,7 @@ import { valueOf } from '../state/remote-data';
     DatePipe,
     Dialog,
     ErrorState,
+    IfPermitted,
     PageContainer,
     PageHeader,
     Skeleton,
@@ -72,13 +74,25 @@ import { valueOf } from '../state/remote-data';
             >
               {{ t('pages.customers.detail.refresh') }}
             </app-button>
-            <app-button [link]="['/customers', record.id, 'edit']">
+            <!-- UI authorization: an action the user can never perform is
+                 not offered. The store refuses it too, and the API refuses it
+                 regardless - this is the part a user sees, not the part that
+                 protects anything. MANAGER is the role that shows it: edit
+                 without delete. -->
+            <app-button
+              *appIfPermitted="'CUSTOMER_UPDATE'"
+              [link]="['/customers', record.id, 'edit']"
+            >
               {{ t('pages.customers.detail.edit') }}
             </app-button>
             <app-button [link]="['/customers', record.id, 'audit']">
               {{ t('pages.customers.detail.audit') }}
             </app-button>
-            <app-button variant="danger" (click)="confirmingDelete.set(true)">
+            <app-button
+              *appIfPermitted="'CUSTOMER_DELETE'"
+              variant="danger"
+              (click)="confirmingDelete.set(true)"
+            >
               {{ t('pages.customers.detail.delete') }}
             </app-button>
           }

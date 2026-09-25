@@ -18,6 +18,14 @@
     "customers": "Customers",
     "technicalLabs": "Technical labs"
   },
+  "auth": {
+    "signOut": "Sign out",
+    "role": {
+      "ADMIN": "Administrator",
+      "MANAGER": "Manager",
+      "VIEWER": "Viewer"
+    }
+  },
   "theme": {
     "label": "Colour theme",
     "options": {
@@ -43,7 +51,8 @@
     "login": {
       "title": "Sign in",
       "heading": "Sign in",
-      "placeholder": "A placeholder sign-in: it establishes the session the customer API requires. Real authentication - refresh, expiry, guards and permissions - arrives in Phase 3.",
+      "intro": "Sign in with admin, manager or viewer to see what each role is allowed to do.",
+      "sessionExpired": "Your session has ended. Sign in again to continue where you left off.",
       "username": "Username",
       "usernameHint": "admin, manager or viewer",
       "usernameRequired": "Enter a username.",
@@ -59,6 +68,12 @@
       "body": "The page you asked for does not exist. It may have been moved, or the address may contain a typo.",
       "backHome": "Go to customers"
     },
+    "forbidden": {
+      "title": "Not permitted",
+      "heading": "You do not have access to this page",
+      "body": "Your role does not include the permission this page needs. If you need it, ask an administrator.",
+      "backHome": "Go to customers"
+    },
     "customers": {
       "list": {
         "title": "Customers",
@@ -70,7 +85,6 @@
         "resultsLabel": "Customer results",
         "summary": "Showing {{shown}} of {{total}} customers.",
         "pageSize": "Rows per page",
-        "signIn": "Go to sign in",
         "errorHeading": "The customer list could not be loaded",
         "refreshFailed": "The list could not be refreshed. What you see below may be out of date.",
         "emptyHeading": "No customers to show",

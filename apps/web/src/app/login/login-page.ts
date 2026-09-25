@@ -2,14 +2,17 @@ import {
   afterNextRender,
   ChangeDetectionStrategy,
   Component,
+  computed,
   DestroyRef,
   inject,
+  input,
   signal,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
+import { safeReturnUrl } from '../core/auth/return-url';
 import { SessionService } from '../core/auth/session.service';
 import { isAppError } from '../core/errors/app-error';
 import { ThemeToggle } from '../layout/theme-toggle';
@@ -25,14 +28,16 @@ import { TextInput } from '../shared/ui/text-input/text-input';
  * route worth prerendering (`app.routes.server.ts`) - it is identical for
  * everyone and has nothing to wait for.
  *
- * ## Why Phase 2 gave it a form
+ * ## Where it sends the user
  *
- * Every customer endpoint on the mock API is behind `requireAuth`, so a phase
- * about customer data cannot run without a session. This form establishes one
- * and does nothing else. It is explicitly **not** Phase 3's authentication:
- * there is no guard redirecting here, no refresh, no expiry handling, no
- * logout and no permission model - all of which Phase 3 owns. ADR-0012 states
- * the line and why it is drawn there.
+ * To `returnUrl` when there is one - the page the guard or an expired session
+ * sent them from - and otherwise to the customer list. The parameter is a
+ * value anyone can put in a link, so it is followed only after `safeReturnUrl`
+ * has confirmed it is a path inside this application; see `return-url.ts` for
+ * the open-redirect it prevents.
+ *
+ * `reason=expired` adds one sentence saying why they are here. Arriving at a
+ * sign-in form unannounced, mid-task, reads as a malfunction.
  *
  * The mock backend does not verify passwords, which is documented in
  * `docs/mock-backend.md` and is the reason there is no credential anywhere in
@@ -64,7 +69,13 @@ import { TextInput } from '../shared/ui/text-input/text-input';
           <app-theme-toggle />
         </div>
 
-        <p class="login__note">{{ t('pages.login.placeholder') }}</p>
+        @if (expired()) {
+          <p class="login__notice" role="status" data-testid="session-expired">
+            {{ t('pages.login.sessionExpired') }}
+          </p>
+        }
+
+        <p class="login__note">{{ t('pages.login.intro') }}</p>
 
         <form class="login__form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
           <app-text-input
@@ -138,6 +149,15 @@ import { TextInput } from '../shared/ui/text-input/text-input';
       color: var(--text-secondary);
     }
 
+    .login__notice {
+      padding: var(--space-2) var(--space-3);
+      border: var(--border-width) solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      background-color: var(--surface-sunken);
+      color: var(--text-primary);
+      font-size: var(--text-sm);
+    }
+
     .login__form {
       display: flex;
       flex-direction: column;
@@ -152,6 +172,10 @@ import { TextInput } from '../shared/ui/text-input/text-input';
   `,
 })
 export class LoginPage {
+  /** Query parameters, bound by `withComponentInputBinding`. Untrusted input. */
+  readonly returnUrl = input<string>();
+  readonly reason = input<string>();
+
   private readonly session = inject(SessionService);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
@@ -166,6 +190,7 @@ export class LoginPage {
   protected readonly submitting = signal(false);
   protected readonly submitted = signal(false);
   protected readonly failure = signal<string | null>(null);
+  protected readonly expired = computed(() => this.reason() === 'expired');
 
   constructor() {
     afterNextRender(() => this.ready.set(true));
@@ -196,7 +221,7 @@ export class LoginPage {
       .subscribe({
         next: () => {
           this.submitting.set(false);
-          void this.router.navigate(['/customers']);
+          void this.router.navigateByUrl(safeReturnUrl(this.returnUrl()));
         },
         error: (error: unknown) => {
           this.submitting.set(false);

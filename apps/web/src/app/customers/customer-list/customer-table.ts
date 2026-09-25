@@ -65,16 +65,18 @@ const SORTABLE_COLUMNS: readonly SortableColumn[] = [
         </caption>
         <thead>
           <tr>
-            <th scope="col" class="cell--select">
-              <input
-                type="checkbox"
-                [attr.aria-label]="t('pages.customers.list.table.selectAll')"
-                [checked]="allSelected()"
-                [indeterminate]="someSelected()"
-                (change)="allToggled.emit(!allSelected())"
-                data-testid="select-all"
-              />
-            </th>
+            @if (selectable()) {
+              <th scope="col" class="cell--select">
+                <input
+                  type="checkbox"
+                  [attr.aria-label]="t('pages.customers.list.table.selectAll')"
+                  [checked]="allSelected()"
+                  [indeterminate]="someSelected()"
+                  (change)="allToggled.emit(!allSelected())"
+                  data-testid="select-all"
+                />
+              </th>
+            }
 
             @for (column of columns; track column.field) {
               <th scope="col" [attr.aria-sort]="ariaSort(column.field)">
@@ -96,16 +98,18 @@ const SORTABLE_COLUMNS: readonly SortableColumn[] = [
         <tbody>
           @for (row of rows(); track row.id) {
             <tr [class.row--selected]="isSelected(row.id)">
-              <td class="cell--select">
-                <input
-                  type="checkbox"
-                  [attr.aria-label]="
-                    t('pages.customers.list.table.selectRow', { name: row.fullName })
-                  "
-                  [checked]="isSelected(row.id)"
-                  (change)="rowToggled.emit(row.id)"
-                />
-              </td>
+              @if (selectable()) {
+                <td class="cell--select">
+                  <input
+                    type="checkbox"
+                    [attr.aria-label]="
+                      t('pages.customers.list.table.selectRow', { name: row.fullName })
+                    "
+                    [checked]="isSelected(row.id)"
+                    (change)="rowToggled.emit(row.id)"
+                  />
+                </td>
+              }
               <td class="cell--code">{{ row.customerCode }}</td>
               <td>
                 <a [routerLink]="['/customers', row.id]">{{ row.fullName }}</a>
@@ -181,6 +185,11 @@ export class CustomerTable {
   /** `field,direction`, as it appears in the URL. */
   readonly sort = input.required<string>();
   readonly selectedIds = input.required<ReadonlySet<CustomerId>>();
+  /**
+   * False removes the selection column. The page decides, from the user's
+   * permissions: selecting rows is only useful to someone who can act on them.
+   */
+  readonly selectable = input(true);
 
   readonly sortChange = output<string>();
   readonly rowToggled = output<CustomerId>();

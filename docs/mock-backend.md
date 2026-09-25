@@ -141,7 +141,7 @@ tests that call the API directly, with no browser involved.
 | **CORS**              | —                                                      | **Echoes an allow-listed origin, never `*` with credentials**                                 | Enforces the policy                                    | Usually owns this in production                          |
 | **Security headers**  | —                                                      | Sets `nosniff`, `X-Frame-Options`, `Referrer-Policy`, a restrictive CSP, `Permissions-Policy` | Enforces them                                          | **Owns them in production**, including the app's own CSP |
 | **HSTS**              | —                                                      | Not set — meaningless over plain HTTP                                                         | —                                                      | **Only here**                                            |
-| **Upload validation** | Checks type and size for fast feedback — _convenience_ | **Checks them again, and refuses SVG.** The rule                                              | —                                                      | Size limits at the edge                                  |
+| **Upload validation** | Checks type and size for fast feedback — _convenience_ | **Checks them again with the same `checkFile`, then the file's first bytes.** The rule        | —                                                      | Size limits at the edge                                  |
 | **Rate limiting**     | —                                                      | Fixed-window per IP                                                                           | —                                                      | Usually here in production                               |
 | **Input validation**  | Validates for the user's benefit                       | **Validates with the same schema for the system's benefit**                                   | —                                                      | —                                                        |
 
@@ -150,20 +150,26 @@ Two things this table is careful about:
 1. **The frontend is never the boundary.** Its permission checks decide what to show.
    Every one of them is repeated here, and the authorization tests prove it by using a
    VIEWER session against the API with no UI in the picture.
-2. **Declared MIME type is a claim, not proof.** The upload filter rejects anything but
-   png, jpeg and webp — SVG in particular, because it can carry script. A production
-   backend would also inspect the bytes and serve user content from a separate origin.
-   This one does not, and saying so is more useful than implying otherwise.
+2. **Declared MIME type is a claim, not proof.** Since Phase 3 the server checks the
+   name, the declared type and the size with the shared `checkFile` policy, and then
+   the file's **first bytes** against the declared type - an HTML page named
+   `avatar.png` and sent as `image/png` is refused with 415. SVG is refused because
+   it can carry script. A production backend would go further - decode and re-encode
+   the image, scan it, serve user content from a separate origin. This one does not,
+   and saying so is more useful than implying otherwise (ADR-0019).
+
+The full per-control ownership table, including the application's side, is
+[`security.md`](security.md).
 
 ### What is deliberately not real
 
-|                                  | Why                                                                                                                                                  |
-| -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Password verification            | Storing a credential in a fixture is how real ones leak. The `invalid-credentials` scenario provides the failure path deterministically              |
-| Opaque tokens, not JWTs          | Signing and claim parsing would change nothing the frontend deals with, and invite the "JWT in localStorage" pattern this project avoids             |
-| No content inspection of uploads | A real backend would sniff magic bytes and serve from a separate origin                                                                              |
-| Fixed-window rate limiting       | A client can send up to twice the limit across a window boundary. Naming the flaw is more useful than hiding it behind a sliding window nobody reads |
-| In-memory sessions               | A restart signs everyone out — which makes the expired-session path easy to exercise by hand                                                         |
+|                                 | Why                                                                                                                                                  |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Password verification           | Storing a credential in a fixture is how real ones leak. The `invalid-credentials` scenario provides the failure path deterministically              |
+| Opaque tokens, not JWTs         | Signing and claim parsing would change nothing the frontend deals with, and invite the "JWT in localStorage" pattern this project avoids             |
+| Signature check only on uploads | A real backend would also decode and re-encode images and serve them from a separate origin (ADR-0019)                                               |
+| Fixed-window rate limiting      | A client can send up to twice the limit across a window boundary. Naming the flaw is more useful than hiding it behind a sliding window nobody reads |
+| In-memory sessions              | A restart signs everyone out — which makes the expired-session path easy to exercise by hand                                                         |
 
 ---
 

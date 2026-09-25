@@ -10,6 +10,7 @@ import {
   emailAvailabilityValidator,
   EMAIL_CHECK_DEBOUNCE_MS,
 } from './email-availability.validator';
+import { provideSignedInAs } from '../../core/testing/session-testing';
 
 /**
  * The one rule in this form the client cannot answer by itself.
@@ -25,7 +26,7 @@ describe('emailAvailabilityValidator', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     TestBed.configureTestingModule({
-      providers: [provideTestHttp(), CustomerCache, CustomerStore],
+      providers: [provideTestHttp(), provideSignedInAs('admin'), CustomerCache, CustomerStore],
     });
     backend = TestBed.inject(HttpTestingController);
     excludeId = null;

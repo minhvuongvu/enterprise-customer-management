@@ -14,6 +14,8 @@ import { ActivatedRoute, Router } from '@angular/router';
 import type { BulkAction, BulkResponse, CustomerId } from '@ecm/contracts';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { distinctUntilChanged } from 'rxjs';
+import { IfPermitted } from '../../core/auth/if-permitted.directive';
+import { SessionService } from '../../core/auth/session.service';
 import { Logger } from '../../core/logging/logger';
 import { PageContainer } from '../../layout/page-container';
 import { PageHeader } from '../../layout/page-header';
@@ -72,6 +74,7 @@ import { CustomerTable } from './customer-table';
     Dialog,
     EmptyState,
     ErrorState,
+    IfPermitted,
     PageContainer,
     PageHeader,
     Pagination,
@@ -96,7 +99,7 @@ import { CustomerTable } from './customer-table';
           >
             {{ t('pages.customers.list.refresh') }}
           </app-button>
-          <app-button variant="primary" link="/customers/new">
+          <app-button *appIfPermitted="'CUSTOMER_CREATE'" variant="primary" link="/customers/new">
             {{ t('pages.customers.list.create') }}
           </app-button>
         </div>
@@ -131,22 +134,18 @@ import { CustomerTable } from './customer-table';
           }
 
           @case ('error') {
+            <!-- No sign-in branch here any more. An expired session is
+                 renewed by the refresh interceptor, and one that cannot be
+                 renewed sends the user to sign in from the application root
+                 (session-expiry.ts), so this page never has to know. -->
             <app-error-state
               [heading]="t('pages.customers.list.errorHeading')"
               [description]="t(errorMessageKey())"
-              [retryLabel]="needsSignIn() ? '' : t('common.retry')"
+              [retryLabel]="t('common.retry')"
               (retry)="refresh()"
               data-testid="list-error"
             >
             </app-error-state>
-
-            @if (needsSignIn()) {
-              <p class="results__signin">
-                <app-button variant="primary" link="/login">
-                  {{ t('pages.customers.list.signIn') }}
-                </app-button>
-              </p>
-            }
           }
 
           @case ('empty') {
@@ -164,7 +163,11 @@ import { CustomerTable } from './customer-table';
                   {{ t('pages.customers.list.filters.reset') }}
                 </app-button>
               } @else {
-                <app-button variant="primary" link="/customers/new">
+                <app-button
+                  *appIfPermitted="'CUSTOMER_CREATE'"
+                  variant="primary"
+                  link="/customers/new"
+                >
                   {{ t('pages.customers.list.create') }}
                 </app-button>
               }
@@ -181,6 +184,7 @@ import { CustomerTable } from './customer-table';
             <app-customer-table
               [rows]="rows()"
               [sort]="criteria().sort"
+              [selectable]="canBulkEdit()"
               [selectedIds]="selected()"
               (sortChange)="applySort($event)"
               (rowToggled)="toggleRow($event)"
@@ -278,11 +282,6 @@ import { CustomerTable } from './customer-table';
       width: 8rem;
     }
 
-    .results__signin {
-      display: flex;
-      justify-content: center;
-    }
-
     @media #{bp.$below-tablet} {
       .results__footer {
         flex-direction: column;
@@ -305,6 +304,7 @@ export class CustomerListPage {
   readonly createdTo = input<string>();
 
   private readonly store = inject(CustomerStore);
+  private readonly session = inject(SessionService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly logger = inject(Logger);
@@ -360,10 +360,16 @@ export class CustomerListPage {
     return state.status === 'error' ? state.error.messageKey : 'errors.unknown';
   });
 
-  protected readonly needsSignIn = computed(() => {
-    const state = this.state();
-    return state.status === 'error' && state.error.kind === 'authentication';
-  });
+  /**
+   * Selection exists to run bulk actions, so a user who can run none of them
+   * gets no checkboxes. Which of the actions they see is the bulk bar's
+   * business; whether to offer selection at all is this page's.
+   */
+  protected readonly canBulkEdit = computed(
+    () =>
+      this.session.hasPermission('CUSTOMER_UPDATE') ||
+      this.session.hasPermission('CUSTOMER_DELETE'),
+  );
 
   // ------------------------------------------------------------- selection
 

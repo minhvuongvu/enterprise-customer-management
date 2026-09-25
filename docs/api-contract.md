@@ -75,12 +75,12 @@ failed cross-field rule) are collected under `_`.
 
 ### Authentication
 
-| Method | Path                | Permission | Notes                                                    |
-| ------ | ------------------- | ---------- | -------------------------------------------------------- |
-| `POST` | `/api/auth/login`   | —          | Sets `ecm_access`, `ecm_refresh`, `ecm_csrf`             |
-| `POST` | `/api/auth/refresh` | session    | Rotates both tokens; a replayed refresh token is refused |
-| `GET`  | `/api/auth/session` | session    | Current user and permissions                             |
-| `POST` | `/api/auth/logout`  | session    | Clears the cookies                                       |
+| Method | Path                | Permission | Notes                                                                                                                  |
+| ------ | ------------------- | ---------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `POST` | `/api/auth/login`   | —          | Sets `ecm_access`, `ecm_refresh`, `ecm_csrf`                                                                           |
+| `POST` | `/api/auth/refresh` | session    | Rotates both tokens; a replayed refresh token is refused                                                               |
+| `GET`  | `/api/auth/session` | session    | Current user, permissions, and the access token's real expiry                                                          |
+| `POST` | `/api/auth/logout`  | CSRF       | Destroys the session - found by access token, or by CSRF token once the access cookie is gone - and clears the cookies |
 
 ### Customers
 

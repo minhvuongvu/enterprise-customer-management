@@ -1,6 +1,6 @@
 # ADR-0012 — Phase 2 borrows a session, and states exactly what it did not borrow
 
-**Status:** Accepted
+**Status:** Superseded by [ADR-0016](0016-session-tokens-in-httponly-cookies.md)
 **Date:** 2026-09-20
 **Phase:** Phase 2
 

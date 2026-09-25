@@ -6,6 +6,7 @@ import { TranslocoTestingModule } from '@jsverse/transloco';
 import { routes } from '../app.routes';
 import { Breadcrumbs } from './breadcrumbs';
 import translations from '../core/i18n/translations/en.json';
+import { provideSignedInAs } from '../core/testing/session-testing';
 
 /**
  * No `<router-outlet>`: the trail is derived from the router's state, not from
@@ -31,7 +32,7 @@ describe('Breadcrumbs', () => {
           preloadLangs: true,
         }),
       ],
-      providers: [provideRouter(routes), provideLocationMocks()],
+      providers: [provideRouter(routes), provideLocationMocks(), provideSignedInAs('admin')],
     }).compileComponents();
 
     const fixture = TestBed.createComponent(BreadcrumbsHost);

@@ -5,6 +5,7 @@ import { DEFAULT_CRITERIA, type CustomerListCriteria } from '../data/customer-li
 import { aCustomer, anotherCustomer, aPage } from '../testing/customer.fixture';
 import { CustomerCache } from './customer-cache';
 import { CustomerStore } from './customer-store';
+import { provideSignedInAs } from '../../core/testing/session-testing';
 
 /**
  * The feature's server state.
@@ -21,7 +22,7 @@ describe('CustomerStore', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [provideTestHttp(), CustomerCache, CustomerStore],
+      providers: [provideTestHttp(), provideSignedInAs('admin'), CustomerCache, CustomerStore],
     });
     store = TestBed.inject(CustomerStore);
     cache = TestBed.inject(CustomerCache);

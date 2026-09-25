@@ -9,6 +9,7 @@ import { CustomerCache } from '../state/customer-cache';
 import { CustomerStore } from '../state/customer-store';
 import { aCustomer, anotherCustomer, aPage } from '../testing/customer.fixture';
 import { CustomerListPage } from './customer-list-page';
+import { provideSignedInAs } from '../../core/testing/session-testing';
 
 /**
  * The list, end to end within the browser.
@@ -27,6 +28,7 @@ describe('CustomerListPage', () => {
       imports: [provideTestTranslations()],
       providers: [
         provideTestHttp(),
+        provideSignedInAs('admin'),
         provideLocationMocks(),
         provideRouter(
           [
@@ -127,16 +129,6 @@ describe('CustomerListPage', () => {
     expect(testId(root, 'list-error')).not.toBeNull();
     expect(text(root)).toContain('Something went wrong on our side');
     expect(text(root)).not.toContain('Stack trace');
-  });
-
-  it('offers a way in when the list says the session is gone', async () => {
-    const root = await open();
-    listRequest().flush(null, { status: 401, statusText: 'Unauthorized' });
-    harness.detectChanges();
-
-    // Retrying a 401 would fail identically. What the user needs is a link.
-    expect(text(root)).toContain('Go to sign in');
-    expect(root.querySelector('[data-testid="list-error"] button')).toBeNull();
   });
 
   it('puts a sort change in the URL, and asks the server to do the sorting', async () => {

@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import type { BulkResponse } from '@ecm/contracts';
 import { TranslocoDirective } from '@jsverse/transloco';
+import { IfPermitted } from '../../core/auth/if-permitted.directive';
 import { Button } from '../../shared/ui/button/button';
 import { bulkFailureKey } from '../customer-vocabulary';
 
@@ -28,7 +29,7 @@ interface FailureGroup {
  */
 @Component({
   selector: 'app-customer-bulk-bar',
-  imports: [Button, TranslocoDirective],
+  imports: [Button, IfPermitted, TranslocoDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="bulk" *transloco="let t">
@@ -38,25 +39,30 @@ interface FailureGroup {
         </p>
 
         <div class="bulk__actions">
+          <!-- Activate and deactivate are updates; delete is its own
+               permission. The same split the API makes per item. -->
+          <ng-container *appIfPermitted="'CUSTOMER_UPDATE'">
+            <app-button
+              size="sm"
+              [loading]="running()"
+              [disabled]="running()"
+              (click)="activate.emit()"
+              data-testid="bulk-activate"
+            >
+              {{ t('pages.customers.list.bulk.activate') }}
+            </app-button>
+            <app-button
+              size="sm"
+              [loading]="running()"
+              [disabled]="running()"
+              (click)="deactivate.emit()"
+              data-testid="bulk-deactivate"
+            >
+              {{ t('pages.customers.list.bulk.deactivate') }}
+            </app-button>
+          </ng-container>
           <app-button
-            size="sm"
-            [loading]="running()"
-            [disabled]="running()"
-            (click)="activate.emit()"
-            data-testid="bulk-activate"
-          >
-            {{ t('pages.customers.list.bulk.activate') }}
-          </app-button>
-          <app-button
-            size="sm"
-            [loading]="running()"
-            [disabled]="running()"
-            (click)="deactivate.emit()"
-            data-testid="bulk-deactivate"
-          >
-            {{ t('pages.customers.list.bulk.deactivate') }}
-          </app-button>
-          <app-button
+            *appIfPermitted="'CUSTOMER_DELETE'"
             size="sm"
             variant="danger"
             [loading]="running()"

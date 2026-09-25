@@ -8,7 +8,7 @@ session that has the git history but none of the conversation that produced it.
 `docs/PROGRESS.md` about what is done, PROGRESS wins — it is updated as part of every
 phase's Definition of Done, and this file is updated only at a handoff.
 
-Last updated at **`phase-2-complete`** (commit `68f7aa6`).
+Last updated at **`phase-3-complete`**.
 
 ---
 
@@ -76,6 +76,10 @@ The parts that come up most often:
 | 0013 | one feature store, explicit cache, cancellation by switching              |
 | 0014 | the contract type **is** the domain type; no mapping layer                |
 | 0015 | a losing write reloads and resubmits only this user's fields              |
+| 0016 | tokens are `HttpOnly` cookies; the app never holds one (supersedes 0012)  |
+| 0017 | reactive refresh, single flight, one retry; one job per interceptor       |
+| 0018 | route, UI and action authorization by permission - none of it security    |
+| 0019 | one file policy for both sides; a byte check only the server makes        |
 
 ### The ten rules
 
@@ -101,7 +105,7 @@ other eight are enforced by review, and the ones most often broken by accident a
 | 0.5   | Mock API & Contracts                     | **Done**    |
 | 1     | Routing, Layout & Design System          | **Done**    |
 | 2     | Customer CRUD, Forms & Server State      | **Done**    |
-| 3     | Authentication, Authorization & Security | Not started |
+| 3     | Authentication, Authorization & Security | **Done**    |
 | 4–8   | see `docs/PROGRESS.md`                   | Not started |
 
 `docs/PROGRESS.md` is the phase-state file: what each phase built, what deviated, the
@@ -112,7 +116,8 @@ technical-debt register and the open questions. **Read it before starting anythi
 History is linear; each phase branch contains everything before it.
 
 ```text
-phase-2  68f7aa6  <- HEAD, everything is here
+phase-3           <- HEAD, everything is here
+phase-2  8da182b
 phase-1  4d75b6c
 phase-0.5 c0791f9
 phase-0  6ef58ce
@@ -121,25 +126,25 @@ master   ef498df  <- pre-Phase-0. Nothing has been merged into it.
 
 Two things a cloud session will trip over:
 
-- **`master` is stale on purpose.** No phase has been merged. Branch Phase 3 from
-  `phase-2`, not from `master`.
+- **`master` is stale on purpose.** No phase has been merged. Branch Phase 4 from
+  `phase-3`, not from `master`.
 - **Branches and `phase-N-complete` tags are both on the remote**, so a fresh clone
   sees the whole phase history. `git fetch --tags` if a clone predates them.
 
-### Verification at `phase-2-complete`
+### Verification at `phase-3-complete`
 
 `npm run verify` runs format → lint → typecheck → test → build → e2e.
 
-| Check         | Result                                                |
-| ------------- | ----------------------------------------------------- |
-| format, lint  | clean; 0 errors, 0 warnings                           |
-| typecheck     | clean across all three packages, templates included   |
-| unit tests    | 376 — 248 web, 101 mock-api, 27 contracts             |
-| build         | succeeds, browser + server, 1 route prerendered       |
-| e2e           | 38, including the CRUD journey and axe in both themes |
-| import cycles | none — 158 modules, 352 edges                         |
+| Check         | Result                                              |
+| ------------- | --------------------------------------------------- |
+| format, lint  | clean; 0 errors, 0 warnings                         |
+| typecheck     | clean across all three packages, templates included |
+| unit tests    | 447 — 303 web, 111 mock-api, 33 contracts           |
+| build         | succeeds, browser + server, 1 route prerendered     |
+| e2e           | 45, including the auth journey, expiry and axe      |
+| import cycles | none (method in PROGRESS, Phase 3 checks)           |
 
-**One warning is expected and is not a regression:** the initial bundle is ~797 kB
+**One warning is expected and is not a regression:** the initial bundle is ~802 kB
 against a 500 kB budget. It is pre-existing, measured, and left failing so it stays
 visible — technical-debt row 8, to be paid in Phase 5. Do not silence it by raising
 the budget.
@@ -183,42 +188,36 @@ repository state. A Linux cloud session can ignore them.
 
 ## 5. What is still open
 
-### Next: Phase 3 — Authentication, Authorization & Security
+### Next: Phase 4 — Enterprise UX, Files, Notifications & Realtime
 
-The prompt is `prompts/Phase 3 — Authentication, Authorization & Security.md`. Follow
-the workflow in `CLAUDE.md`: read PROGRESS, inspect what actually exists, plan, then
-implement only that phase.
-
-Phase 2 deliberately left the ground prepared. Read
-[ADR-0012](docs/decisions/0012-phase-2-session-boundary.md) first — it states exactly
-what was borrowed and what was not, and Phase 3 should **supersede** it rather than
-extend it.
+The prompt is `prompts/Phase 4 — Enterprise UX, Files, Notifications & Realtime.md`.
+Follow the workflow in `CLAUDE.md`. Read the Phase 3 entry in `docs/PROGRESS.md` first -
+its "For the next phase" list is written for you - and `docs/security.md`, which says
+who owns every protection and must stay true as Phase 4 adds uploads.
 
 Already in place, and meant to be built on:
 
-- `authGuard` returns `true`, says so, and is already attached once to the shell
-  branch of the route tree. Phase 3 changes a function body, not the routing.
-- `SessionService` has `signIn()` and the `status` / `user` / `isAuthenticated`
-  signals. Refresh, expiry, logout and failed-refresh handling are the gap.
-- `csrfInterceptor` is finished work. The interceptor order is documented in
-  `core/http/http.providers.ts` and is load-bearing.
-- The role/permission matrix is in `@ecm/contracts` and is already enforced
-  server-side, with tests that call the API directly and no UI involved. Nothing in
-  the UI reads it yet — that is Phase 3's UI-authorization work, and the delete action
-  on the customer detail page is the obvious first place, because `MANAGER` is
-  deliberately denied it.
-- Every page already handles an `authentication` error by offering a link to sign in.
-  Phase 3 turns that into a redirect that preserves the intended destination; the
-  pages should get **simpler**, not more complex.
+- **File validation.** `checkFile` with `AVATAR_FILE_POLICY` / `IMPORT_FILE_POLICY` in
+  `@ecm/contracts` is the client check the upload and import screens should call. The
+  server repeats it and also checks the avatar's bytes (ADR-0019). Debt row 19 says
+  use it or delete it.
+- **Authorization.** Hide controls with `*appIfPermitted`, refuse actions in the store
+  with `refuseUnless(...)`, guard routes with `requirePermission(...)` (ADR-0018).
+  Import and export need `CUSTOMER_IMPORT` / `CUSTOMER_EXPORT`.
+- **Sessions.** Features never handle an expired session - the refresh interceptor and
+  `provideSessionExpiryRedirect` do (ADR-0017). **Except SSE**: an `EventSource` does
+  not go through `HttpClient`, so realtime needs its own answer to a 401.
 
 ### Debt and open questions
 
 Both live in `docs/PROGRESS.md` and are not duplicated here, because a second copy
-would drift. The ones a Phase 3 session will meet directly:
+would drift. The ones a Phase 4 session will meet directly:
 
-- row 7 — avatar uploads are validated by declared MIME type only;
-- row 13 — typing into the prerendered sign-in form before hydration is discarded;
-- open question 8 — whether `/login` should stop being prerendered because of it.
+- row 9 - `app-dialog` renders inline, no scroll lock (open question 7);
+- row 15 - a mutation refetches the list even when nobody is looking (open question 9);
+- row 20 - an expiry while a form is dirty asks to discard on the way to sign-in;
+- open question 2 - whether the hand-written cache survives realtime and optimistic
+  updates.
 
 ### Traps that have already cost time
 
@@ -233,12 +232,19 @@ fresh session recognises the symptom instead of re-deriving the cause:
 - **jsdom does not implement form submission from a button**, so a component test must
   dispatch the `submit` event itself.
 - **An async validator resolving does not emit on `statusChanges`** — Angular 22
-  publishes a `StatusChangeEvent` on `control.events` instead. A wait built on
-  `statusChanges` never ends.
+  publishes a `StatusChangeEvent` on `control.events` instead.
 - **`CanDeactivateFn` receives `null` at runtime** for a route that resolved but never
   rendered, whatever its type says.
 - **Playwright matches accessible names by substring**, and its `request` fixture has
   its own cookie jar — `context.request` is the one that shares with the browser.
+- **`skipLocationChange` keeps the previous URL**, not the requested one; `browserUrl`
+  is the option that does. In a unit test, `router.url` is the rendered route and
+  `Location.path()` is the address bar.
+- **Every component that renders `*appIfPermitted` or uses `CustomerStore` needs a
+  session in its test.** `provideSignedInAs('admin' | 'manager' | 'viewer')` in
+  `core/testing/session-testing.ts` restores one before the first render.
+- **Playwright's Chromium download may be blocked in a cloud session.** Phase 3 pointed
+  `PLAYWRIGHT_BROWSERS_PATH` at symlinks to the preinstalled build; see PROGRESS.
 
 ---
 

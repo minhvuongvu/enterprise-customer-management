@@ -126,19 +126,24 @@ of components already depend on.
 
 These are gaps, not oversights. Each has an owner.
 
-| Gap                                                                    | Why it is acceptable now                                                                                                       | Closed in |
-| ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | --------- |
-| No coverage thresholds                                                 | A number without a policy is not a signal; Phase 7 sets both at once                                                           | Phase 7   |
-| One browser (Chromium)                                                 | There is not enough UI for cross-browser differences to exist                                                                  | Phase 6   |
-| No visual regression                                                   | Nothing has a stable visual identity yet                                                                                       | Phase 7   |
-| No architecture/dependency tests                                       | Boundaries are enforced by review until there are boundaries worth automating                                                  | Phase 7   |
-| Search does not match across diacritics                                | The mock's index is a plain lowercase substring match                                                                          | Phase 6   |
-| Layouts checked at three fixed widths                                  | Real devices differ in more than width; these three are where the shape changes                                                | Phase 6   |
-| Bulk `CONFLICT` outcome only reached by injection                      | A natural version race needs two concurrent clients                                                                            | Phase 4   |
-| Typing into the prerendered sign-in form before hydration is discarded | The submit button is disabled until the app is live, so the credential cannot leak into the URL; the keystrokes are still lost | Phase 3   |
+| Gap                                                                    | Why it is acceptable now                                                                                                                                                     | Closed in |
+| ---------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
+| No coverage thresholds                                                 | A number without a policy is not a signal; Phase 7 sets both at once                                                                                                         | Phase 7   |
+| One browser (Chromium)                                                 | There is not enough UI for cross-browser differences to exist                                                                                                                | Phase 6   |
+| No visual regression                                                   | Nothing has a stable visual identity yet                                                                                                                                     | Phase 7   |
+| No architecture/dependency tests                                       | Boundaries are enforced by review until there are boundaries worth automating                                                                                                | Phase 7   |
+| Search does not match across diacritics                                | The mock's index is a plain lowercase substring match                                                                                                                        | Phase 6   |
+| Layouts checked at three fixed widths                                  | Real devices differ in more than width; these three are where the shape changes                                                                                              | Phase 6   |
+| Bulk `CONFLICT` outcome only reached by injection                      | A natural version race needs two concurrent clients                                                                                                                          | Phase 4   |
+| Typing into the prerendered sign-in form before hydration is discarded | The submit button is disabled until the app is live, so the credential cannot leak into the URL; the keystrokes are still lost. Phase 3 kept `/login` prerendered (ADR-0016) | Phase 5   |
 
 ## How this grows
 
-Phase 3 adds authorization tests that assert the _UI_ reflects a role while the
-server enforces it independently. Phase 7 reviews the whole pyramid, adds coverage
+Phase 3 added authorization tests that assert the _UI_ reflects a role
+(`customer-authorization.spec.ts`, `e2e/auth.spec.ts`) while the server enforces it
+independently (`apps/mock-api/test/authorization.spec.ts`, and a direct API call as a
+manager in the E2E suite). The refresh races are tested by counting requests at the
+transport (`auth-refresh.interceptor.spec.ts`), which is the only level at which "exactly
+one refresh" can be asserted. Session expiry is reproduced in E2E by removing the
+cookies the browser would have dropped, rather than by waiting. Phase 7 reviews the whole pyramid, adds coverage
 gates and wires it into CI.

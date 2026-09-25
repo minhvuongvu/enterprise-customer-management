@@ -109,15 +109,28 @@ export class SessionRegistry {
     return rotated;
   }
 
-  destroy(accessToken: string | undefined): void {
-    if (!accessToken) {
-      return;
-    }
-    const session = this.byAccess.get(accessToken);
+  /**
+   * Ends a session, found by its access token or - when the browser no longer
+   * sends one - by its CSRF token, which lives as long as the refresh token
+   * and survives rotation. See the logout route.
+   */
+  destroy(accessToken: string | undefined, csrfToken?: string): void {
+    const session =
+      (accessToken ? this.byAccess.get(accessToken) : undefined) ??
+      (csrfToken ? this.findByCsrf(csrfToken) : undefined);
     if (session) {
       this.byAccess.delete(session.accessToken);
       this.byRefresh.delete(session.refreshToken);
     }
+  }
+
+  private findByCsrf(csrfToken: string): ActiveSession | undefined {
+    for (const session of this.byRefresh.values()) {
+      if (session.csrfToken === csrfToken) {
+        return session;
+      }
+    }
+    return undefined;
   }
 
   /** Forces expiry of the access token. Backs the `expired-session` scenario. */
