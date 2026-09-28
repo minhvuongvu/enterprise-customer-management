@@ -1,5 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { TranslocoDirective } from '@jsverse/transloco';
+import { LocaleFormat } from '../core/i18n/locale-format';
+import { PluralPipe } from '../core/i18n/locale-pipes';
 import { ConfirmationService } from '../core/notifications/confirmation.service';
 import { Button } from '../shared/ui/button/button';
 import { Dialog } from '../shared/ui/dialog/dialog';
@@ -15,7 +17,7 @@ import { Dialog } from '../shared/ui/dialog/dialog';
  */
 @Component({
   selector: 'app-confirmation-host',
-  imports: [Button, Dialog, TranslocoDirective],
+  imports: [Button, Dialog, PluralPipe, TranslocoDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (request(); as ask) {
@@ -25,10 +27,16 @@ import { Dialog } from '../shared/ui/dialog/dialog';
              gives it back to the control that asked on the way out. -->
         <app-dialog
           [open]="true"
-          [heading]="t(ask.headingKey, ask.params ?? {})"
-          (closed)="confirmation.answer(false)"
+          [heading]="t(ask.headingKey, format.params(ask.params))"
+          (dismissed)="confirmation.answer(false)"
         >
-          <p>{{ t(ask.bodyKey, ask.params ?? {}) }}</p>
+          <p>
+            {{
+              ask.count === undefined
+                ? t(ask.bodyKey, format.params(ask.params))
+                : (ask.bodyKey | appPlural: ask.count : format.params(ask.params))
+            }}
+          </p>
           <div dialogActions>
             <app-button (click)="confirmation.answer(false)" data-testid="confirm-cancel">
               {{ t(ask.cancelKey ?? 'common.cancel') }}
@@ -48,5 +56,6 @@ import { Dialog } from '../shared/ui/dialog/dialog';
 })
 export class ConfirmationHost {
   protected readonly confirmation = inject(ConfirmationService);
+  protected readonly format = inject(LocaleFormat);
   protected readonly request = computed(() => this.confirmation.pending()?.request ?? null);
 }

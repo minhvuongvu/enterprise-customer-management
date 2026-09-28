@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { TranslocoDirective } from '@jsverse/transloco';
+import { PluralPipe } from '../../core/i18n/locale-pipes';
 import { PageContainer } from '../../layout/page-container';
 import { PageHeader } from '../../layout/page-header';
 import { LabSection } from '../lab-section';
@@ -27,13 +28,17 @@ import { VirtualScrollDemo } from './virtual-scroll-demo';
     LabSection,
     PageContainer,
     PageHeader,
+    PluralPipe,
     TranslocoDirective,
     VirtualScrollDemo,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <app-page-container *transloco="let t; prefix: 'pages.labs.performance'">
-      <app-page-header [heading]="t('heading')" [description]="t('lede', { count: rows.length })" />
+      <app-page-header
+        [heading]="t('heading')"
+        [description]="'pages.labs.performance.lede' | appPlural: rows.length"
+      />
 
       <app-lab-section
         sectionId="debounce"

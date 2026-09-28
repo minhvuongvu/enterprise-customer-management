@@ -1,4 +1,11 @@
-import { ChangeDetectionStrategy, Component, forwardRef, input, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  forwardRef,
+  input,
+  signal,
+} from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 
 let nextId = 0;
@@ -35,7 +42,12 @@ export interface SelectOption {
   ],
   template: `
     <div class="field">
-      <label class="field__label" [attr.for]="selectId">{{ label() }}</label>
+      <label class="field__label" [attr.for]="selectId">
+        {{ label() }}
+        @if (required()) {
+          <span aria-hidden="true">*</span>
+        }
+      </label>
 
       <!--
         The current value is expressed by [selected] on each option, not by
@@ -52,7 +64,9 @@ export interface SelectOption {
         [id]="selectId"
         [attr.name]="name() || null"
         [disabled]="isDisabled()"
-        [attr.aria-describedby]="hint() ? hintId : null"
+        [required]="required()"
+        [attr.aria-invalid]="error() ? 'true' : null"
+        [attr.aria-describedby]="describedBy()"
         (change)="handleChange($event)"
         (blur)="handleBlur()"
       >
@@ -72,6 +86,9 @@ export interface SelectOption {
 
       @if (hint()) {
         <p class="field__hint" [id]="hintId">{{ hint() }}</p>
+      }
+      @if (error()) {
+        <p class="field__error" [id]="errorId" role="alert">{{ error() }}</p>
       }
     </div>
   `,
@@ -102,8 +119,17 @@ export interface SelectOption {
       cursor: not-allowed;
     }
 
+    .field__control[aria-invalid='true'] {
+      border-color: var(--danger);
+    }
+
     .field__hint {
       color: var(--text-muted);
+      font-size: var(--text-sm);
+    }
+
+    .field__error {
+      color: var(--danger-text);
       font-size: var(--text-sm);
     }
   `,
@@ -115,9 +141,23 @@ export class Select implements ControlValueAccessor {
   readonly hint = input('');
   /** Text for the empty option. Omit it to make a choice mandatory. */
   readonly placeholder = input('');
+  /**
+   * Already translated, as on `app-text-input` - the two field components
+   * share one contract for errors, so a form never has to know which kind of
+   * control it is describing.
+   */
+  readonly error = input('');
+  readonly required = input(false);
 
   protected readonly selectId = `app-select-${nextId++}`;
   protected readonly hintId = `${this.selectId}-hint`;
+  protected readonly errorId = `${this.selectId}-error`;
+
+  /** Hint and error, whichever exist - see `app-text-input` for why. */
+  protected readonly describedBy = computed(() => {
+    const ids = [this.hint() ? this.hintId : '', this.error() ? this.errorId : ''].filter(Boolean);
+    return ids.length ? ids.join(' ') : null;
+  });
 
   protected readonly value = signal('');
   protected readonly isDisabled = signal(false);

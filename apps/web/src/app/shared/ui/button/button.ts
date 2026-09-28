@@ -134,11 +134,11 @@ export type ButtonSize = 'sm' | 'md';
     }
 
     .btn[data-variant='danger'] {
-      background-color: var(--danger);
+      background-color: var(--danger-solid);
       color: var(--text-on-accent);
     }
     .btn[data-variant='danger']:hover:not(:disabled) {
-      filter: brightness(0.92);
+      background-color: var(--danger-solid-hover);
     }
 
     /* The label collapses to nothing for an icon-only button, and the gap

@@ -27,8 +27,8 @@
  * - which is exactly the cost that makes people stop using the keyboard. */
 .skip-link {
   position: absolute;
-  top: var(--space-2);
-  left: var(--space-2);
+  inset-block-start: var(--space-2);
+  inset-inline-start: var(--space-2);
   z-index: var(--z-overlay);
   padding: var(--space-2) var(--space-4);
   border-radius: var(--radius-md);

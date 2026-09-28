@@ -23,7 +23,12 @@ type Translate = (key: string) => string;
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-container *transloco="let t">
-      <app-dropdown [items]="options(t)" [menuLabel]="t('theme.label')" (selected)="apply($event)">
+      <app-dropdown
+        kind="choice"
+        [items]="options(t)"
+        [menuLabel]="t('theme.label')"
+        (itemSelected)="apply($event)"
+      >
         <!-- The glyph is decorative; the accessible name is the hidden text,
              so the control is announced as "Colour theme" rather than as a
              character no screen reader can pronounce. -->

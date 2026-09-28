@@ -1,0 +1,927 @@
+{
+  "app": {
+    "title": "Quản lý khách hàng",
+    "skipToContent": "Chuyển đến nội dung chính"
+  },
+  "common": {
+    "cancel": "Hủy",
+    "save": "Lưu",
+    "reset": "Đặt lại",
+    "retry": "Thử lại",
+    "notProvided": "Chưa cung cấp"
+  },
+  "nav": {
+    "primary": "Điều hướng chính",
+    "menu": "Menu điều hướng",
+    "breadcrumbs": "Đường dẫn",
+    "dismissMenu": "Đóng menu điều hướng",
+    "customers": "Khách hàng",
+    "technicalLabs": "Phòng thí nghiệm kỹ thuật",
+    "account": "Tài khoản và tùy chọn"
+  },
+  "auth": {
+    "signOut": "Đăng xuất",
+    "role": {
+      "ADMIN": "Quản trị viên",
+      "MANAGER": "Quản lý",
+      "VIEWER": "Người xem"
+    }
+  },
+  "theme": {
+    "label": "Giao diện màu",
+    "options": {
+      "light": "Sáng",
+      "dark": "Tối",
+      "system": "Theo hệ thống"
+    }
+  },
+  "language": {
+    "label": "Ngôn ngữ",
+    "names": {
+      "en": "English",
+      "vi": "Tiếng Việt"
+    },
+    "switching": "Đang đổi ngôn ngữ…"
+  },
+  "ui": {
+    "dialog": {
+      "close": "Đóng hộp thoại",
+      "dismiss": "Bỏ qua hộp thoại"
+    },
+    "pagination": {
+      "label": "Trang",
+      "summary": "Trang {{page}} / {{totalPages}}",
+      "previous": "Trang trước",
+      "next": "Trang sau",
+      "goToPage": "Đến trang {{page}}"
+    }
+  },
+  "pages": {
+    "login": {
+      "title": "Đăng nhập",
+      "heading": "Đăng nhập",
+      "intro": "Đăng nhập bằng admin, manager hoặc viewer để xem mỗi vai trò được phép làm gì.",
+      "sessionExpired": "Phiên làm việc đã kết thúc. Hãy đăng nhập lại để tiếp tục từ chỗ bạn đã dừng.",
+      "username": "Tên đăng nhập",
+      "usernameHint": "admin, manager hoặc viewer",
+      "usernameRequired": "Hãy nhập tên đăng nhập.",
+      "password": "Mật khẩu",
+      "passwordHint": "Backend giả lập không kiểm tra mật khẩu, nên giá trị nào cũng được. Kho mã này không chứa thông tin đăng nhập nào.",
+      "passwordRequired": "Hãy nhập mật khẩu.",
+      "submit": "Đăng nhập",
+      "invalidCredentials": "Tên đăng nhập và mật khẩu này không được chấp nhận.",
+      "signedOutElsewhere": "Bạn đã đăng xuất ở một tab khác. Hãy đăng nhập lại để tiếp tục."
+    },
+    "notFound": {
+      "title": "Không tìm thấy trang",
+      "heading": "Không tìm thấy trang",
+      "body": "Trang bạn yêu cầu không tồn tại. Có thể trang đã được chuyển đi, hoặc địa chỉ bị gõ sai.",
+      "backHome": "Đến danh sách khách hàng"
+    },
+    "forbidden": {
+      "title": "Không được phép",
+      "heading": "Bạn không có quyền truy cập trang này",
+      "body": "Vai trò của bạn không có quyền mà trang này yêu cầu. Nếu cần, hãy hỏi quản trị viên.",
+      "backHome": "Đến danh sách khách hàng"
+    },
+    "customers": {
+      "list": {
+        "title": "Khách hàng",
+        "heading": "Khách hàng",
+        "description": "Tìm kiếm, lọc và quản lý hồ sơ khách hàng.",
+        "create": "Khách hàng mới",
+        "refresh": "Làm mới",
+        "loading": "Đang tải danh sách khách hàng",
+        "resultsLabel": "Kết quả khách hàng",
+        "summary": {
+          "other": "Đang hiển thị {{shown}} trên {{count}} khách hàng."
+        },
+        "pageSize": "Số dòng mỗi trang",
+        "errorHeading": "Không tải được danh sách khách hàng",
+        "refreshFailed": "Không làm mới được danh sách. Những gì bạn thấy bên dưới có thể đã cũ.",
+        "emptyHeading": "Không có khách hàng nào để hiển thị",
+        "emptyFiltered": "Không có khách hàng nào khớp với tìm kiếm và bộ lọc hiện tại.",
+        "emptyUnfiltered": "Chưa có khách hàng nào. Hãy tạo khách hàng đầu tiên.",
+        "filters": {
+          "label": "Tìm kiếm và bộ lọc",
+          "search": "Tìm kiếm",
+          "searchPlaceholder": "Tên, email hoặc mã",
+          "searchHint": "Việc tìm kiếm bắt đầu khi bạn ngừng gõ.",
+          "status": "Trạng thái",
+          "anyStatus": "Mọi trạng thái",
+          "gender": "Giới tính",
+          "anyGender": "Mọi giới tính",
+          "createdFrom": "Tạo từ ngày",
+          "createdTo": "Tạo đến ngày",
+          "reset": "Xóa bộ lọc",
+          "more": "Bộ lọc",
+          "activeCount": "{{count}} đang dùng"
+        },
+        "table": {
+          "caption": "Khách hàng, kèm mã, tên, email, trạng thái và thời điểm cập nhật gần nhất",
+          "selectAll": "Chọn mọi khách hàng trên trang này",
+          "selectRow": "Chọn {{name}}"
+        },
+        "bulk": {
+          "selected": "Đã chọn {{count}}",
+          "activate": "Kích hoạt",
+          "deactivate": "Ngừng kích hoạt",
+          "delete": "Xóa",
+          "clear": "Bỏ chọn",
+          "summary": "{{succeeded}} trên {{requested}} thành công.",
+          "retryHint": "Các hồ sơ bị lỗi vẫn đang được chọn, để bạn có thể thử lại.",
+          "confirmHeading": "Xóa các khách hàng đã chọn?",
+          "confirmBody": {
+            "other": "{{count}} khách hàng sẽ bị xóa. Không thể hoàn tác thao tác này."
+          }
+        },
+        "export": "Xuất CSV",
+        "import": "Nhập CSV",
+        "exporting": "Đang chuẩn bị tệp xuất…",
+        "exportingPercent": "Đang tải tệp xuất… {{percent}}%",
+        "exported": "Đã tải xong tệp xuất.",
+        "moreActions": "Thao tác khác",
+        "cards": {
+          "sortBy": "Sắp xếp theo",
+          "asc": "{{field}}, tăng dần",
+          "desc": "{{field}}, giảm dần"
+        }
+      },
+      "create": {
+        "title": "Khách hàng mới",
+        "heading": "Khách hàng mới",
+        "breadcrumb": "Tạo mới"
+      },
+      "edit": {
+        "title": "Sửa khách hàng",
+        "heading": "Sửa khách hàng",
+        "breadcrumb": "Sửa"
+      },
+      "detail": {
+        "title": "Khách hàng",
+        "heading": "Khách hàng",
+        "breadcrumb": "Khách hàng",
+        "description": "Mọi thông tin về khách hàng này, và những gì đã được thực hiện với hồ sơ.",
+        "loading": "Đang tải khách hàng",
+        "refresh": "Làm mới",
+        "edit": "Sửa",
+        "audit": "Nhật ký thay đổi",
+        "delete": "Xóa",
+        "backToList": "Quay lại danh sách khách hàng",
+        "notFoundHeading": "Không có khách hàng này",
+        "notFoundBody": "Khách hàng này không tồn tại. Có thể hồ sơ đã bị xóa, hoặc địa chỉ bị gõ sai.",
+        "errorHeading": "Không tải được khách hàng",
+        "deleteHeading": "Xóa khách hàng này?",
+        "deleteBody": "{{name}} sẽ bị xóa. Không thể hoàn tác thao tác này.",
+        "activate": "Kích hoạt",
+        "deactivate": "Ngừng kích hoạt",
+        "statusSaving": "Đang lưu…",
+        "statusConflict": "Thay đổi trạng thái đã bị hoàn tác: người khác vừa thay đổi khách hàng này. Hồ sơ đã được tải lại.",
+        "statusRolledBack": "Thay đổi trạng thái đã bị hoàn tác. {{reason}}",
+        "stale": {
+          "updated": "Khách hàng {{code}} đã được người khác thay đổi. Những gì bạn thấy có thể đã cũ.",
+          "deleted": "Khách hàng {{code}} đã bị người khác xóa.",
+          "unverified": "Cập nhật trực tiếp bị gián đoạn, nên hồ sơ này có thể đã cũ."
+        }
+      },
+      "audit": {
+        "title": "Nhật ký thay đổi",
+        "heading": "Nhật ký thay đổi",
+        "breadcrumb": "Nhật ký",
+        "description": "Mọi thay đổi đối với hồ sơ này, mới nhất trước.",
+        "loading": "Đang tải nhật ký thay đổi",
+        "refresh": "Làm mới",
+        "backToCustomer": "Quay lại khách hàng",
+        "by": "bởi {{actor}} lúc",
+        "becameSr": "thành",
+        "emptyHeading": "Chưa có gì được ghi lại",
+        "emptyBody": "Chưa có thay đổi nào được ghi lại cho khách hàng này.",
+        "errorHeading": "Không tải được nhật ký thay đổi",
+        "redacted": "Đã thay đổi (không hiển thị giá trị)",
+        "changedNoValue": "Đã thay đổi",
+        "otherField": "Thông tin khác"
+      },
+      "form": {
+        "description": "Các trường có dấu sao là bắt buộc.",
+        "create": "Tạo khách hàng",
+        "loading": "Đang tải khách hàng",
+        "loadErrorHeading": "Không tải được khách hàng",
+        "fixFields": "Một số trường cần được sửa. Chúng được đánh dấu bên dưới.",
+        "checkingEmail": "Đang kiểm tra xem địa chỉ này đã được dùng chưa...",
+        "phoneHint": "Bắt buộc khi khách hàng ở trạng thái hoạt động.",
+        "statusHint": "Khách hàng đang hoạt động phải có số điện thoại.",
+        "countryHint": "Hai chữ cái, ví dụ VN hoặc GB.",
+        "addressNote": "Để trống địa chỉ, hoặc điền ít nhất dòng đầu tiên, thành phố và quốc gia.",
+        "tagsHint": "Phân cách bằng dấu phẩy. Tối đa {{max}}.",
+        "conflictHeading": "Người khác đã thay đổi khách hàng này",
+        "conflictBody": "Hồ sơ này đã được người khác lưu trong khi biểu mẫu đang mở. Hãy tải lại phiên bản mới nhất - những gì bạn đã nhập vẫn được giữ - rồi lưu lại. Chỉ các trường bạn đã thay đổi được gửi đi, nên công việc của họ vẫn được giữ nguyên.",
+        "conflictReload": "Tải lại phiên bản mới nhất",
+        "conflictReloaded": "Đã tải lại. Hãy xem lại thay đổi của bạn và lưu lần nữa.",
+        "leaveHeading": "Rời đi mà không lưu?",
+        "leaveBody": "Biểu mẫu này có thay đổi chưa được lưu. Rời đi bây giờ sẽ bỏ các thay đổi đó.",
+        "stay": "Ở lại trang này",
+        "discard": "Bỏ thay đổi của tôi",
+        "sections": {
+          "identity": "Khách hàng",
+          "address": "Địa chỉ",
+          "tags": "Thẻ"
+        },
+        "remote": {
+          "updatedHeading": "Người khác đã thay đổi khách hàng này",
+          "updatedBody": "Lưu bây giờ sẽ bị xung đột. Hãy tải lại thay đổi của họ trước - mọi thứ bạn đã nhập đều được giữ.",
+          "deletedHeading": "Khách hàng này đã bị xóa",
+          "deletedBody": "Một người dùng khác đã xóa khách hàng này khi bạn đang sửa. Thay đổi của bạn không thể được lưu.",
+          "unverifiedHeading": "Hồ sơ này có thể đã cũ",
+          "unverifiedBody": "Cập nhật trực tiếp bị gián đoạn. Hãy tải lại để chắc chắn bạn đang sửa phiên bản mới nhất - những gì bạn đã nhập vẫn được giữ."
+        }
+      },
+      "import": {
+        "title": "Nhập khách hàng",
+        "breadcrumb": "Nhập",
+        "heading": "Nhập khách hàng",
+        "description": "Thêm khách hàng từ tệp CSV. Bạn sẽ thấy tệp chứa gì, và những gì sẽ bị bỏ qua, trước khi bất cứ thứ gì được nhập.",
+        "backToList": "Quay lại danh sách khách hàng",
+        "stepsLabel": "Các bước nhập",
+        "step": {
+          "select": "Chọn tệp",
+          "preview": "Kiểm tra và xác nhận",
+          "result": "Kết quả"
+        },
+        "choose": "Chọn một tệp CSV, hoặc thả tệp vào đây",
+        "hint": "Các cột bắt buộc: {{columns}}. Tối đa {{size}} MB.",
+        "checking": "Đang kiểm tra tệp",
+        "importing": "Đang nhập",
+        "percent": "{{label}}… {{percent}}%",
+        "previewHeading": "Tệp này sẽ làm gì",
+        "previewSummary": {
+          "other": "{{count}} dòng: {{valid}} sẽ được nhập, {{invalid}} sẽ bị bỏ qua."
+        },
+        "missingColumns": "Tệp không có cột {{columns}}, nên không thể nhập gì.",
+        "unknownColumns": "Các cột này sẽ bị bỏ qua: {{columns}}.",
+        "previewCaption": {
+          "other": "{{count}} dòng đầu tiên của tệp"
+        },
+        "row": "Dòng",
+        "outcome": "Kết quả",
+        "willImport": "Sẽ được nhập",
+        "willSkip": "Sẽ bị bỏ qua",
+        "confirm": {
+          "other": "Nhập {{count}} khách hàng"
+        },
+        "chooseAnother": "Chọn tệp khác",
+        "resultHeading": "Đã nhập xong",
+        "resultImported": {
+          "other": "Đã nhập {{count}} khách hàng."
+        },
+        "resultSkipped": {
+          "other": "Đã bỏ qua {{count}} dòng."
+        },
+        "truncated": "Chỉ những dòng có vấn đề đầu tiên được liệt kê.",
+        "downloadErrors": "Tải về các dòng bị bỏ qua",
+        "failed": "Không xử lý được tệp.",
+        "errorsHeading": "Các dòng có vấn đề",
+        "errorLine": "Dòng {{row}}, {{column}}: {{reason}}",
+        "wholeRow": "cả dòng",
+        "code": {
+          "REQUIRED": "thiếu một giá trị bắt buộc",
+          "INVALID_FORMAT": "giá trị không đúng định dạng",
+          "DUPLICATE_EMAIL": "đã có khách hàng dùng email này",
+          "UNKNOWN_COLUMN": "cột không xác định",
+          "TOO_LONG": "giá trị quá dài"
+        },
+        "notification": "Đã nhập xong: thêm {{succeeded}}, bỏ qua {{failed}}."
+      }
+    },
+    "labs": {
+      "backToIndex": "Quay lại các phòng thí nghiệm",
+      "index": {
+        "title": "Phòng thí nghiệm kỹ thuật",
+        "heading": "Phòng thí nghiệm kỹ thuật",
+        "description": "Các kỹ thuật trình duyệt không có chỗ tự nhiên trong quản lý khách hàng, được cố ý tách riêng khỏi nó.",
+        "available": "Sẵn sàng",
+        "plannedForPhase": "Giai đoạn {{phase}}"
+      },
+      "placeholder": {
+        "title": "Phòng thí nghiệm kỹ thuật",
+        "breadcrumb": "Thí nghiệm",
+        "heading": "Chưa được xây dựng",
+        "body": "Phòng thí nghiệm này sẽ có ở giai đoạn {{phase}}."
+      },
+      "unknown": {
+        "heading": "Phòng thí nghiệm không xác định",
+        "body": "Không có phòng thí nghiệm nào với tên đó",
+        "hint": "Địa chỉ có thể bị gõ sai, hoặc phòng thí nghiệm đã được đổi tên."
+      },
+      "apiConnectivity": {
+        "title": "Kết nối API",
+        "breadcrumb": "Kết nối API",
+        "heading": "Kết nối API",
+        "description": "Kiểm chứng toàn bộ đường đi: proxy phát triển, URL gốc được cấu hình lúc chạy, các HTTP interceptor, và việc kiểm tra phản hồi theo hợp đồng.",
+        "recheck": "Kiểm tra lại",
+        "status": {
+          "checking": "Đang kiểm tra kết nối tới API...",
+          "connected": "Đã kết nối tới API giả lập.",
+          "unavailable": "Không kết nối được API giả lập. Hãy chạy nó bằng: npm run start:api"
+        },
+        "customerCount": {
+          "other": "Bộ dữ liệu có {{count}} khách hàng."
+        }
+      },
+      "browserStorage": {
+        "title": "Lưu trữ trình duyệt",
+        "description": "localStorage, sessionStorage và IndexedDB: mỗi loại giữ gì, tồn tại qua những gì, và các tab khác biết về thay đổi thế nào.",
+        "breadcrumb": "Lưu trữ trình duyệt",
+        "heading": "Lưu trữ trình duyệt",
+        "empty": "(trống)",
+        "unsupported": "Trình duyệt này không cung cấp nó ở đây - có thể việc lưu trữ bị chặn với trang này.",
+        "failed": "Trình duyệt từ chối thao tác lưu trữ. Bộ nhớ có thể đã đầy hoặc bị chặn với trang này.",
+        "webStorage": {
+          "heading": "localStorage và sessionStorage",
+          "description": "Lưu một giá trị vào mỗi loại, rồi tải lại trang, mở tab mới, hoặc đóng và mở lại tab này: localStorage tồn tại qua cả ba và được chia sẻ; sessionStorage chỉ tồn tại qua lần tải lại.",
+          "value": "Giá trị cần lưu",
+          "saveLocal": "Lưu vào localStorage",
+          "saveSession": "Lưu vào sessionStorage",
+          "local": "localStorage",
+          "session": "sessionStorage"
+        },
+        "events": {
+          "heading": "Sự kiện storage từ các tab khác",
+          "description": "Mở trang này ở tab thứ hai và lưu vào localStorage ở đó. Trình duyệt sẽ báo cho tab này - và không bao giờ báo cho tab đã ghi.",
+          "none": "Chưa nhận được sự kiện storage nào.",
+          "entry": "{{key}}: {{from}} → {{to}}",
+          "cleared": "(bộ nhớ đã bị xóa)"
+        },
+        "indexedDb": {
+          "heading": "IndexedDB",
+          "description": "Một cơ sở dữ liệu trong trình duyệt: bản ghi có cấu trúc, được ghi trong giao dịch, không làm treo trang. Ghi chú tồn tại qua các lần tải lại và khởi động lại.",
+          "note": "Ghi chú",
+          "add": "Thêm ghi chú",
+          "clear": "Xóa mọi ghi chú",
+          "empty": "Chưa có ghi chú nào.",
+          "estimate": "Trang này dùng khoảng {{usage}} KB trên hạn mức {{quota}} MB.",
+          "persisted": "Bộ nhớ là bền vững: trình duyệt sẽ không xóa nó khi thiếu chỗ.",
+          "bestEffort": "Bộ nhớ là không bảo đảm: trình duyệt có thể xóa nó khi đĩa đầy."
+        }
+      },
+      "crossTab": {
+        "title": "Giao tiếp giữa các tab",
+        "description": "BroadcastChannel và sự kiện storage giữa các tab của cùng ứng dụng, và nơi chính ứng dụng dùng chúng.",
+        "breadcrumb": "Giữa các tab",
+        "heading": "Giao tiếp giữa các tab",
+        "lede": "Mở trang này ở tab thứ hai để thấy tin nhắn và thay đổi đến. Tab này là {{id}}.",
+        "unsupported": "Trình duyệt này không có BroadcastChannel.",
+        "broadcast": {
+          "heading": "BroadcastChannel",
+          "description": "Tin nhắn gửi ở đây đến được mọi tab khác đang mở của ứng dụng - không đến tab này, và không đến tab mở sau đó.",
+          "message": "Tin nhắn",
+          "send": "Gửi tới các tab khác",
+          "entry": "{{from}} lúc {{at}}: {{text}}",
+          "none": "Chưa nhận được tin nhắn nào."
+        },
+        "storage": {
+          "heading": "Sự kiện storage",
+          "description": "Bộ đếm nằm trong localStorage. Tăng nó ở bất kỳ tab nào sẽ cập nhật mọi tab khác - trình duyệt thông báo thay đổi; không có gì được gửi đi.",
+          "counter": "Bộ đếm dùng chung: {{value}}",
+          "increment": "Tăng"
+        },
+        "application": {
+          "heading": "Trong ứng dụng",
+          "description": "Bốn chỗ chính ứng dụng phối hợp các tab, bên ngoài phòng thí nghiệm này:",
+          "customers": "Khách hàng được tạo, sửa hoặc xóa ở một tab sẽ được thông báo ở các tab khác, và chúng làm mới những gì đang hiển thị.",
+          "signOut": "Đăng xuất ở một tab sẽ đăng xuất mọi tab.",
+          "refresh": "Hai tab không bao giờ gia hạn phiên cùng một lúc: việc làm mới chạy dưới một Web Lock.",
+          "theme": "Giao diện màu chọn ở một tab sẽ áp dụng cho các tab khác, qua sự kiện storage."
+        }
+      },
+      "offline": {
+        "title": "Ngoại tuyến và kết nối",
+        "description": "Phát hiện mạng, một danh sách chỉ đọc vẫn dùng được khi mất mạng, và làm mới khi có mạng trở lại.",
+        "breadcrumb": "Ngoại tuyến",
+        "heading": "Ngoại tuyến và kết nối",
+        "lede": "Một kịch bản ngoại tuyến có giới hạn: danh sách khách hàng chỉ đọc được giữ trong IndexedDB. Phần còn lại của ứng dụng cần mạng, và sẽ nói rõ khi không có mạng.",
+        "connectivity": {
+          "heading": "Kết nối",
+          "description": "Những gì trình duyệt báo cáo. Ngoại tuyến là chắc chắn; trực tuyến chỉ có nghĩa là một giao diện mạng đang bật, không phải máy chủ trả lời.",
+          "online": "Trực tuyến",
+          "offline": "Ngoại tuyến"
+        },
+        "directory": {
+          "heading": "Danh sách khách hàng chỉ đọc",
+          "description": "Lấy từ máy chủ khi trực tuyến và lưu trên thiết bị này; hiển thị từ bản đã lưu khi không kết nối được máy chủ.",
+          "fromNetwork": "Trực tiếp từ máy chủ, lấy lúc {{at}}.",
+          "fromSaved": "Bản đã lưu lúc {{at}}. Chỉ đọc - có thể đã cũ.",
+          "loading": "Đang tải...",
+          "nothing": "Không có gì để hiển thị: không kết nối được máy chủ và chưa có bản nào được lưu trên thiết bị này.",
+          "refresh": "Làm mới",
+          "forget": "Xóa bản đã lưu",
+          "code": "Mã",
+          "name": "Tên",
+          "status": "Trạng thái",
+          "statuses": {
+            "ACTIVE": "Hoạt động",
+            "INACTIVE": "Ngừng hoạt động",
+            "PROSPECT": "Tiềm năng"
+          }
+        },
+        "limits": {
+          "heading": "Những gì đây không phải",
+          "description": "Thay đổi không được xếp hàng, không có gì được đồng bộ ở nền, và những trang bạn chưa mở sẽ không dùng được khi ngoại tuyến. Bản đã lưu thuộc về người dùng đang đăng nhập và bị xóa khi phiên kết thúc ở tab này. Chi tiết có trong docs/offline.md."
+        }
+      },
+      "rendering": {
+        "title": "Kết xuất",
+        "description": "Cùng một trang được phục vụ theo năm cách - kết xuất ở trình duyệt, ở máy chủ, kết xuất trước, và kết xuất trước với hydration bị tắt hoặc trì hoãn - và được đo so sánh với nhau.",
+        "breadcrumb": "Kết xuất",
+        "heading": "Các chế độ kết xuất",
+        "lede": "Năm mẫu của cùng một trang. Chỉ cách kết xuất là khác nhau, nên mọi khác biệt về số liệu là khác biệt về kết xuất.",
+        "specimens": {
+          "heading": "Các mẫu",
+          "description": "Mỗi liên kết là một lần tải trang đầy đủ từ máy chủ, không phải điều hướng bên trong ứng dụng này.",
+          "mode": "Chế độ",
+          "source": "HTML đến từ đâu",
+          "hydration": "Trình duyệt làm gì với nó"
+        },
+        "sources": {
+          "client": "Không từ đâu cả - một khung rỗng, được kết xuất trong trình duyệt",
+          "server": "Máy chủ, ở mỗi yêu cầu",
+          "build": "Bản build - một tệp tĩnh"
+        },
+        "hydrations": {
+          "none": "Kết xuất từ đầu",
+          "full": "Hydrate toàn bộ",
+          "destructive": "Bỏ danh mục đi và kết xuất lại",
+          "incremental": "Hydrate danh mục khi nó cuộn vào tầm nhìn"
+        },
+        "thisPage": {
+          "heading": "Trang này",
+          "description": "Phần ứng dụng sau đăng nhập được kết xuất ở trình duyệt. Đây là số liệu của lần tải đã tạo ra trang này; tải lại để đo lần nữa."
+        },
+        "results": {
+          "heading": "Kết quả đo",
+          "description": "Các phép đo có kiểm soát - chạy lặp lại, giới hạn mạng và CPU, lấy trung vị - được tạo bởi perf/measure-rendering.ts và ghi trong docs/rendering.md."
+        },
+        "modes": {
+          "client": {
+            "name": "Kết xuất ở trình duyệt (CSR)",
+            "summary": "Máy chủ gửi một tài liệu rỗng. Không có gì hiện ra cho đến khi JavaScript được tải, chạy và kết xuất trang."
+          },
+          "server": {
+            "name": "Kết xuất ở máy chủ (SSR)",
+            "summary": "Máy chủ kết xuất trang cho yêu cầu này. Trang hiện ra ngay khi HTML đến, và tương tác được khi đã hydrate."
+          },
+          "prerender": {
+            "name": "Kết xuất trước (SSG)",
+            "summary": "Trang được kết xuất một lần, lúc build, và được phục vụ như một tệp tĩnh. Trang hiện ra ngay khi HTML đến, và tương tác được khi đã hydrate."
+          },
+          "prerender-no-hydration": {
+            "name": "Kết xuất trước, danh mục không hydrate",
+            "summary": "Kết xuất trước, nhưng danh mục không tham gia hydration: trình duyệt bỏ markup của máy chủ cho phần đó và kết xuất lại."
+          },
+          "prerender-incremental": {
+            "name": "Kết xuất trước, hydration tăng dần",
+            "summary": "Kết xuất trước, và danh mục vẫn là markup tĩnh của máy chủ cho đến khi cuộn vào tầm nhìn - lúc đó mới được hydrate."
+          }
+        },
+        "metrics": {
+          "ttfb": "Thời gian đến byte đầu tiên",
+          "fcp": "Lần vẽ nội dung đầu tiên",
+          "lcp": "Lần vẽ nội dung lớn nhất",
+          "appStable": "Ứng dụng ổn định",
+          "bootstrapToStable": "Từ khởi động đến ổn định",
+          "htmlBytes": "Tài liệu đã truyền",
+          "totalBytes": "Tổng dữ liệu đã truyền",
+          "milliseconds": "{{value}} ms",
+          "bytes": "{{value}} byte",
+          "pending": "Chưa đo"
+        },
+        "specimen": {
+          "title": "Mẫu kết xuất",
+          "heading": "Mẫu: {{mode}}",
+          "intro": "Bên dưới là một danh mục 400 dòng, mỗi dòng có một nút - đủ markup để hydration tốn một chi phí đo được.",
+          "clicks": {
+            "other": "Đã bấm {{count}} lần"
+          },
+          "otherModes": "Các chế độ kết xuất khác",
+          "backToLab": "Quay lại phòng thí nghiệm kết xuất",
+          "catalogueCaption": {
+            "other": "Danh mục được tạo, {{count}} dòng"
+          },
+          "code": "Mã",
+          "category": "Loại",
+          "quantity": "Số lượng",
+          "amount": "Số tiền",
+          "details": "Chi tiết",
+          "show": "Hiện",
+          "hide": "Ẩn",
+          "categories": {
+            "hardware": "Phần cứng",
+            "software": "Phần mềm",
+            "services": "Dịch vụ",
+            "training": "Đào tạo"
+          }
+        }
+      },
+      "performance": {
+        "title": "Hiệu năng",
+        "breadcrumb": "Hiệu năng",
+        "heading": "Hiệu năng",
+        "description": "Debounce, throttle, ghi nhớ kết quả, cuộn ảo, tối ưu ảnh và tách mã - mỗi kỹ thuật được đo so với khi không dùng, trên một bộ dữ liệu lớn.",
+        "lede": {
+          "other": "Mọi minh họa trên trang này dùng cùng {{count}} dòng được tạo sẵn, và báo cáo chi phí của nó. Số liệu có kiểm soát nằm trong docs/performance.md."
+        },
+        "rate": {
+          "heading": "Debounce và throttle",
+          "description": "Mỗi lần gõ phím, tìm kiếm tức thì quét toàn bộ các dòng; tìm kiếm có debounce chờ bạn ngừng gõ. Vùng bên dưới đếm sự kiện con trỏ so với số sự kiện mà throttle cho qua.",
+          "searchLabel": "Tìm trong bộ dữ liệu",
+          "searchHint": {
+            "other": "Quét toàn bộ {{count}} dòng theo tên hoặc mã"
+          },
+          "strategy": "Chiến lược",
+          "scans": "Số lần quét",
+          "scanTime": "Tổng thời gian quét (ms)",
+          "matches": "Số kết quả",
+          "immediate": "Mỗi lần gõ phím",
+          "debounced": "Debounce ({{ms}} ms)",
+          "padHint": "Di chuyển con trỏ qua vùng này",
+          "pointerEvents": "Số sự kiện con trỏ nhận được",
+          "pointerHandled": "Đã xử lý, giới hạn một lần mỗi {{ms}} ms"
+        },
+        "derived": {
+          "heading": "Ghi nhớ kết quả và trạng thái dẫn xuất",
+          "description": "Tổng hợp của mọi dòng, được tính bằng một phương thức trong template và bằng một computed signal, trong khi component kết xuất lại vì một lý do không liên quan.",
+          "runMethod": {
+            "other": "Kết xuất lại {{count}} lần với một phương thức"
+          },
+          "runComputed": {
+            "other": "Kết xuất lại {{count}} lần với computed()"
+          },
+          "total": "Tổng của mọi dòng: {{amount}} (lần kết xuất {{tick}})",
+          "result": "{{strategy}}: phần tổng hợp được tính lại {{recomputed}} lần trong {{renders}} lần kết xuất, tổng cộng {{ms}} ms.",
+          "method": "Phương thức trong template",
+          "computed": "computed()"
+        },
+        "images": {
+          "heading": "Tối ưu ảnh",
+          "description": "Mười hai bức ảnh ở dạng tệp tải lên gốc trong thẻ img thông thường, hoặc qua NgOptimizedImage: WebP theo kích thước, tải lười, giữ chỗ kích thước và gợi ý ưu tiên.",
+          "unoptimized": "Hiện ảnh gốc đã tải lên",
+          "optimized": "Hiện bằng NgOptimizedImage",
+          "alt": "Phong cảnh được tạo, thẻ {{item}}"
+        },
+        "virtual": {
+          "heading": "Cuộn ảo",
+          "description": "Danh sách thường kết xuất mọi dòng được giao; cuộn ảo của CDK chỉ kết xuất các dòng đang hiển thị, bất kể danh sách dài bao nhiêu.",
+          "deferred": "Minh họa này được tải khi nó cuộn vào tầm nhìn.",
+          "plain": {
+            "other": "Danh sách thường, {{count}} dòng"
+          },
+          "virtual": {
+            "other": "Cuộn ảo, {{count}} dòng"
+          },
+          "renderTime": "Thời gian kết xuất (ms)",
+          "domElements": "Số phần tử trong minh họa này"
+        },
+        "splitting": {
+          "heading": "Tải lười và tách mã",
+          "description": "Mọi trang của ứng dụng là một route tải lười, và minh họa phía trên là một khối trì hoãn có chunk riêng. Báo cáo bundle trong perf/bundle-report.ts cho biết lượt tải đầu tiên chứa gì và vì sao; docs/performance.md có số liệu."
+        }
+      },
+      "browserApis": {
+        "title": "API trình duyệt",
+        "breadcrumb": "API trình duyệt",
+        "heading": "API trình duyệt",
+        "description": "Các API URL, History, File, Clipboard, Permissions và Geolocation - mỗi API đều được kiểm tra hỗ trợ, và mỗi trường hợp bị từ chối đều được xử lý.",
+        "url": {
+          "heading": "URL API",
+          "description": "Phân tích một địa chỉ theo cách trình duyệt làm, tương đối với một địa chỉ gốc, với tham số truy vấn đã được giải mã.",
+          "label": "Địa chỉ",
+          "hint": "Địa chỉ tương đối được tính từ {{base}}",
+          "href": "Đã phân giải",
+          "host": "Máy chủ",
+          "path": "Đường dẫn",
+          "params": "Tham số truy vấn",
+          "noParams": "Không có",
+          "origin": "Nguồn gốc",
+          "sameOrigin": "Cùng nguồn gốc với địa chỉ gốc",
+          "crossOrigin": "Một nguồn gốc khác",
+          "invalid": "Đây không phải địa chỉ mà bộ phân tích URL chấp nhận."
+        },
+        "history": {
+          "heading": "History API",
+          "description": "Thêm mục lịch sử qua router - một tham số truy vấn tồn tại qua lần tải lại, và trạng thái điều hướng chỉ tồn tại khi lùi và tiến.",
+          "push": "Thêm một mục lịch sử",
+          "back": "Quay lại",
+          "step": "Bước trong URL",
+          "length": "Số mục trong lịch sử của tab này",
+          "state": "Trạng thái điều hướng",
+          "none": "Không có"
+        },
+        "file": {
+          "heading": "File API",
+          "description": "Đọc một tệp bạn chọn - kích thước, các byte đầu tiên, giá trị băm SHA-256 - hoàn toàn trong trang. Không có gì được tải lên.",
+          "choose": "Chọn một tệp",
+          "name": "Tên",
+          "size": "Kích thước",
+          "bytes": {
+            "other": "{{count}} byte"
+          },
+          "type": "Loại mà trình duyệt báo",
+          "unknownType": "Không được báo",
+          "signature": "Các byte đầu tiên",
+          "sha256": "SHA-256",
+          "tooLarge": "Bỏ qua với tệp lớn hơn 50 MB",
+          "preview": "Phần đầu của văn bản",
+          "failed": "Không đọc được tệp."
+        },
+        "clipboard": {
+          "heading": "Clipboard API",
+          "description": "Ghi được phép từ một lần bấm; đọc thì phải xin quyền, vì bộ nhớ tạm có thể chứa bất cứ thứ gì.",
+          "copy": "Sao chép {{value}}",
+          "read": "Đọc bộ nhớ tạm",
+          "outcome": {
+            "copied": "Đã sao chép vào bộ nhớ tạm.",
+            "read": "Bộ nhớ tạm đang chứa: {{value}}",
+            "denied": "Trình duyệt đã từ chối.",
+            "unsupported": "Clipboard API không có ở đây."
+          }
+        },
+        "permissions": {
+          "heading": "Permissions API",
+          "description": "Hỏi trình duyệt nó sẽ làm gì - cho phép, từ chối hay hỏi người dùng - mà không hỏi người dùng.",
+          "query": "Kiểm tra quyền",
+          "state": {
+            "granted": "Đã cho phép",
+            "denied": "Đã từ chối",
+            "prompt": "Sẽ hỏi",
+            "unsupported": "Không hỗ trợ"
+          }
+        },
+        "geolocation": {
+          "heading": "Định vị",
+          "description": "Một vị trí, khi bạn yêu cầu. Nó chỉ được hiển thị ở đây.",
+          "locate": "Tìm vị trí của tôi",
+          "position": "Vĩ độ {{latitude}}, kinh độ {{longitude}}, chính xác trong khoảng {{accuracy}} m.",
+          "failure": {
+            "denied": "Quyền truy cập vị trí đã bị từ chối.",
+            "unavailable": "Không xác định được vị trí.",
+            "timeout": "Tìm vị trí mất quá nhiều thời gian.",
+            "unsupported": "Định vị không có ở đây."
+          }
+        }
+      },
+      "workers": {
+        "title": "Worker",
+        "breadcrumb": "Worker",
+        "heading": "Web worker và service worker",
+        "description": "Web Worker giữ công việc nặng tránh khỏi luồng vẽ trang; service worker nằm giữa trang và mạng.",
+        "worker": {
+          "heading": "Web Worker",
+          "description": "Đếm các số nguyên tố nhỏ hơn hai mươi triệu trên luồng chính, rồi trong một worker, và so sánh trang đã ngừng vẽ khung hình bao lâu.",
+          "mainThread": "Đếm số nguyên tố nhỏ hơn {{limit}} trên luồng chính",
+          "worker": "Đếm số nguyên tố nhỏ hơn {{limit}} trong một worker",
+          "result": "{{where}}: {{count}} số nguyên tố, tổng cộng {{total}} ms; khung hình dài nhất của trang mất {{frame}} ms.",
+          "unsupported": "Trình duyệt này không khởi động được Web Worker ở đây.",
+          "where": {
+            "main-thread": "Luồng chính",
+            "worker": "Worker"
+          }
+        },
+        "serviceWorker": {
+          "heading": "Service worker",
+          "description": "Service worker của Angular lưu đệm phần vỏ ứng dụng để nó khởi động được khi không có mạng. Nó chỉ chạy trong bản build production.",
+          "supported": "Trình duyệt này hỗ trợ",
+          "enabled": "Được bản build này đăng ký",
+          "controlled": "Đang phục vụ trang này",
+          "caches": "Bộ đệm",
+          "yes": "Có",
+          "no": "Không",
+          "none": "Không có",
+          "disabledInDev": "Không - bản build phát triển không đăng ký nó",
+          "refresh": "Làm mới trạng thái",
+          "checkUpdate": "Kiểm tra phiên bản mới",
+          "event": {
+            "VERSION_DETECTED": "Đã phát hiện phiên bản mới và đang tải về.",
+            "VERSION_READY": "Phiên bản mới đã sẵn sàng; nó sẽ được dùng ở lần tải sau.",
+            "VERSION_INSTALLATION_FAILED": "Cài đặt phiên bản mới thất bại.",
+            "NO_NEW_VERSION_DETECTED": "Máy chủ không có phiên bản mới.",
+            "UPDATE_FOUND": "Lần kiểm tra tìm thấy phiên bản mới.",
+            "NO_UPDATE": "Lần kiểm tra không tìm thấy phiên bản mới."
+          }
+        }
+      },
+      "leaderElection": {
+        "title": "Bầu chọn tab dẫn đầu",
+        "breadcrumb": "Bầu chọn tab dẫn đầu",
+        "description": "Chỉ một tab chạy công việc định kỳ; các tab khác nhận kết quả của nó. Một hợp đồng thuê trong localStorage, và các kiểu lỗi của nó.",
+        "heading": "Bầu chọn tab dẫn đầu",
+        "lede": "Mở trang này ở hai hoặc ba tab. Một tab dẫn đầu và hỏi máy chủ; các tab khác chỉ lắng nghe. Đây là một thí nghiệm học tập, không phải một khóa dùng cho production.",
+        "roles": {
+          "follower": "Theo sau",
+          "claiming": "Đang giành hợp đồng thuê",
+          "leader": "Dẫn đầu"
+        },
+        "thisTab": {
+          "heading": "Tab này",
+          "description": "Tab này là {{id}}.",
+          "holder": "Hợp đồng thuê đang do {{holder}} giữ.",
+          "noHolder": "Không ai giữ hợp đồng thuê.",
+          "freeze": "Dừng nhịp tim",
+          "resume": "Tiếp tục nhịp tim"
+        },
+        "job": {
+          "heading": "Công việc dùng chung",
+          "description": "Cứ mỗi {{seconds}} giây, tab dẫn đầu hỏi máy chủ có bao nhiêu khách hàng, rồi báo cho các tab khác.",
+          "result": "{{customers}} khách hàng, được {{tab}} kiểm tra lúc {{at}}.",
+          "thisTab": "tab này",
+          "none": "Chưa có kết quả.",
+          "runHere": {
+            "other": "Tab này đã chạy công việc {{count}} lần."
+          }
+        },
+        "log": {
+          "heading": "Các lần đổi vai trò trong tab này"
+        }
+      },
+      "locale": {
+        "title": "Định dạng theo ngôn ngữ",
+        "breadcrumb": "Định dạng theo ngôn ngữ",
+        "heading": "Định dạng theo ngôn ngữ",
+        "description": "Số, tiền tệ, số nhiều và ngày tháng theo ngôn ngữ đang dùng - và vì sao ngày sinh không bao giờ được biến thành một thời điểm.",
+        "lede": "Hãy đổi ngôn ngữ ở thanh trên cùng: mọi thứ trên trang này được Intl API của trình duyệt định dạng lại, không cần tải lại trang.",
+        "numbers": {
+          "heading": "Số và tiền tệ",
+          "description": "Cùng một số tiền theo {{locale}}. Loại tiền thuộc về số tiền; ngôn ngữ chỉ quyết định cách viết.",
+          "plain": "Số",
+          "currency": "Bằng {{code}}"
+        },
+        "plurals": {
+          "heading": "Số nhiều",
+          "description": "Dạng số nhiều được Intl.PluralRules chọn theo số đếm. Tiếng Anh có hai dạng; tiếng Việt chỉ có một.",
+          "sample": {
+            "other": "Đã chọn {{count}} khách hàng"
+          }
+        },
+        "zones": {
+          "heading": "Múi giờ",
+          "description": "Một thời điểm, và một ngày sinh (1 tháng 1 năm 1990), hiển thị ở sáu múi giờ. Thời điểm nên khác nhau; ngày sinh thì không được khác.",
+          "caption": "Một thời điểm và một ngày sinh ở sáu múi giờ",
+          "zone": "Múi giờ",
+          "instant": "Thời điểm (2026-01-01 02:30 UTC)",
+          "naive": "Ngày sinh, đọc như một thời điểm",
+          "dateOnly": "Ngày sinh, đọc như một ngày lịch",
+          "shifted": "(đã bị lệch sang ngày khác)"
+        }
+      }
+    }
+  },
+  "errors": {
+    "validation": "Một số thông tin đã cung cấp không hợp lệ.",
+    "authentication": "Phiên làm việc đã kết thúc. Vui lòng đăng nhập lại.",
+    "authorization": "Bạn không có quyền làm việc đó.",
+    "notFound": "Chúng tôi không tìm thấy thứ bạn đang tìm.",
+    "conflict": "Người khác đã thay đổi mục này trong lúc bạn đang làm việc với nó.",
+    "rateLimited": "Quá nhiều yêu cầu. Vui lòng đợi một lát rồi thử lại.",
+    "server": "Có lỗi xảy ra ở phía chúng tôi. Vui lòng thử lại.",
+    "network": "Chúng tôi không kết nối được máy chủ. Hãy kiểm tra kết nối mạng.",
+    "timeout": "Việc này mất quá nhiều thời gian. Vui lòng thử lại.",
+    "cancelled": "Yêu cầu đã bị hủy.",
+    "unknown": "Đã xảy ra lỗi không mong muốn."
+  },
+  "customers": {
+    "status": {
+      "ACTIVE": "Hoạt động",
+      "INACTIVE": "Ngừng hoạt động",
+      "PROSPECT": "Tiềm năng"
+    },
+    "gender": {
+      "MALE": "Nam",
+      "FEMALE": "Nữ",
+      "OTHER": "Khác",
+      "UNSPECIFIED": "Không xác định"
+    },
+    "field": {
+      "customerCode": "Mã",
+      "fullName": "Họ và tên",
+      "email": "Email",
+      "phone": "Điện thoại",
+      "dateOfBirth": "Ngày sinh",
+      "gender": "Giới tính",
+      "status": "Trạng thái",
+      "address": "Địa chỉ",
+      "addressLine1": "Địa chỉ dòng 1",
+      "addressLine2": "Địa chỉ dòng 2",
+      "city": "Thành phố",
+      "postalCode": "Mã bưu chính",
+      "country": "Quốc gia",
+      "tags": "Thẻ",
+      "createdAt": "Ngày tạo",
+      "updatedAt": "Cập nhật lần cuối",
+      "avatarUrl": "Ảnh"
+    },
+    "validation": {
+      "required": "Trường này là bắt buộc.",
+      "invalid": "Giá trị này không hợp lệ.",
+      "invalidEmail": "Hãy nhập một địa chỉ email, ví dụ ten@example.com.",
+      "invalidPhone": "Hãy nhập số điện thoại chỉ gồm chữ số, dấu cách và + ( ) -.",
+      "invalidCountry": "Hãy nhập mã quốc gia hai chữ cái, ví dụ VN hoặc GB.",
+      "invalidDate": "Hãy nhập một ngày có thật.",
+      "futureDate": "Ngày sinh không thể ở tương lai.",
+      "tooLong": "Hãy dùng tối đa {{max}} ký tự.",
+      "tooManyTags": "Hãy dùng tối đa {{max}} thẻ.",
+      "tagTooLong": "Mỗi thẻ tối đa {{max}} ký tự.",
+      "emailTaken": "Một khách hàng khác đã dùng địa chỉ email này.",
+      "server": "Máy chủ đã từ chối giá trị này.",
+      "addressIncomplete": "Địa chỉ cần ít nhất dòng đầu tiên, thành phố và quốc gia.",
+      "phoneRequiredWhenActive": "Khách hàng đang hoạt động cần có số điện thoại."
+    },
+    "audit": {
+      "action": {
+        "CUSTOMER_CREATED": "Đã tạo khách hàng",
+        "CUSTOMER_UPDATED": "Đã cập nhật khách hàng",
+        "CUSTOMER_DELETED": "Đã xóa khách hàng",
+        "CUSTOMER_STATUS_CHANGED": "Đã đổi trạng thái",
+        "CUSTOMER_IMPORTED": "Đã nhập khách hàng"
+      }
+    },
+    "bulk": {
+      "failure": {
+        "NOT_FOUND": {
+          "other": "{{count}} hồ sơ không còn tồn tại."
+        },
+        "FORBIDDEN": {
+          "other": "{{count}} hồ sơ không được phép."
+        },
+        "CONFLICT": {
+          "other": "{{count}} hồ sơ đã bị người khác thay đổi."
+        },
+        "INTERNAL_ERROR": {
+          "other": "{{count}} hồ sơ thất bại vì lý do không xác định."
+        }
+      }
+    },
+    "avatar": {
+      "region": "Ảnh khách hàng",
+      "previewAlt": "Xem trước ảnh đã chọn",
+      "currentAlt": "Ảnh của {{name}}",
+      "choose": "Chọn một ảnh, hoặc thả ảnh vào đây",
+      "hint": "{{types}}, tối đa {{size}} MB.",
+      "upload": "Tải ảnh lên",
+      "retry": "Thử lại",
+      "discard": "Bỏ",
+      "cancel": "Hủy tải lên",
+      "uploading": "Đang tải lên…",
+      "uploadingPercent": "Đang tải lên… {{percent}}%",
+      "failed": "Ảnh chưa được tải lên.",
+      "done": "Đã cập nhật ảnh.",
+      "cancelled": "Đã hủy tải lên. Ảnh không thay đổi."
+    }
+  },
+  "notifications": {
+    "dismiss": "Bỏ qua",
+    "center": "Thông báo",
+    "centerUnread": "Thông báo, {{count}} chưa đọc",
+    "markAllRead": "Đánh dấu tất cả là đã đọc",
+    "unread": "Chưa đọc",
+    "empty": "Không có gì mới. Thay đổi người khác thực hiện với khách hàng sẽ xuất hiện ở đây."
+  },
+  "realtime": {
+    "status": {
+      "idle": "Cập nhật trực tiếp đang tắt",
+      "connecting": "Đang kết nối…",
+      "open": "Trực tiếp",
+      "reconnecting": "Đang kết nối lại…"
+    },
+    "customer": {
+      "created": "Khách hàng {{code}} đã được một người dùng khác tạo.",
+      "updated": "Khách hàng {{code}} đã được một người dùng khác cập nhật.",
+      "deleted": "Khách hàng {{code}} đã bị một người dùng khác xóa."
+    },
+    "refresh": "Làm mới",
+    "backToList": "Quay lại danh sách",
+    "importCompleted": "Một người dùng khác đã nhập khách hàng: thêm {{succeeded}}, bỏ qua {{failed}}."
+  },
+  "files": {
+    "rejection": {
+      "EMPTY": "Tệp đó trống.",
+      "TOO_LARGE": "Tệp đó quá lớn. Giới hạn là {{size}} MB.",
+      "EXTENSION": "Loại tệp đó không được chấp nhận. Hãy chọn một trong: {{types}}.",
+      "MIME_TYPE": "Kiểu nội dung của tệp đó không được chấp nhận. Hãy chọn một trong: {{types}}."
+    }
+  },
+  "crossTab": {
+    "customer": {
+      "created": "Khách hàng {{code}} đã được tạo ở một tab khác.",
+      "updated": "Khách hàng {{code}} đã được cập nhật ở một tab khác.",
+      "deleted": "Khách hàng {{code}} đã bị xóa ở một tab khác.",
+      "createdUnnamed": "Một khách hàng đã được tạo ở một tab khác.",
+      "updatedUnnamed": "Một khách hàng đã được cập nhật ở một tab khác.",
+      "deletedUnnamed": "Một khách hàng đã bị xóa ở một tab khác."
+    },
+    "customers": {
+      "many": "Một số khách hàng đã được thay đổi ở một tab khác."
+    }
+  },
+  "connectivity": {
+    "offline": "Bạn đang ngoại tuyến. Không thể lưu gì cho đến khi có kết nối trở lại, và những gì bạn thấy có thể đã cũ.",
+    "backOnline": "Bạn đã trực tuyến trở lại."
+  }
+}

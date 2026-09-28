@@ -1,0 +1,6 @@
+{
+  "name": "@ecm/lint",
+  "private": true,
+  "description": "Repository checks that no off-the-shelf linter covers - not a workspace, not shipped",
+  "type": "module"
+}

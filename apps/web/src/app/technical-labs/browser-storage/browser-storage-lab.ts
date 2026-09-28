@@ -1,4 +1,3 @@
-import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { TranslocoDirective } from '@jsverse/transloco';
@@ -8,6 +7,7 @@ import {
   SESSION_STORAGE,
   WINDOW,
 } from '../../core/platform/platform.tokens';
+import { InstantPipe } from '../../core/i18n/locale-pipes';
 import { now } from '../../core/time/instant';
 import { PageContainer } from '../../layout/page-container';
 import { PageHeader } from '../../layout/page-header';
@@ -51,7 +51,7 @@ interface Estimate {
   selector: 'app-browser-storage-lab',
   imports: [
     Button,
-    DatePipe,
+    InstantPipe,
     LabSection,
     PageContainer,
     PageHeader,
@@ -142,7 +142,7 @@ interface Estimate {
           </div>
           <ul class="log" data-testid="notes">
             @for (entry of notes(); track entry.id) {
-              <li>{{ entry.text }} - {{ entry.createdAt | date: 'medium' }}</li>
+              <li>{{ entry.text }} - {{ entry.createdAt | appInstant: 'medium' }}</li>
             } @empty {
               <li>{{ t('indexedDb.empty') }}</li>
             }

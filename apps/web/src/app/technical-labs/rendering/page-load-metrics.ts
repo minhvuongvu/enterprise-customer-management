@@ -7,6 +7,7 @@ import {
   signal,
 } from '@angular/core';
 import { TranslocoDirective } from '@jsverse/transloco';
+import { NumberPipe } from '../../core/i18n/locale-pipes';
 import { WINDOW } from '../../core/platform/platform.tokens';
 
 /** Set by `main.ts` once the application is stable - hydrated, or rendered, and idle. */
@@ -78,7 +79,7 @@ const METRICS = [
  */
 @Component({
   selector: 'app-page-load-metrics',
-  imports: [TranslocoDirective],
+  imports: [NumberPipe, TranslocoDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <dl
@@ -93,8 +94,8 @@ const METRICS = [
             @if (load()?.[metric] ?? null; as value) {
               {{
                 metric.endsWith('Bytes')
-                  ? t('bytes', { value: rounded(value) })
-                  : t('milliseconds', { value: rounded(value) })
+                  ? t('bytes', { value: (rounded(value) | appNumber) })
+                  : t('milliseconds', { value: (rounded(value) | appNumber) })
               }}
             } @else {
               {{ t('pending') }}

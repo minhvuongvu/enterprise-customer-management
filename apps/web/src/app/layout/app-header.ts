@@ -4,6 +4,7 @@ import { TranslocoDirective } from '@jsverse/transloco';
 import { Badge } from '../shared/ui/badge/badge';
 import { Button } from '../shared/ui/button/button';
 import { ConnectionStatus } from './connection-status';
+import { LanguageSwitcher } from './language-switcher';
 import { NotificationCenter } from './notification-center';
 import { ThemeToggle } from './theme-toggle';
 
@@ -21,6 +22,7 @@ import { ThemeToggle } from './theme-toggle';
     Badge,
     Button,
     ConnectionStatus,
+    LanguageSwitcher,
     NotificationCenter,
     RouterLink,
     ThemeToggle,
@@ -58,9 +60,17 @@ import { ThemeToggle } from './theme-toggle';
           <app-connection-status />
           <app-notification-center />
         }
-        <app-theme-toggle />
 
-        @if (userName()) {
+        <!-- On a phone these move into the navigation drawer (AppShell): six
+             controls and a name do not fit in 375 pixels, and the header
+             scrolled sideways. What stays is what changes while you work -
+             connection and notifications. -->
+        @if (!showMenuButton()) {
+          <app-language-switcher />
+          <app-theme-toggle />
+        }
+
+        @if (userName() && !showMenuButton()) {
           <!-- Who is signed in, and as what. The role is shown because it
                explains the UI: a manager who sees no delete button should be
                able to tell why without asking. -->

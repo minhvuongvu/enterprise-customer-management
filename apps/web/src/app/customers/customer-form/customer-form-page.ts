@@ -1,10 +1,13 @@
 import {
+  afterNextRender,
   ChangeDetectionStrategy,
   Component,
   computed,
   DestroyRef,
   effect,
+  ElementRef,
   inject,
+  Injector,
   input,
   signal,
 } from '@angular/core';
@@ -254,6 +257,8 @@ export class CustomerFormPage implements CanLeave {
   private readonly confirmation = inject(ConfirmationService);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly injector = inject(Injector);
 
   protected readonly form: CustomerFormGroup = createCustomerForm();
 
@@ -429,10 +434,8 @@ export class CustomerFormPage implements CanLeave {
     }
 
     if (this.form.invalid) {
-      // Focus is not moved here: every invalid field is already marked and
-      // described, and stealing focus mid-form is disorienting when the
-      // problem may be the field the user is standing in.
       this.form.markAllAsTouched();
+      this.focusFirstInvalidField();
       return;
     }
 
@@ -509,10 +512,11 @@ export class CustomerFormPage implements CanLeave {
     }
 
     if (error.kind === 'validation') {
-      const unmatched = applyServerFieldErrors(this.form, error.fieldErrors);
+      const unmatched = applyServerFieldErrors(this.form, error.fieldErrors, error.fieldIssues);
       this.submitError.set(
         unmatched.length > 0 ? 'errors.validation' : 'pages.customers.form.fixFields',
       );
+      this.focusFirstInvalidField();
       return;
     }
 
@@ -523,6 +527,7 @@ export class CustomerFormPage implements CanLeave {
         this.form.controls.email.setErrors({ emailTaken: true });
         this.form.controls.email.markAsTouched();
         this.submitError.set('pages.customers.form.fixFields');
+        this.focusFirstInvalidField();
         return;
       }
       this.conflict.set(true);
@@ -588,5 +593,29 @@ export class CustomerFormPage implements CanLeave {
       cancelKey: 'pages.customers.form.stay',
       tone: 'danger',
     });
+  }
+
+  /**
+   * After a save that failed validation, moves focus to the first field that
+   * needs attention.
+   *
+   * The user is standing on the save button, at the bottom of the form, and
+   * the problem may be three screens up. Focusing the field scrolls it into
+   * view, and a screen reader reads its label and - through
+   * `aria-describedby` - its error, so the user hears what is wrong and is
+   * already where they can fix it. Phase 2 left focus where it was; the
+   * keyboard pass in Phase 6 found that a keyboard user then had to Shift+Tab
+   * through the whole form to find the one marked field.
+   *
+   * After the next render, because the `aria-invalid` marks it looks for are
+   * written by the change detection that the failed save just triggered.
+   */
+  private focusFirstInvalidField(): void {
+    afterNextRender(
+      () => {
+        this.host.nativeElement.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
+      },
+      { injector: this.injector },
+    );
   }
 }

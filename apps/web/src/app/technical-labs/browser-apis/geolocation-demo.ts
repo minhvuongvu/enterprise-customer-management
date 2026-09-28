@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { TranslocoDirective } from '@jsverse/transloco';
+import { NumberPipe } from '../../core/i18n/locale-pipes';
 import { NAVIGATOR } from '../../core/platform/platform.tokens';
 import { Button } from '../../shared/ui/button/button';
 
@@ -34,7 +35,7 @@ export function geolocationFailure(code: number): GeolocationOutcome {
  */
 @Component({
   selector: 'app-geolocation-demo',
-  imports: [Button, TranslocoDirective],
+  imports: [Button, NumberPipe, TranslocoDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="demo" *transloco="let t; prefix: 'pages.labs.browserApis.geolocation'">
@@ -46,9 +47,9 @@ export function geolocationFailure(code: number): GeolocationOutcome {
           @if (result.kind === 'position') {
             {{
               t('position', {
-                latitude: result.latitude.toFixed(4),
-                longitude: result.longitude.toFixed(4),
-                accuracy: result.accuracy.toFixed(0),
+                latitude: (result.latitude | appNumber: 4),
+                longitude: (result.longitude | appNumber: 4),
+                accuracy: (result.accuracy | appNumber: 0),
               })
             }}
           } @else {

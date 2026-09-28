@@ -39,7 +39,7 @@ test.describe('rendering specimens', () => {
       const counter = page.getByTestId('specimen-counter');
       await expect(page.getByTestId('metric-appStable')).not.toHaveText(/Not measured/);
       await counter.click();
-      await expect(counter).toHaveText(/Clicked 1 times/);
+      await expect(counter).toHaveText(/Clicked 1 time\b/);
 
       // The catalogue - below the fold, hydrated lazily in one specimen,
       // re-rendered in another - answers its buttons in every one.

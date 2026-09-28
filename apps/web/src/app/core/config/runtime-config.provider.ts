@@ -7,6 +7,7 @@ import {
 } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { AppConfigStore } from './app-config';
+import { LanguageService } from '../i18n/language.service';
 import type { AppConfigOverrides } from './app-config';
 import { Logger } from '../logging/logger';
 import { IS_BROWSER } from '../platform/platform.tokens';
@@ -33,6 +34,7 @@ export function provideRuntimeConfig(): EnvironmentProviders {
       const http = inject(HttpClient);
       const store = inject(AppConfigStore);
       const logger = inject(Logger);
+      const language = inject(LanguageService);
 
       try {
         const overrides = await firstValueFrom(http.get<AppConfigOverrides>(RUNTIME_CONFIG_URL));
@@ -44,6 +46,13 @@ export function provideRuntimeConfig(): EnvironmentProviders {
           url: RUNTIME_CONFIG_URL,
         });
       }
+
+      // The starting language depends on the configuration (its default), so
+      // it is chosen here, after the configuration is known, rather than in an
+      // initializer of its own: initializers start together, and a separate
+      // one would read the defaults before this one had replaced them. Awaited,
+      // so the first render is already in the user's language.
+      await language.restore(store.config().defaultLanguage);
     }),
   ]);
 }

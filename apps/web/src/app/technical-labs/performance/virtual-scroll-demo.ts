@@ -10,6 +10,7 @@ import {
   signal,
 } from '@angular/core';
 import { TranslocoDirective } from '@jsverse/transloco';
+import { PluralPipe } from '../../core/i18n/locale-pipes';
 import { Button } from '../../shared/ui/button/button';
 import { injectLabClock } from './lab-clock';
 import type { DatasetRow } from './performance-dataset';
@@ -35,19 +36,19 @@ const ROW_HEIGHT_PX = 32;
  */
 @Component({
   selector: 'app-virtual-scroll-demo',
-  imports: [Button, ScrollingModule, TranslocoDirective],
+  imports: [Button, PluralPipe, ScrollingModule, TranslocoDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="demo" *transloco="let t; prefix: 'pages.labs.performance.virtual'">
       <div class="demo__controls">
         <app-button data-testid="render-plain-1000" (click)="render('plain', 1_000)">
-          {{ t('plain', { count: 1000 }) }}
+          {{ 'pages.labs.performance.virtual.plain' | appPlural: 1000 }}
         </app-button>
         <app-button data-testid="render-plain-10000" (click)="render('plain', plainLimit)">
-          {{ t('plain', { count: plainLimit }) }}
+          {{ 'pages.labs.performance.virtual.plain' | appPlural: plainLimit }}
         </app-button>
         <app-button data-testid="render-virtual" (click)="render('virtual', rows().length)">
-          {{ t('virtual', { count: rows().length }) }}
+          {{ 'pages.labs.performance.virtual.virtual' | appPlural: rows().length }}
         </app-button>
       </div>
 

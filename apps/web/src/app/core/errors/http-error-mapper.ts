@@ -41,6 +41,7 @@ export function mapHttpError(response: HttpErrorResponse, correlationId?: Correl
         // Keys are dotted paths (`address.city`), so a form can mark the exact
         // control. Empty when the body was not the envelope we expect.
         fieldErrors: envelope?.error.details?.fieldErrors ?? {},
+        fieldIssues: envelope?.error.details?.fieldIssues ?? {},
         ...base,
       };
     case 401:

@@ -48,10 +48,12 @@ own rather than a question.
 - Answers open question 7: the dialog still renders inline. Confirmations never
   stack - a second `confirm()` answers the first "no" - so the CDK overlay is not
   needed for that. Debt row 9's scroll lock is still open, and moves to Phase 6
-  with the rest of the accessibility work.
+  with the rest of the accessibility work. _(Paid in Phase 6: `lockScrollWhile`,
+  docs/accessibility.md.)_
 - Toasts dismiss themselves on a timer and do not pause on hover or focus
   (WCAG 2.2.1). Anything that must not be missed also goes to the centre, where
-  it waits; the timer pause is Phase 6 work (debt row 23).
+  it waits; the timer pause is Phase 6 work (debt row 23). _(Paid in Phase 6:
+  pointer or focus in the toast region holds every timer.)_
 
 ## Revisit when
 

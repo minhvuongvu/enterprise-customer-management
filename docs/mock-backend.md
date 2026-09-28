@@ -71,6 +71,14 @@ The data is deliberately untidy, because tidy data hides bugs:
 Emails and customer codes are unique by construction, so the duplicate-email conflict
 stays reachable and testable.
 
+**Search ignores case and diacritics** (Phase 6, debt row 14 paid). Both the index and
+the query are folded by `foldForSearch` in `domain/store.ts` - NFD normalisation with
+the combining marks dropped, plus `đ` → `d`, which normalisation alone leaves alone -
+so `nguyen` finds `Nguyễn` and `duc` finds `Đức`. Sorting already used an `Intl`
+collator. A real backend would do this in the database (an accent-insensitive
+collation or an `unaccent` index); the point here is the behaviour the client can rely
+on.
+
 **Everything is in memory.** A restart rebuilds the dataset and signs everyone out.
 `POST /api/_mock/reseed` does the same without a restart.
 

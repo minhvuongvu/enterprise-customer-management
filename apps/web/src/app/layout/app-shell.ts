@@ -1,5 +1,6 @@
 import { A11yModule } from '@angular/cdk/a11y';
 import {
+  afterNextRender,
   ChangeDetectionStrategy,
   Component,
   computed,
@@ -7,6 +8,7 @@ import {
   effect,
   ElementRef,
   inject,
+  Injector,
   signal,
   viewChild,
 } from '@angular/core';
@@ -17,7 +19,12 @@ import { filter } from 'rxjs';
 import { SIGN_IN_PATH } from '../core/auth/return-url';
 import { SessionService } from '../core/auth/session.service';
 import { RealtimeClient } from '../core/realtime/realtime-client';
+import { lockScrollWhile } from '../shared/ui/scroll-lock';
+import { Badge } from '../shared/ui/badge/badge';
+import { Button } from '../shared/ui/button/button';
 import { AppHeader } from './app-header';
+import { LanguageSwitcher } from './language-switcher';
+import { ThemeToggle } from './theme-toggle';
 import { ConfirmationHost } from './confirmation-host';
 import { AppSidebar } from './app-sidebar';
 import { Breadcrumbs } from './breadcrumbs';
@@ -50,10 +57,14 @@ import { ToastRegion } from './toast-region';
     A11yModule,
     AppHeader,
     AppSidebar,
+    Badge,
     Breadcrumbs,
+    Button,
     ConfirmationHost,
+    LanguageSwitcher,
     OfflineBanner,
     RouterOutlet,
+    ThemeToggle,
     ToastRegion,
     TranslocoDirective,
   ],
@@ -114,6 +125,32 @@ import { ToastRegion } from './toast-region';
             (keydown.escape)="closeDrawer()"
           >
             <app-sidebar (navigated)="closeDrawer()" />
+
+            <!-- What the header holds on a wider screen: who is signed in,
+                 the preferences, and the way out. -->
+            <section class="drawer__account" [attr.aria-label]="t('nav.account')">
+              @if (session.user(); as user) {
+                <p class="drawer__user">
+                  <span>{{ user.displayName }}</span>
+                  @if (roleKey()) {
+                    <app-badge>{{ t(roleKey()) }}</app-badge>
+                  }
+                </p>
+              }
+              <div class="drawer__preferences">
+                <app-language-switcher />
+                <app-theme-toggle />
+              </div>
+              <app-button
+                variant="secondary"
+                [fullWidth]="true"
+                [loading]="signingOut()"
+                (click)="signOut()"
+                data-testid="sign-out"
+              >
+                {{ t('auth.signOut') }}
+              </app-button>
+            </section>
           </div>
 
           <!-- See app-dialog: dismissing by clicking outside is a real button,
@@ -174,6 +211,7 @@ import { ToastRegion } from './toast-region';
       /* Focused only programmatically, by the skip link. A ring around the
          whole page would be noise; the heading below it is what the user
          reads next. */
+      /* style-lint-allow: focused only by script; the skip link is the ring */
       outline: none;
     }
 
@@ -193,7 +231,32 @@ import { ToastRegion } from './toast-region';
       cursor: default;
     }
 
+    .drawer__account {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-3);
+      margin: var(--space-2) var(--space-3);
+      padding-block-start: var(--space-4);
+      border-block-start: var(--border-width) solid var(--border-subtle);
+    }
+
+    .drawer__user {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: var(--space-2);
+      color: var(--text-secondary);
+      font-size: var(--text-sm);
+    }
+
+    .drawer__preferences {
+      display: flex;
+      gap: var(--space-1);
+    }
+
     .drawer__panel {
+      display: flex;
+      flex-direction: column;
       position: relative;
       z-index: 1;
       width: min(var(--layout-sidebar-width), 80vw);
@@ -228,6 +291,9 @@ export class AppShell {
   protected readonly drawerOpen = signal(false);
 
   private readonly mainContent = viewChild.required<ElementRef<HTMLElement>>('mainContent');
+  private readonly injector = inject(Injector);
+  /** The path last navigated to, without query or fragment. */
+  private lastPath: string | null = null;
 
   constructor() {
     // Live updates exist exactly as long as the signed-in application does:
@@ -236,6 +302,9 @@ export class AppShell {
     const realtime = inject(RealtimeClient);
     realtime.connect();
     inject(DestroyRef).onDestroy(() => realtime.disconnect());
+
+    // A modal drawer freezes the page behind it, as app-dialog does.
+    lockScrollWhile(this.drawerOpen);
 
     // A window widened while the drawer is open would otherwise leave a modal
     // overlay covering a layout that already has a permanent sidebar.
@@ -252,7 +321,52 @@ export class AppShell {
         filter((event) => event instanceof NavigationEnd),
         takeUntilDestroyed(),
       )
-      .subscribe(() => this.drawerOpen.set(false));
+      .subscribe((event) => {
+        this.drawerOpen.set(false);
+        this.focusNewPage(event.id, event.urlAfterRedirects);
+      });
+  }
+
+  /**
+   * Moves focus to the new page's heading after a navigation.
+   *
+   * In a single-page application a navigation replaces the content under the
+   * user's focus without the browser noticing. Focus stays on the link that
+   * was pressed - which may no longer exist - and a screen reader announces
+   * nothing: the page changed silently. Moving focus to the `<h1>` does both
+   * jobs at once: the heading is read out, and the next Tab starts from the
+   * top of the new content.
+   *
+   * Three cases leave focus alone, on purpose:
+   *
+   *  - the application's first navigation (a page load), where the browser
+   *    already starts at the top. Arriving from the sign-in page is not a
+   *    page load, and does move focus - the form that had it is gone;
+   *  - a change of query string or fragment only - a filter, a sort, a
+   *    page of results. The user is in the middle of the list, often typing
+   *    in the search box, and yanking focus to the heading would be hostile;
+   *  - a page without an `<h1>`, where `<main>` is focused instead.
+   */
+  private focusNewPage(navigationId: number, url: string): void {
+    const path = url.split(/[?#]/)[0];
+    const previous = this.lastPath;
+    this.lastPath = path;
+    if (navigationId === 1 || previous === path) {
+      return;
+    }
+    afterNextRender(
+      () => {
+        const main = this.mainContent().nativeElement;
+        const heading = main.querySelector<HTMLElement>('h1');
+        const target = heading ?? main;
+        if (heading && !heading.hasAttribute('tabindex')) {
+          // Focusable by script only; never a Tab stop.
+          heading.setAttribute('tabindex', '-1');
+        }
+        target.focus({ preventScroll: true });
+      },
+      { injector: this.injector },
+    );
   }
 
   /**

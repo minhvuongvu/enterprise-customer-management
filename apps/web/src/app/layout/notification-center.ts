@@ -1,4 +1,3 @@
-import { DatePipe } from '@angular/common';
 import {
   afterNextRender,
   ChangeDetectionStrategy,
@@ -11,6 +10,8 @@ import {
 } from '@angular/core';
 import { Router } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
+import { LocaleFormat } from '../core/i18n/locale-format';
+import { InstantPipe } from '../core/i18n/locale-pipes';
 import {
   NotificationService,
   type NotificationEntry,
@@ -30,7 +31,7 @@ import {
  */
 @Component({
   selector: 'app-notification-center',
-  imports: [DatePipe, TranslocoDirective],
+  imports: [InstantPipe, TranslocoDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { '(keydown.escape)': 'close()' },
   template: `
@@ -42,7 +43,7 @@ import {
         [attr.aria-expanded]="open()"
         [attr.aria-label]="
           notifications.unreadCount()
-            ? t('notifications.centerUnread', { count: notifications.unreadCount() })
+            ? t('notifications.centerUnread', { count: format.number(notifications.unreadCount()) })
             : t('notifications.center')
         "
         (click)="toggle()"
@@ -51,7 +52,7 @@ import {
         <span class="bell__icon" aria-hidden="true"></span>
         @if (notifications.unreadCount()) {
           <span class="bell__count" aria-hidden="true" data-testid="unread-count">{{
-            notifications.unreadCount()
+            format.number(notifications.unreadCount())
           }}</span>
         }
       </button>
@@ -88,9 +89,11 @@ import {
                     (click)="openEntry(entry)"
                     data-testid="notification-entry"
                   >
-                    <span class="entry__text">{{ t(entry.messageKey, entry.params) }}</span>
+                    <span class="entry__text">{{
+                      t(entry.messageKey, format.params(entry.params))
+                    }}</span>
                     <time class="entry__time" [attr.datetime]="entry.at">{{
-                      entry.at | date: 'shortTime'
+                      entry.at | appInstant: 'time'
                     }}</time>
                     @if (!entry.read) {
                       <span class="visually-hidden">{{ t('notifications.unread') }}</span>
@@ -156,9 +159,9 @@ import {
       min-width: 1.1rem;
       padding: 0 0.25rem;
       border-radius: 999px;
-      background-color: var(--danger);
+      background-color: var(--danger-solid);
       color: var(--text-on-accent);
-      font-size: 0.7rem;
+      font-size: var(--text-xs);
       font-weight: var(--weight-semibold);
       line-height: 1.1rem;
       text-align: center;
@@ -253,6 +256,7 @@ import {
 })
 export class NotificationCenter {
   protected readonly notifications = inject(NotificationService);
+  protected readonly format = inject(LocaleFormat);
   private readonly router = inject(Router);
   private readonly injector = inject(Injector);
 

@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, input, output } from '@an
 import type { BulkResponse } from '@ecm/contracts';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { IfPermitted } from '../../core/auth/if-permitted.directive';
+import { NumberPipe, PluralPipe } from '../../core/i18n/locale-pipes';
 import { Button } from '../../shared/ui/button/button';
 import { bulkFailureKey } from '../customer-vocabulary';
 
@@ -29,13 +30,13 @@ interface FailureGroup {
  */
 @Component({
   selector: 'app-customer-bulk-bar',
-  imports: [Button, IfPermitted, TranslocoDirective],
+  imports: [Button, IfPermitted, NumberPipe, PluralPipe, TranslocoDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="bulk" *transloco="let t">
       <div class="bulk__row">
         <p class="bulk__count" data-testid="selection-count">
-          {{ t('pages.customers.list.bulk.selected', { count: count() }) }}
+          {{ t('pages.customers.list.bulk.selected', { count: (count() | appNumber) }) }}
         </p>
 
         <div class="bulk__actions">
@@ -83,8 +84,8 @@ interface FailureGroup {
           <p>
             {{
               t('pages.customers.list.bulk.summary', {
-                succeeded: report.succeeded,
-                requested: report.requested,
+                succeeded: (report.succeeded | appNumber),
+                requested: (report.requested | appNumber),
               })
             }}
           </p>
@@ -92,7 +93,7 @@ interface FailureGroup {
           @if (failures().length > 0) {
             <ul class="bulk__failures">
               @for (failure of failures(); track failure.messageKey) {
-                <li>{{ t(failure.messageKey, { count: failure.count }) }}</li>
+                <li>{{ failure.messageKey | appPlural: failure.count }}</li>
               }
             </ul>
             <p class="bulk__retry-hint">{{ t('pages.customers.list.bulk.retryHint') }}</p>
@@ -140,7 +141,7 @@ interface FailureGroup {
 
     .bulk__failures {
       margin: var(--space-1) 0 0;
-      padding-left: var(--space-5);
+      padding-inline-start: var(--space-5);
       color: var(--danger-text);
     }
 

@@ -33,6 +33,12 @@ export interface ConfirmationRequest {
   readonly confirmKey: string;
   readonly cancelKey?: string;
   readonly params?: MessageParams;
+  /**
+   * When set, `bodyKey` names a plural entry (`…one`, `…other`) and this is
+   * the count that chooses between them - formatted for the locale and
+   * passed in as `{{count}}`.
+   */
+  readonly count?: number;
   /** `danger` for an action that destroys something; the button says so. */
   readonly tone?: 'primary' | 'danger';
 }

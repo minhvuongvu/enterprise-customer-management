@@ -7,6 +7,7 @@ import type {
 } from '@ecm/contracts';
 import { auditListResponseSchema, customerSchema } from '@ecm/contracts';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { foldForSearch } from '../src/domain/store.ts';
 import { startTestServer, type TestClient, type TestServer } from './helpers.ts';
 
 let server: TestServer;
@@ -91,6 +92,27 @@ describe('customer list', () => {
       `/api/customers?search=${encodeURIComponent(target.email)}`,
     );
     expect(byEmail.body.items.map((item) => item.id)).toContain(target.id);
+  });
+
+  it('finds Vietnamese names typed without their diacritics', async () => {
+    // The seed is deliberately full of Vietnamese names; take one that has marks.
+    const { body: page } = await admin.json<PageResponse<Customer>>(
+      `/api/customers?search=${encodeURIComponent('Nguyễn')}&size=1`,
+    );
+    const target = page.items[0];
+    expect(target).toBeDefined();
+
+    // Everything the accented search finds, the unaccented one finds too.
+    const unaccented = await admin.json<PageResponse<Customer>>(
+      `/api/customers?search=nguyen&size=${page.totalItems}`,
+    );
+    expect(unaccented.body.totalItems).toBeGreaterThanOrEqual(page.totalItems);
+    expect(unaccented.body.items.map((item) => item.id)).toContain(target.id);
+  });
+
+  it('folds đ to d, which Unicode normalisation alone does not', () => {
+    expect(foldForSearch('Đặng Đức')).toBe('dang duc');
+    expect(foldForSearch('NGUYỄN')).toBe('nguyen');
   });
 
   it('filters by a created-date range, inclusively', async () => {

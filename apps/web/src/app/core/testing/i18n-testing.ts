@@ -1,8 +1,10 @@
 import { TranslocoTestingModule } from '@jsverse/transloco';
-import translations from '../i18n/translations/en.json';
+import en from '../i18n/translations/en.json';
+import vi from '../i18n/translations/vi.json';
 
 /**
- * The real English translations, in a test.
+ * The real translations, both languages, in a test. English is active; a
+ * test that wants Vietnamese calls `TranslocoService.setActiveLang('vi')`.
  *
  * Test-only. Loading the actual file rather than a stub is deliberate: a key
  * renamed in a template but not in `en.json` then fails here, as an assertion
@@ -11,8 +13,8 @@ import translations from '../i18n/translations/en.json';
  */
 export function provideTestTranslations() {
   return TranslocoTestingModule.forRoot({
-    langs: { en: translations },
-    translocoConfig: { availableLangs: ['en'], defaultLang: 'en' },
+    langs: { en, vi },
+    translocoConfig: { availableLangs: ['en', 'vi'], defaultLang: 'en' },
     preloadLangs: true,
   });
 }

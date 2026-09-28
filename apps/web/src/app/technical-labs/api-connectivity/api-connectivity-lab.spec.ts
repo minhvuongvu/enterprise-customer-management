@@ -78,7 +78,7 @@ describe('ApiConnectivityLab', () => {
 
     const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
     expect(text).toContain('Connected to the mock API.');
-    expect(text).toContain('50000 customers in the dataset.');
+    expect(text).toContain('50,000 customers in the dataset.');
   });
 
   it('tells the user when the API cannot be reached, without showing the raw error', async () => {

@@ -4,21 +4,25 @@ Domain-agnostic presentation components. Inputs in, outputs out.
 
 ## What is here
 
-| Component / directive | Selector          | Notes                                         |
-| --------------------- | ----------------- | --------------------------------------------- |
-| Button                | `app-button`      | Renders an `<a>` instead when given a `link`  |
-| TextInput             | `app-text-input`  | `ControlValueAccessor`                        |
-| Select                | `app-select`      | `ControlValueAccessor`, native `<select>`     |
-| Badge                 | `app-badge`       | Tones named by meaning, not by colour         |
-| Spinner               | `app-spinner`     | Decorative; the caller announces the wait     |
-| Skeleton              | `app-skeleton`    | Decorative                                    |
-| EmptyState            | `app-empty-state` | Renders an `<h2>`; it is a region, not a page |
-| ErrorState            | `app-error-state` | Takes a message, never an error object        |
-| Dialog                | `app-dialog`      | CDK focus trap, Escape, focus restore         |
-| Dropdown              | `app-dropdown`    | CDK menu: roving focus, type-ahead, Escape    |
-| Tooltip               | `[appTooltip]`    | CDK overlay; `aria-describedby`               |
-| Pagination            | `app-pagination`  | 1-based pages; emits, never navigates         |
-| Table                 | `app-table`       | Scroll region for a projected `<table>`       |
+| Component / directive | Selector          | Notes                                                                       |
+| --------------------- | ----------------- | --------------------------------------------------------------------------- |
+| Button                | `app-button`      | Renders an `<a>` instead when given a `link`                                |
+| TextInput             | `app-text-input`  | `ControlValueAccessor`                                                      |
+| Select                | `app-select`      | `ControlValueAccessor`, native `<select>`; same error contract as TextInput |
+| Badge                 | `app-badge`       | Tones named by meaning, not by colour                                       |
+| Spinner               | `app-spinner`     | Decorative; the caller announces the wait                                   |
+| Skeleton              | `app-skeleton`    | Decorative                                                                  |
+| EmptyState            | `app-empty-state` | Renders an `<h2>`; it is a region, not a page                               |
+| ErrorState            | `app-error-state` | Takes a message, never an error object                                      |
+| Dialog                | `app-dialog`      | CDK focus trap, Escape, focus restore, scroll lock; `(dismissed)`           |
+| Dropdown              | `app-dropdown`    | CDK menu: roving focus, type-ahead, Escape; `kind` actions or choice        |
+| Tooltip               | `[appTooltip]`    | CDK overlay; `aria-describedby`                                             |
+| Pagination            | `app-pagination`  | 1-based pages; emits, never navigates                                       |
+| Table                 | `app-table`       | Scroll region for a projected `<table>`                                     |
+
+Plus `lockScrollWhile()` in `scroll-lock.ts`, shared by the dialog and the shell's
+mobile drawer. docs/design-system.md has the tokens, the state matrix and the Phase 6
+API review.
 
 Each one is imported directly from its own folder. There is no barrel: a single
 `index.ts` re-exporting thirteen components would pull all of them into every
@@ -55,4 +59,6 @@ this repository has to come from the translation layer.
 
 **Styles use only semantic tokens** (`--surface-raised`, `--text-muted`), never
 the palette and never a literal colour. That is what makes the dark theme one
-attribute rather than a second stylesheet; see ADR-0010.
+attribute rather than a second stylesheet; see ADR-0010. Since Phase 6
+`npm run lint` enforces it, along with logical directions (`inline-start`, never
+`left`) and an intact focus outline (`lint/styles.ts`).

@@ -1,4 +1,3 @@
-import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { TranslocoDirective } from '@jsverse/transloco';
@@ -7,6 +6,7 @@ import {
   LOCAL_STORAGE,
   WINDOW,
 } from '../../core/platform/platform.tokens';
+import { InstantPipe } from '../../core/i18n/locale-pipes';
 import { now, type Instant } from '../../core/time/instant';
 import { PageContainer } from '../../layout/page-container';
 import { PageHeader } from '../../layout/page-header';
@@ -55,7 +55,7 @@ export function isTabNote(data: unknown): data is TabNote {
   selector: 'app-cross-tab-lab',
   imports: [
     Button,
-    DatePipe,
+    InstantPipe,
     LabSection,
     PageContainer,
     PageHeader,
@@ -88,7 +88,7 @@ export function isTabNote(data: unknown): data is TabNote {
                   t('broadcast.entry', {
                     from: note.from,
                     text: note.text,
-                    at: note.at | date: 'mediumTime',
+                    at: note.at | appInstant: 'timeWithSeconds',
                   })
                 }}
               </li>

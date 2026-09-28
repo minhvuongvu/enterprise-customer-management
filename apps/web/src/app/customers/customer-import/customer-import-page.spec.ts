@@ -127,7 +127,7 @@ describe('CustomerImportPage', () => {
     importRequest('commit').flush(RESULT);
     fixture.detectChanges();
 
-    expect(text('result-summary')).toContain('2 customers imported, 1 rows skipped.');
+    expect(text('result-summary')).toContain('2 customers imported. 1 row skipped.');
 
     click('download-errors');
     expect(saved).toHaveLength(1);

@@ -74,9 +74,9 @@ because they failed 4.5:1 against the surface they are used on; the axe scans in
 ## Consequences
 
 - A component that writes `#1f2937`, or reaches for `--palette-blue-600`, has
-  opted out of theming without saying so. Both are review items today: the
-  grep for hex literals in `apps/web/src/app` is clean, and a stylelint rule in
-  Phase 6 would make it mechanical.
+  opted out of theming without saying so. Since Phase 6 both fail
+  `npm run lint` (`lint/styles.ts`, ADR-0036), which replaced the review item
+  and the grep.
 - Switching themes re-renders nothing. The browser recomputes custom properties
   and repaints, which is why the switch is instant and why no component
   subscribes to the theme.

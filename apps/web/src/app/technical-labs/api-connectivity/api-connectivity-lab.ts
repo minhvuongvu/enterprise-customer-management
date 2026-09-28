@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { HealthApi } from '../../core/api/health.api';
+import { PluralPipe } from '../../core/i18n/locale-pipes';
 import { Logger } from '../../core/logging/logger';
 import { PageContainer } from '../../layout/page-container';
 import { PageHeader } from '../../layout/page-header';
@@ -27,7 +28,7 @@ type ApiStatus = 'checking' | 'connected' | 'unavailable';
  */
 @Component({
   selector: 'app-api-connectivity-lab',
-  imports: [Button, PageContainer, PageHeader, TranslocoDirective],
+  imports: [Button, PageContainer, PageHeader, PluralPipe, TranslocoDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <app-page-container *transloco="let t">
@@ -49,7 +50,7 @@ type ApiStatus = 'checking' | 'connected' | 'unavailable';
 
         @if (customerCount() !== null) {
           <p data-testid="api-customers">
-            {{ t('pages.labs.apiConnectivity.customerCount', { count: customerCount() }) }}
+            {{ 'pages.labs.apiConnectivity.customerCount' | appPlural: customerCount() ?? 0 }}
           </p>
         }
       </section>

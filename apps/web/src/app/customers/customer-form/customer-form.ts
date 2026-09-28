@@ -28,6 +28,10 @@ const FIELD_PATHS: readonly string[] = [
   'email',
   'phone',
   'dateOfBirth',
+  // The two selects cannot hold an invalid choice on the client, but the
+  // server can still reject one, and its message belongs under the field.
+  'gender',
+  'status',
   'tags',
   'address.line1',
   'address.line2',
@@ -108,6 +112,7 @@ const FIELD_PATHS: readonly string[] = [
           formControlName="gender"
           [label]="t('customers.field.gender')"
           [options]="genderOptions()"
+          [error]="errorFor('gender')"
         />
 
         <app-select
@@ -116,6 +121,7 @@ const FIELD_PATHS: readonly string[] = [
           [label]="t('customers.field.status')"
           [options]="statusOptions()"
           [hint]="t('pages.customers.form.statusHint')"
+          [error]="errorFor('status')"
         />
 
         @if (crossFieldError(); as message) {

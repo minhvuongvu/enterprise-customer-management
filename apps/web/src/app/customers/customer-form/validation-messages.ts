@@ -1,4 +1,5 @@
 import type { AbstractControl, ValidationErrors } from '@angular/forms';
+import type { FieldIssue } from '@ecm/contracts';
 import type { ValidationError } from '../../core/errors/app-error';
 import type { CustomerForm } from './customer-form-model';
 
@@ -19,10 +20,12 @@ import type { CustomerForm } from './customer-form-model';
  * cannot be translated. Rendering them would break two rules at once - no raw
  * backend errors, and no untranslated user-facing text.
  *
- * So the server's answer is used for **which field**, and the client supplies
- * **what to say**. That is less specific than the sentence the server had, and
- * it is the honest consequence of an API that returns prose rather than codes.
- * It is recorded as technical debt rather than papered over.
+ * So the server's prose is used only for **which field**. Since Phase 6 the
+ * envelope also carries `fieldIssues` - a code per problem (`TOO_LONG` with
+ * its limit, `REQUIRED`, `INVALID_FORMAT`) - and the client turns that code
+ * into the same sentence its own validator would have produced. The generic
+ * "the server rejected this value" remains for an issue without a code.
+ * (Debt row 12, paid.)
  */
 
 /** Marks a control as rejected by the server. Cleared on the next edit. */
@@ -59,11 +62,15 @@ export function firstError(
   for (const name of ERROR_PRIORITY) {
     if (name in errors) {
       const detail = errors[name];
-      return {
-        key: `customers.validation.${name}`,
-        params:
-          typeof detail === 'object' && detail !== null ? (detail as Record<string, unknown>) : {},
-      };
+      const params =
+        typeof detail === 'object' && detail !== null ? (detail as Record<string, unknown>) : {};
+      // A server error carries the local error it corresponds to, when the
+      // server said why; see `serverErrorFor`.
+      if (name === SERVER_ERROR && typeof params['reason'] === 'string') {
+        const { reason, ...rest } = params;
+        return { key: `customers.validation.${reason}`, params: rest };
+      }
+      return { key: `customers.validation.${name}`, params };
     }
   }
 
@@ -89,13 +96,18 @@ export function shouldShow(control: AbstractControl, submitted: boolean): boolea
 export function applyServerFieldErrors(
   form: CustomerForm,
   fieldErrors: ValidationError['fieldErrors'],
+  fieldIssues: ValidationError['fieldIssues'] = {},
 ): string[] {
   const unmatched: string[] = [];
+  const paths = new Set([...Object.keys(fieldErrors), ...Object.keys(fieldIssues)]);
 
-  for (const path of Object.keys(fieldErrors)) {
+  for (const path of paths) {
     const control = form.get(path);
     if (control) {
-      control.setErrors({ ...(control.errors ?? {}), [SERVER_ERROR]: true });
+      control.setErrors({
+        ...(control.errors ?? {}),
+        [SERVER_ERROR]: serverErrorFor(path, fieldIssues[path]?.[0]),
+      });
       // Marked touched so the message is visible immediately: the user has
       // already pressed save, so waiting for a blur would show nothing.
       control.markAsTouched();
@@ -106,6 +118,39 @@ export function applyServerFieldErrors(
 
   return unmatched;
 }
+
+/**
+ * The local message a server issue corresponds to.
+ *
+ * `INVALID_FORMAT` depends on the field - a malformed email and a malformed
+ * country code are explained differently - so the path picks the sentence the
+ * client's own validator for that field would show. `true` (no reason) means
+ * the generic server message.
+ */
+function serverErrorFor(path: string, issue: FieldIssue | undefined): true | object {
+  switch (issue?.code) {
+    case 'REQUIRED':
+      return { reason: 'required' };
+    case 'TOO_LONG':
+      return { reason: 'tooLong', max: issue.limit };
+    case 'TOO_MANY':
+      return { reason: 'tooManyTags', max: issue.limit };
+    case 'INVALID_FORMAT':
+      return { reason: FORMAT_REASONS[path] ?? 'invalid' };
+    case 'INVALID_VALUE':
+    case 'UNKNOWN_FIELD':
+      return { reason: 'invalid' };
+    default:
+      return true;
+  }
+}
+
+const FORMAT_REASONS: Readonly<Record<string, string>> = {
+  email: 'invalidEmail',
+  phone: 'invalidPhone',
+  dateOfBirth: 'invalidDate',
+  'address.country': 'invalidCountry',
+};
 
 /**
  * Removes the server's verdict from a control.

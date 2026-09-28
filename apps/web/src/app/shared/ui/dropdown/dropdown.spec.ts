@@ -7,7 +7,12 @@ import { Dropdown, type DropdownItem } from './dropdown';
   imports: [Dropdown],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <app-dropdown [items]="items()" menuLabel="Colour theme" (selected)="chosen.set($event)">
+    <app-dropdown
+      [items]="items()"
+      menuLabel="Colour theme"
+      [kind]="kind()"
+      (itemSelected)="chosen.set($event)"
+    >
       Theme
     </app-dropdown>
   `,
@@ -19,6 +24,7 @@ class DropdownHost {
     { id: 'system', label: 'Match the system', disabled: true },
   ]);
   readonly chosen = signal<string | null>(null);
+  readonly kind = signal<'actions' | 'choice'>('choice');
 }
 
 /**
@@ -99,13 +105,31 @@ describe('Dropdown', () => {
     expect(fixture.componentInstance.chosen()).toBe('dark');
   });
 
-  it('marks the item the current state corresponds to', async () => {
+  it('renders a choice as radio items, with the option in effect checked', async () => {
     const fixture = await render();
     trigger(fixture).click();
     fixture.detectChanges();
 
-    expect(menuItems()[0].getAttribute('aria-current')).toBe('true');
-    expect(menuItems()[1].getAttribute('aria-current')).toBeNull();
+    expect(menuItems().map((item) => item.getAttribute('role'))).toEqual([
+      'menuitemradio',
+      'menuitemradio',
+      'menuitemradio',
+    ]);
+    expect(menuItems()[0].getAttribute('aria-checked')).toBe('true');
+    expect(menuItems()[1].getAttribute('aria-checked')).toBe('false');
+  });
+
+  it('renders an action menu as plain menu items with no checked state', async () => {
+    await TestBed.configureTestingModule({ imports: [DropdownHost] }).compileComponents();
+    const fixture = TestBed.createComponent(DropdownHost);
+    fixture.componentRef.instance.kind.set('actions');
+    document.body.appendChild(fixture.nativeElement as HTMLElement);
+    fixture.detectChanges();
+    trigger(fixture).click();
+    fixture.detectChanges();
+
+    expect(menuItems()[0].getAttribute('role')).toBe('menuitem');
+    expect(menuItems()[0].hasAttribute('aria-checked')).toBe(false);
   });
 
   it('does not act on a disabled item', async () => {

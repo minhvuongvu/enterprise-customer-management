@@ -1,7 +1,7 @@
-import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, effect, inject, input } from '@angular/core';
 import type { AuditEntry } from '@ecm/contracts';
 import { TranslocoDirective } from '@jsverse/transloco';
+import { InstantPipe } from '../../core/i18n/locale-pipes';
 import { PageContainer } from '../../layout/page-container';
 import { PageHeader } from '../../layout/page-header';
 import { Button } from '../../shared/ui/button/button';
@@ -46,9 +46,9 @@ const AUDITED_FIELDS = new Set([
   selector: 'app-customer-audit-page',
   imports: [
     Button,
-    DatePipe,
     EmptyState,
     ErrorState,
+    InstantPipe,
     PageContainer,
     PageHeader,
     Skeleton,
@@ -120,7 +120,7 @@ const AUDITED_FIELDS = new Set([
                     })
                   }}
                   <time [attr.datetime]="entry.occurredAt">
-                    {{ entry.occurredAt | date: 'medium' }}
+                    {{ entry.occurredAt | appInstant: 'medium' }}
                   </time>
                 </p>
 

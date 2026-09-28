@@ -317,7 +317,7 @@ test.describe('import and export', () => {
 
     await page.getByTestId('confirm-import').click();
     await expect(page.getByTestId('result-summary')).toHaveText(
-      '2 customers imported, 1 rows skipped.',
+      '2 customers imported. 1 row skipped.',
     );
 
     const download = page.waitForEvent('download');

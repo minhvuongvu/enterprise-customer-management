@@ -57,7 +57,9 @@ text.
 
 ## Consequences
 
-- Phase 6 adds Vietnamese with one JSON file plus one entry in the map.
+- Phase 6 adds Vietnamese with one JSON file plus one entry in the map. (It did:
+  `vi.json`, one line in the map, one in `languages.ts`. The Vietnamese chunk is
+  38 kB raw / 11 kB transferred and is downloaded only by someone who picks it.)
 - Runtime language switching still works: switching triggers the dynamic import for
   the new language.
 - Translations cannot be changed without a deployment. If that ever becomes a real

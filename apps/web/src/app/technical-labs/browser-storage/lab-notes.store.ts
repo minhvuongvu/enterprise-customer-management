@@ -1,11 +1,12 @@
 import { Injectable } from '@angular/core';
+import type { Instant } from '../../core/time/instant';
 import { injectIndexedDb, openDatabase, requestResult, transactionDone } from './indexed-db';
 
 export interface LabNote {
   readonly id?: number;
   readonly text: string;
   /** UTC ISO-8601, like every instant in this application. */
-  readonly createdAt: string;
+  readonly createdAt: Instant;
 }
 
 const DATABASE = 'ecm-lab-notes';
@@ -32,7 +33,7 @@ export class LabNotesStore {
     return requestResult(store.getAll() as IDBRequest<LabNote[]>);
   }
 
-  async add(text: string, createdAt: string): Promise<void> {
+  async add(text: string, createdAt: Instant): Promise<void> {
     const transaction = (await this.open()).transaction(STORE, 'readwrite');
     transaction.objectStore(STORE).add({ text, createdAt } satisfies LabNote);
     await transactionDone(transaction);

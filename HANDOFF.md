@@ -8,7 +8,7 @@ session that has the git history but none of the conversation that produced it.
 `docs/PROGRESS.md` about what is done, PROGRESS wins — it is updated as part of every
 phase's Definition of Done, and this file is updated only at a handoff.
 
-Last updated at **`phase-5-complete`**.
+Last updated at **`phase-6-complete`**.
 
 ---
 
@@ -92,6 +92,12 @@ The parts that come up most often:
 | 0029 | offline = one read-only, user-scoped snapshot + connectivity UI           |
 | 0030 | the leader-election lab uses a lease on purpose                           |
 | 0031 | preload only the routes flagged `preload: true`                           |
+| 0032 | locale formatting through `Intl`, keyed to the active language            |
+| 0033 | plurals as CLDR-category keys, chosen by `Intl.PluralRules`; no ICU       |
+| 0034 | adaptive layouts: swap components in TypeScript, restyle in CSS           |
+| 0035 | validation reasons as codes: `details.fieldIssues`                        |
+| 0036 | style rules checked by `lint/styles.ts`; logical properties for RTL       |
+| 0037 | focus management: navigation, failed saves, re-rendered controls          |
 
 ### The ten rules
 
@@ -120,7 +126,8 @@ other eight are enforced by review, and the ones most often broken by accident a
 | 3     | Authentication, Authorization & Security | **Done**    |
 | 4     | Enterprise UX, Files, Notifications & RT | **Done**    |
 | 5     | Performance, Rendering, Offline & APIs   | **Done**    |
-| 6–8   | see `docs/PROGRESS.md`                   | Not started |
+| 6     | Accessibility, i18n, Design System & UX  | **Done**    |
+| 7–8   | see `docs/PROGRESS.md`                   | Not started |
 
 `docs/PROGRESS.md` is the phase-state file: what each phase built, what deviated, the
 technical-debt register and the open questions. **Read it before starting anything.**
@@ -130,7 +137,8 @@ technical-debt register and the open questions. **Read it before starting anythi
 History is linear; each phase branch contains everything before it.
 
 ```text
-phase-5           <- HEAD, everything is here
+phase-6           <- HEAD, everything is here
+phase-5  dbe6bd7
 phase-4  6863370
 phase-3  80a3703
 phase-2  8da182b
@@ -142,10 +150,10 @@ master   ef498df  <- pre-Phase-0. Nothing has been merged into it.
 
 Two things a cloud session will trip over:
 
-- **`master` is stale on purpose.** No phase has been merged. Branch Phase 6 from
-  `phase-5`, not from `master`.
-- **Branches are on the remote. The `phase-3-complete`, `phase-4-complete` and
-  `phase-5-complete` tags may not be**: the cloud session's git proxy refused
+- **`master` is stale on purpose.** No phase has been merged. Branch Phase 7 from
+  `phase-6`, not from `master`.
+- **Branches are on the remote. The `phase-3-complete` to `phase-6-complete` tags
+  may not be**: the cloud session's git proxy refused
   tag pushes (HTTP 403). If `git ls-remote --tags origin` does not list them,
   create them on the phase branches' heads and push from a local machine.
 
@@ -206,26 +214,28 @@ repository state. A Linux cloud session can ignore them.
 
 ## 5. What is still open
 
-### Next: Phase 6 — Accessibility, i18n, Design System & UX Quality
+### Next: Phase 7 — Observability, Testing, CI/CD & Enterprise Hardening
 
-The prompt is `prompts/Phase 6 — Accessibility, i18n, Design System & UX Quality.md`.
-Read the Phase 5 entry in `docs/PROGRESS.md` first - its "For the next phase" list is
+The prompt is `prompts/Phase 7 — Observability, Testing, CICD & Enterprise Hardening.md`.
+Read the Phase 6 entry in `docs/PROGRESS.md` first - its "For the next phase" list is
 written for you.
 
-Things Phase 6 will meet directly:
+Things Phase 7 will meet directly:
 
-- Nine lab pages, an offline banner and five public rendering specimens (with their
-  own `<main>`), none of them yet through an accessibility review beyond the E2E
-  suite's existing axe scans.
-- The i18n lint ignore list at 17 entries (debt row 16).
-- `beforeunload` shows the browser's own, untranslatable dialog.
-- Everything cross-tab and offline has run only in Chromium (debt row 28).
+- Firefox and WebKit are configured (`E2E_BROWSERS=all`) but have never run: the Phase 6
+  sandbox could not download them (debt row 28). CI is where they can.
+- The E2E suite is large now - the axe audit alone is 64 tests over every route in both
+  themes. Budget CI time for it rather than trimming it.
+- The i18n lint allow-list is at 18 entries (debt row 16); a custom rule is due.
+- Every page exists in two languages and two themes: visual regression has stable
+  baselines to start from.
+- `npm run lint` now also runs `lint/styles.ts`.
 
 ### Debt and open questions
 
 Both live in `docs/PROGRESS.md` and are not duplicated here, because a second copy
-would drift. Phase 5 paid rows 8, 13, 18 and 25 and answered open question 5; it
-added rows 26-28.
+would drift. Phase 6 paid rows 9, 10, 12, 14 and 23, moved 16 and 28 to Phase 7 and
+20 to Phase 8, and added rows 29-31.
 
 ### Traps that have already cost time
 
@@ -264,6 +274,16 @@ fresh session recognises the symptom instead of re-deriving the cause:
   receiving page to render before the other tab writes, or the event is missed.
 - **Performance numbers from a run beside anything else are noise.** Do not run the
   `perf/` scripts while the E2E suite runs.
+- **jsdom has no media queries**, so `LayoutBreakpoints` reports the phone layout in
+  every component test. A test of anything layout-dependent (the customer list since
+  Phase 6) adds `provideLayoutMode('desktop')` from `layout/testing/`.
+- **"Go to page 2" matches "Go to page 2,500"** - Playwright names match by substring,
+  and page numbers are now grouped. Use `exact: true` for anything numeric.
+- **`.visually-hidden` text escapes a scroll region** that is not its containing block
+  and scrolls the whole page sideways; `app-table` is one now, a new scroll region
+  must be too (`position: relative`).
+- **A translation key added to `en.json` must go into `vi.json` too** -
+  `translations.spec.ts` fails otherwise, with the key named.
 - **Playwright's Chromium download may be blocked in a cloud session.** Phase 3 pointed
   `PLAYWRIGHT_BROWSERS_PATH` at symlinks to the preinstalled build; see PROGRESS.
 

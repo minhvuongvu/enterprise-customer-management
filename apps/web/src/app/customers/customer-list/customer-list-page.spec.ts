@@ -10,6 +10,7 @@ import { CustomerStore } from '../state/customer-store';
 import { aCustomer, anotherCustomer, aPage } from '../testing/customer.fixture';
 import { CustomerListPage } from './customer-list-page';
 import { provideSignedInAs } from '../../core/testing/session-testing';
+import { provideLayoutMode } from '../../layout/testing/layout-testing';
 
 /**
  * The list, end to end within the browser.
@@ -28,6 +29,7 @@ describe('CustomerListPage', () => {
       imports: [provideTestTranslations()],
       providers: [
         provideTestHttp(),
+        provideLayoutMode('desktop'),
         provideSignedInAs('admin'),
         provideLocationMocks(),
         provideRouter(
@@ -196,7 +198,7 @@ describe('CustomerListPage', () => {
     expect(text(report as HTMLElement)).toContain('1 of 2 succeeded');
     // Grouped by reason, because a list of twenty identical sentences is not
     // a report.
-    expect(text(report as HTMLElement)).toContain('1 were changed by someone else');
+    expect(text(report as HTMLElement)).toContain('1 was changed by someone else');
     // The ones that failed stay selected, ready to be tried again.
     expect(text(testId(root, 'selection-count') as HTMLElement)).toContain('1 selected');
   });

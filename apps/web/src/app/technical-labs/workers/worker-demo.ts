@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
 import { TranslocoDirective } from '@jsverse/transloco';
+import { NumberPipe } from '../../core/i18n/locale-pipes';
 import { WINDOW } from '../../core/platform/platform.tokens';
 import { Button } from '../../shared/ui/button/button';
 import { countPrimes, type PrimeResponse } from './primes';
@@ -33,16 +34,16 @@ interface RunResult {
  */
 @Component({
   selector: 'app-worker-demo',
-  imports: [Button, TranslocoDirective],
+  imports: [Button, NumberPipe, TranslocoDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="demo" *transloco="let t; prefix: 'pages.labs.workers.worker'">
       <div class="actions">
         <app-button data-testid="primes-main" [disabled]="running()" (click)="run('main-thread')">
-          {{ t('mainThread', { limit: limit }) }}
+          {{ t('mainThread', { limit: (limit | appNumber) }) }}
         </app-button>
         <app-button data-testid="primes-worker" [disabled]="running()" (click)="run('worker')">
-          {{ t('worker', { limit: limit }) }}
+          {{ t('worker', { limit: (limit | appNumber) }) }}
         </app-button>
       </div>
       <div class="spinner" [class.spinner--running]="running()" aria-hidden="true"></div>
@@ -51,9 +52,9 @@ interface RunResult {
           {{
             t('result', {
               where: t('where.' + result.where),
-              count: result.count,
-              total: result.totalMs,
-              frame: result.longestFrameMs,
+              count: (result.count | appNumber),
+              total: (result.totalMs | appNumber),
+              frame: (result.longestFrameMs | appNumber),
             })
           }}
         </p>

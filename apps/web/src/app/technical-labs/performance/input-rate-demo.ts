@@ -9,6 +9,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { debounceTime, Subject, throttleTime } from 'rxjs';
+import { PluralPipe } from '../../core/i18n/locale-pipes';
 import { TextInput } from '../../shared/ui/text-input/text-input';
 import { injectLabClock } from './lab-clock';
 import { filterRows, type DatasetRow } from './performance-dataset';
@@ -40,7 +41,7 @@ export const POINTER_THROTTLE_MS = 100;
  */
 @Component({
   selector: 'app-input-rate-demo',
-  imports: [ReactiveFormsModule, TextInput, TranslocoDirective],
+  imports: [PluralPipe, ReactiveFormsModule, TextInput, TranslocoDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="demo" *transloco="let t; prefix: 'pages.labs.performance.rate'">
@@ -49,7 +50,7 @@ export const POINTER_THROTTLE_MS = 100;
         name="lab-search"
         data-testid="rate-search"
         [label]="t('searchLabel')"
-        [hint]="t('searchHint', { count: rows().length })"
+        [hint]="'pages.labs.performance.rate.searchHint' | appPlural: rows().length"
         [formControl]="query"
       />
 

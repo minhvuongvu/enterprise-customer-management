@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { TranslocoDirective } from '@jsverse/transloco';
+import { LocaleFormat } from '../core/i18n/locale-format';
 import {
   NotificationService,
   type TransientMessage,
@@ -18,14 +19,25 @@ import {
  *
  * Every message can be dismissed, and a snackbar's action is a real button.
  * Automatic dismissal is a convenience for sighted users; anything that must
- * not be missed also goes to the notification centre, where it waits.
+ * not be missed also goes to the notification centre, where it waits. While
+ * the pointer is over the messages or focus is inside them, nothing
+ * dismisses itself.
  */
 @Component({
   selector: 'app-toast-region',
   imports: [NgTemplateOutlet, TranslocoDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="region" *transloco="let t">
+    <!-- Pointing at a message, or moving focus into one, holds every timer
+         until the pointer and the focus have both left (debt row 23). -->
+    <div
+      class="region"
+      *transloco="let t"
+      (mouseenter)="setPointerInside(true)"
+      (mouseleave)="setPointerInside(false)"
+      (focusin)="setFocusInside(true)"
+      (focusout)="focusLeft($event)"
+    >
       <div class="region__stack" role="status" aria-live="polite" data-testid="toasts">
         @for (message of polite(); track message.id) {
           <ng-container *ngTemplateOutlet="item; context: { $implicit: message }"></ng-container>
@@ -39,7 +51,7 @@ import {
 
       <ng-template #item let-message>
         <div class="toast" [attr.data-tone]="message.tone" [attr.data-kind]="message.kind">
-          <p class="toast__text">{{ t(message.messageKey, message.params) }}</p>
+          <p class="toast__text">{{ t(message.messageKey, format.params(message.params)) }}</p>
           @if (message.action; as action) {
             <button
               type="button"
@@ -168,6 +180,7 @@ import {
 })
 export class ToastRegion {
   protected readonly notifications = inject(NotificationService);
+  protected readonly format = inject(LocaleFormat);
 
   protected readonly polite = computed(() =>
     this.notifications.messages().filter((message) => !isUrgent(message)),
@@ -175,6 +188,34 @@ export class ToastRegion {
   protected readonly urgent = computed(() =>
     this.notifications.messages().filter((message) => isUrgent(message)),
   );
+
+  private pointerInside = false;
+  private focusInside = false;
+
+  protected setPointerInside(inside: boolean): void {
+    this.pointerInside = inside;
+    this.applyHold();
+  }
+
+  protected setFocusInside(inside: boolean): void {
+    this.focusInside = inside;
+    this.applyHold();
+  }
+
+  /** `focusout` also fires when focus moves between two buttons inside. */
+  protected focusLeft(event: FocusEvent): void {
+    const region = event.currentTarget as HTMLElement;
+    const next = event.relatedTarget as Node | null;
+    this.setFocusInside(next !== null && region.contains(next));
+  }
+
+  private applyHold(): void {
+    if (this.pointerInside || this.focusInside) {
+      this.notifications.hold();
+    } else {
+      this.notifications.release();
+    }
+  }
 }
 
 function isUrgent(message: TransientMessage): boolean {

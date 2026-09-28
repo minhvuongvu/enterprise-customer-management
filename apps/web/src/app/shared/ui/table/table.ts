@@ -29,7 +29,20 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
     </div>
   `,
   styles: `
+    :host {
+      display: block;
+      min-width: 0;
+      max-width: 100%;
+    }
+
+    /* position: relative makes the region the containing block of anything
+       absolutely positioned inside it - above all the .visually-hidden text
+       in cells, which is position: absolute. Without it that text is placed
+       against the page instead, escapes the scroll region, and makes the
+       whole document scroll sideways on a phone. Found by Phase 6's
+       no-sideways-scroll check. */
     .table {
+      position: relative;
       overflow-x: auto;
       border: var(--border-width) solid var(--border-subtle);
       border-radius: var(--radius-lg);

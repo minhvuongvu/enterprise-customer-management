@@ -88,7 +88,7 @@ the failure mode to avoid.
 | Seam            | Where                              | Today                                                                                              | Filled in   |
 | --------------- | ---------------------------------- | -------------------------------------------------------------------------------------------------- | ----------- |
 | Platform safety | `core/platform/platform.tokens.ts` | `WINDOW`, `NAVIGATOR`, storage, `BroadcastChannel`/`EventSource` factories; globals banned by lint | **Phase 5** |
-| i18n            | `core/i18n/`                       | Transloco, English only, lazily imported chunks                                                    | Phase 6     |
+| i18n            | `core/i18n/`                       | English + Vietnamese at runtime; `LanguageService`, `Intl` pipes, plurals (docs/i18n.md)           | **Phase 6** |
 | Logging         | `core/logging/`                    | `Logger` abstraction, `ConsoleLogger`, credential redaction, correlation IDs                       | Phase 7     |
 | Errors          | `core/errors/`                     | the §4.7 taxonomy as a discriminated union, central HTTP mapping                                   | every phase |
 | HTTP            | `core/http/`                       | five single-purpose interceptors, ordered (§5, ADR-0017)                                           | **Phase 3** |
@@ -98,15 +98,15 @@ the failure mode to avoid.
 | Cross-tab       | `core/cross-tab/`                  | one versioned `BroadcastChannel`, topics owned by features (ADR-0027)                              | **Phase 5** |
 | Connectivity    | `core/connectivity/`               | online/offline and reconnect, from the browser's events (ADR-0029)                                 | **Phase 5** |
 | Config          | `core/config/`                     | build-time `BuildEnvironment` + runtime `AppConfigStore` + feature flags                           | Phase 7     |
-| Time            | `core/time/instant.ts`             | branded `Instant` (UTC) and `DateOnly` types                                                       | Phase 6     |
+| Time            | `core/time/instant.ts`             | branded `Instant` (UTC) and `DateOnly` types; verified across time zones in E2E                    | **Phase 6** |
 
 Phase 1 added two more that behave like seams, and are listed here for the same
 reason - they are small now and expensive to retrofit:
 
-| Seam           | Where           | Today                                                        | Filled in |
-| -------------- | --------------- | ------------------------------------------------------------ | --------- |
-| Route metadata | `core/routing/` | typed `withMetadata()` / `routeMetadata()`; breadcrumb keys  | Phase 3   |
-| Document head  | `core/seo/`     | translated `TitleStrategy`; `<html lang>` follows the locale | Phase 6/7 |
+| Seam           | Where           | Today                                                             | Filled in   |
+| -------------- | --------------- | ----------------------------------------------------------------- | ----------- |
+| Route metadata | `core/routing/` | typed `withMetadata()` / `routeMetadata()`; breadcrumb keys       | Phase 3     |
+| Document head  | `core/seo/`     | translated `TitleStrategy`; `<html lang dir>` follow the language | **Phase 6** |
 
 Phase 2 filled the **Auth** seam only as far as making a request possible
 ([ADR-0012](decisions/0012-phase-2-session-boundary.md)). Phase 3 filled the rest and

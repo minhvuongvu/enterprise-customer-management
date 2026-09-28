@@ -200,7 +200,7 @@ test.describe('theme', () => {
     await expect(html).not.toHaveAttribute('data-theme', /.*/);
 
     await page.getByRole('button', { name: 'Colour theme' }).click();
-    await page.getByRole('menuitem', { name: 'Dark' }).click();
+    await page.getByRole('menuitemradio', { name: 'Dark' }).click();
     await expect(html).toHaveAttribute('data-theme', 'dark');
 
     // Nothing was re-fetched and no component re-rendered: the tokens changed.
@@ -214,7 +214,7 @@ test.describe('theme', () => {
   test('has no detectable accessibility violations in the dark theme', async ({ page }) => {
     await page.goto('/customers');
     await page.getByRole('button', { name: 'Colour theme' }).click();
-    await page.getByRole('menuitem', { name: 'Dark' }).click();
+    await page.getByRole('menuitemradio', { name: 'Dark' }).click();
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
 
     // Contrast is the reason this scan exists twice: a palette that passes in

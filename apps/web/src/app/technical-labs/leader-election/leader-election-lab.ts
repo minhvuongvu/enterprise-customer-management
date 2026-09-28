@@ -1,4 +1,3 @@
-import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { firstValueFrom } from 'rxjs';
@@ -8,6 +7,7 @@ import {
   LOCAL_STORAGE,
   WINDOW,
 } from '../../core/platform/platform.tokens';
+import { InstantPipe, PluralPipe } from '../../core/i18n/locale-pipes';
 import { now, type Instant } from '../../core/time/instant';
 import { PageContainer } from '../../layout/page-container';
 import { PageHeader } from '../../layout/page-header';
@@ -63,7 +63,16 @@ function isLeaderMessage(data: unknown): data is LeaderMessage {
  */
 @Component({
   selector: 'app-leader-election-lab',
-  imports: [Badge, Button, DatePipe, LabSection, PageContainer, PageHeader, TranslocoDirective],
+  imports: [
+    Badge,
+    Button,
+    InstantPipe,
+    LabSection,
+    PageContainer,
+    PageHeader,
+    PluralPipe,
+    TranslocoDirective,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <app-page-container *transloco="let t; prefix: 'pages.labs.leaderElection'">
@@ -114,20 +123,22 @@ function isLeaderMessage(data: unknown): data is LeaderMessage {
               t('job.result', {
                 customers: result.customers,
                 tab: result.producedBy === tabId ? t('job.thisTab') : result.producedBy,
-                at: result.at | date: 'mediumTime',
+                at: result.at | appInstant: 'timeWithSeconds',
               })
             }}
           </p>
         } @else {
           <p>{{ t('job.none') }}</p>
         }
-        <p data-testid="jobs-run-here">{{ t('job.runHere', { count: jobsRunHere() }) }}</p>
+        <p data-testid="jobs-run-here">
+          {{ 'pages.labs.leaderElection.job.runHere' | appPlural: jobsRunHere() }}
+        </p>
       </app-lab-section>
 
       <app-lab-section sectionId="log" [heading]="t('log.heading')">
         <ol class="log">
           @for (entry of log(); track $index) {
-            <li>{{ t('roles.' + entry.role) }} - {{ entry.at | date: 'mediumTime' }}</li>
+            <li>{{ t('roles.' + entry.role) }} - {{ entry.at | appInstant: 'timeWithSeconds' }}</li>
           }
         </ol>
       </app-lab-section>

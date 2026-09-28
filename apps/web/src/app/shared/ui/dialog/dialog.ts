@@ -1,6 +1,7 @@
 import { A11yModule } from '@angular/cdk/a11y';
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import { TranslocoDirective } from '@jsverse/transloco';
+import { lockScrollWhile } from '../scroll-lock';
 
 let nextId = 0;
 
@@ -21,17 +22,18 @@ let nextId = 0;
  * users are stuck", so this composes rather than reimplements. 3 is one
  * binding, and is here.
  *
- * Open state belongs to the caller: `[open]` in, `(closed)` out. A dialog that
+ * Open state belongs to the caller: `[open]` in, `(dismissed)` out. A dialog that
  * owned its own visibility would need a template reference and an imperative
  * `open()` call at every call site, and the state that decides whether it
  * should be open - "is a customer selected" - lives with the caller anyway.
  *
- * Two deliberate limits, both of which Phase 4 may need to revisit when it
- * adds real confirmation flows:
- *
- *  - it renders inline rather than in a CDK overlay, so an ancestor with a
- *    `transform` would break `position: fixed`;
- *  - it does not lock background scrolling.
+ * While it is open the page behind it does not scroll (`lockScrollWhile`,
+ * Phase 6). It still renders inline rather than in a CDK overlay: an ancestor
+ * with a `transform` would break `position: fixed`, and none exists - the
+ * confirmations every page asks go through `ConfirmationHost` at the root of
+ * the shell (ADR-0022), and the one page-owned dialog sits directly in its
+ * page. A dialog placed inside a transformed container would have to move to
+ * an overlay; see docs/design-system.md.
  */
 @Component({
   selector: 'app-dialog',
@@ -190,11 +192,21 @@ export class Dialog {
   /** Already translated. */
   readonly heading = input.required<string>();
 
-  readonly closed = output<void>();
+  /**
+   * The user asked to close - Escape, the close button, or outside. A
+   * request, not a fact: the dialog stays open until the caller sets `open`
+   * to false. Phase 1 called it `closed`, which read as "has closed" and
+   * invited callers to treat it as a notification (renamed in Phase 6).
+   */
+  readonly dismissed = output<void>();
 
   protected readonly headingId = `app-dialog-${nextId++}`;
 
+  constructor() {
+    lockScrollWhile(this.open);
+  }
+
   protected close(): void {
-    this.closed.emit();
+    this.dismissed.emit();
   }
 }

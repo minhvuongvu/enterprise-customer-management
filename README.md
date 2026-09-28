@@ -9,14 +9,16 @@ and educational, not only on whether the application works.
 
 ## Status
 
-**Phase 5 complete** — foundation and seams, the API contract and a real mock
+**Phase 6 complete** — foundation and seams, the API contract and a real mock
 backend, the application shell, the customer feature, authentication and
-authorization, enterprise UX (live updates, notifications, files, audit), and now
-performance, rendering and the browser: measured rendering modes, a bundle cut
-from 808 to 525 kB, route preloading, tabs that coordinate (sign-out, customer
-changes, session refresh), a service worker that starts the app offline, and
-nine technical labs - storage, browser APIs, workers, offline, cross-tab, leader
-election, performance and rendering - each with its numbers.
+authorization, enterprise UX (live updates, notifications, files, audit),
+performance, rendering and the browser (measured rendering modes, a bundle cut
+from 808 to 515 kB, tabs that coordinate, a service worker that starts the app
+offline), and now UX quality: **English and Vietnamese** switched at runtime with
+every date, number, amount and plural formatted by `Intl`; an axe audit of every
+route in both themes; every journey tested with the keyboard alone; phone layouts
+that change shape rather than shrink; and ten technical labs, the newest on locale
+formatting and time zones.
 See `docs/PROGRESS.md` for what exists and what comes next.
 
 ## Quick start
@@ -49,27 +51,30 @@ prompts/             the phase prompts this repository is built from
 
 ## Where to read next
 
-| Document                        | What it answers                                                       |
-| ------------------------------- | --------------------------------------------------------------------- |
-| `CLAUDE.md`                     | the working rules, and the rules that must not be broken              |
-| `ANGULAR_PROJECT_CONTEXT.md`    | product scope and engineering intent — the authority                  |
-| `ANGULAR_PROJECT_CONTEXT.md` §5 | the locked technical decisions, and why they are locked               |
-| `docs/architecture.md`          | what the code looks like and which way dependencies point             |
-| `docs/development-guide.md`     | how to run, build, test and add to it                                 |
-| `docs/testing-strategy.md`      | what is tested where, and the gaps that are known                     |
-| `docs/api-contract.md`          | the API shape, error envelope, permissions, concurrency               |
-| `docs/mock-backend.md`          | the mock server, fault injection, and who owns which security control |
-| `docs/security.md`              | authentication, authorization, and which protection belongs to whom   |
-| `docs/realtime.md`              | live updates: SSE, reconnect, duplicates, what an event does to state |
-| `docs/file-handling.md`         | avatar upload, CSV import and export, validation on both sides        |
-| `docs/state-management.md`      | who owns which state, and why the hand-written cache held up          |
-| `docs/performance.md`           | every optimization with its before/after numbers                      |
-| `docs/rendering.md`             | CSR, SSR, prerender, hydration - what each costs here, measured       |
-| `docs/offline.md`               | exactly what works offline, and what does not                         |
-| `docs/browser-capabilities.md`  | the browser APIs used, and how they are reached safely                |
-| `docs/cross-tab.md`             | tabs coordinating, and the leader-election experiment                 |
-| `docs/decisions/`               | ADRs — the trade-offs behind each significant choice                  |
-| `docs/PROGRESS.md`              | phase log, deviations, technical-debt register                        |
+| Document                        | What it answers                                                        |
+| ------------------------------- | ---------------------------------------------------------------------- |
+| `CLAUDE.md`                     | the working rules, and the rules that must not be broken               |
+| `ANGULAR_PROJECT_CONTEXT.md`    | product scope and engineering intent — the authority                   |
+| `ANGULAR_PROJECT_CONTEXT.md` §5 | the locked technical decisions, and why they are locked                |
+| `docs/architecture.md`          | what the code looks like and which way dependencies point              |
+| `docs/development-guide.md`     | how to run, build, test and add to it                                  |
+| `docs/testing-strategy.md`      | what is tested where, and the gaps that are known                      |
+| `docs/api-contract.md`          | the API shape, error envelope, permissions, concurrency                |
+| `docs/mock-backend.md`          | the mock server, fault injection, and who owns which security control  |
+| `docs/security.md`              | authentication, authorization, and which protection belongs to whom    |
+| `docs/realtime.md`              | live updates: SSE, reconnect, duplicates, what an event does to state  |
+| `docs/file-handling.md`         | avatar upload, CSV import and export, validation on both sides         |
+| `docs/state-management.md`      | who owns which state, and why the hand-written cache held up           |
+| `docs/performance.md`           | every optimization with its before/after numbers                       |
+| `docs/rendering.md`             | CSR, SSR, prerender, hydration - what each costs here, measured        |
+| `docs/offline.md`               | exactly what works offline, and what does not                          |
+| `docs/browser-capabilities.md`  | the browser APIs used, and how they are reached safely                 |
+| `docs/cross-tab.md`             | tabs coordinating, and the leader-election experiment                  |
+| `docs/accessibility.md`         | how accessibility is checked, what the audit found, what is still open |
+| `docs/i18n.md`                  | languages, locale formatting, plurals, the time policy, RTL readiness  |
+| `docs/design-system.md`         | tokens, component states and APIs, responsive rules                    |
+| `docs/decisions/`               | ADRs — the trade-offs behind each significant choice                   |
+| `docs/PROGRESS.md`              | phase log, deviations, technical-debt register                         |
 
 ## The two rules that lint enforces
 

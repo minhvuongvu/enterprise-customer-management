@@ -6,11 +6,13 @@ import {
   inject,
   input,
   output,
+  signal,
 } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
 import { debounceTime, distinctUntilChanged } from 'rxjs';
+import { LayoutBreakpoints } from '../../layout/layout-breakpoints';
 import { Button } from '../../shared/ui/button/button';
 import { Select, type SelectOption } from '../../shared/ui/select/select';
 import { TextInput } from '../../shared/ui/text-input/text-input';
@@ -50,6 +52,12 @@ export const SEARCH_DEBOUNCE_MS = 300;
  * Every other control emits immediately. Choosing a status is a decision, not
  * a draft, and delaying it would only make the UI feel slow.
  *
+ * On a phone the four secondary filters fold away behind a disclosure button,
+ * and search stays in view: a full screen of form fields above the first
+ * result is the desktop layout shrunk, which is exactly what §4.10 forbids.
+ * The fields stay in the DOM when folded (`hidden`, not `@if`), so what the
+ * user chose survives folding and unfolding.
+ *
  * The component owns no criteria. `criteria` comes in, `criteriaChange` goes
  * out, and the page turns that into a navigation - which is what keeps the URL
  * the single source of truth even while a text field holds a half-typed word.
@@ -76,53 +84,76 @@ export const SEARCH_DEBOUNCE_MS = 300;
         />
       </div>
 
-      <div class="filters__field">
-        <app-select
-          name="status"
-          [formControl]="statusControl"
-          [label]="t('pages.customers.list.filters.status')"
-          [placeholder]="t('pages.customers.list.filters.anyStatus')"
-          [options]="statusOptions()"
-        />
-      </div>
+      @if (compact()) {
+        <div class="filters__toggle">
+          <button
+            type="button"
+            class="filters__toggle-button"
+            [attr.aria-expanded]="expanded()"
+            [attr.aria-controls]="moreId"
+            (click)="expanded.set(!expanded())"
+            data-testid="filters-toggle"
+          >
+            <span class="filters__chevron" aria-hidden="true"></span>
+            {{ t('pages.customers.list.filters.more') }}
+            @if (secondaryActive() > 0) {
+              <span class="filters__count">
+                {{ t('pages.customers.list.filters.activeCount', { count: secondaryActive() }) }}
+              </span>
+            }
+          </button>
+        </div>
+      }
 
-      <div class="filters__field">
-        <app-select
-          name="gender"
-          [formControl]="genderControl"
-          [label]="t('pages.customers.list.filters.gender')"
-          [placeholder]="t('pages.customers.list.filters.anyGender')"
-          [options]="genderOptions()"
-        />
-      </div>
+      <div [id]="moreId" class="filters__more" [hidden]="compact() && !expanded()">
+        <div class="filters__field">
+          <app-select
+            name="status"
+            [formControl]="statusControl"
+            [label]="t('pages.customers.list.filters.status')"
+            [placeholder]="t('pages.customers.list.filters.anyStatus')"
+            [options]="statusOptions()"
+          />
+        </div>
 
-      <div class="filters__field">
-        <app-text-input
-          type="date"
-          name="createdFrom"
-          [formControl]="createdFromControl"
-          [label]="t('pages.customers.list.filters.createdFrom')"
-        />
-      </div>
+        <div class="filters__field">
+          <app-select
+            name="gender"
+            [formControl]="genderControl"
+            [label]="t('pages.customers.list.filters.gender')"
+            [placeholder]="t('pages.customers.list.filters.anyGender')"
+            [options]="genderOptions()"
+          />
+        </div>
 
-      <div class="filters__field">
-        <app-text-input
-          type="date"
-          name="createdTo"
-          [formControl]="createdToControl"
-          [label]="t('pages.customers.list.filters.createdTo')"
-        />
-      </div>
+        <div class="filters__field">
+          <app-text-input
+            type="date"
+            name="createdFrom"
+            [formControl]="createdFromControl"
+            [label]="t('pages.customers.list.filters.createdFrom')"
+          />
+        </div>
 
-      <div class="filters__actions">
-        <app-button
-          variant="ghost"
-          [disabled]="!anyActive()"
-          (click)="reset()"
-          data-testid="reset-filters"
-        >
-          {{ t('pages.customers.list.filters.reset') }}
-        </app-button>
+        <div class="filters__field">
+          <app-text-input
+            type="date"
+            name="createdTo"
+            [formControl]="createdToControl"
+            [label]="t('pages.customers.list.filters.createdTo')"
+          />
+        </div>
+
+        <div class="filters__actions">
+          <app-button
+            variant="ghost"
+            [disabled]="!anyActive()"
+            (click)="reset()"
+            data-testid="reset-filters"
+          >
+            {{ t('pages.customers.list.filters.reset') }}
+          </app-button>
+        </div>
       </div>
     </form>
   `,
@@ -149,6 +180,47 @@ export const SEARCH_DEBOUNCE_MS = 300;
       justify-content: flex-end;
     }
 
+    /* On a desktop the wrapper is invisible to the grid: its fields sit in the
+       same row as search. The hidden attribute has to be restated, because
+       display: contents would otherwise override it. */
+    .filters__more {
+      display: contents;
+    }
+    .filters__more[hidden] {
+      display: none;
+    }
+
+    .filters__toggle {
+      grid-column: 1 / -1;
+    }
+
+    .filters__toggle-button {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-2);
+      min-height: 2.75rem;
+      padding: var(--space-2) var(--space-3);
+      border: var(--border-width) solid var(--border-strong);
+      border-radius: var(--radius-md);
+      background-color: var(--surface-raised);
+      cursor: pointer;
+    }
+
+    .filters__chevron::before {
+      content: '\\25B8';
+      display: inline-block;
+      transition: transform var(--motion-fast) var(--motion-ease);
+    }
+    .filters__toggle-button[aria-expanded='true'] .filters__chevron::before {
+      transform: rotate(90deg);
+    }
+
+    .filters__count {
+      color: var(--accent-text);
+      font-size: var(--text-sm);
+      font-weight: var(--weight-semibold);
+    }
+
     @media #{bp.$tablet-up} {
       .filters__field--wide {
         grid-column: span 2;
@@ -158,6 +230,18 @@ export const SEARCH_DEBOUNCE_MS = 300;
 })
 export class CustomerFilters {
   readonly criteria = input.required<CustomerListCriteria>();
+
+  private readonly breakpoints = inject(LayoutBreakpoints);
+  protected readonly compact = computed(() => this.breakpoints.mode() === 'mobile');
+  protected readonly expanded = signal(false);
+  /** Ties the disclosure button to the region it shows and hides. */
+  protected readonly moreId = 'customer-filters-more';
+
+  /** Filters in effect behind the fold - said on the button, so none is forgotten. */
+  protected readonly secondaryActive = computed(() => {
+    const { status, gender, createdFrom, createdTo } = this.criteria();
+    return [status, gender, createdFrom, createdTo].filter((value) => value !== '').length;
+  });
   readonly criteriaChange = output<CustomerListCriteria>();
 
   private readonly transloco = inject(TranslocoService);

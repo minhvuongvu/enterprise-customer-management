@@ -1,4 +1,4 @@
-import { CdkMenu, CdkMenuItem, CdkMenuTrigger } from '@angular/cdk/menu';
+import { CdkMenu, CdkMenuItem, CdkMenuItemRadio, CdkMenuTrigger } from '@angular/cdk/menu';
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 
 /**
@@ -10,9 +10,32 @@ export interface DropdownItem {
   readonly label: string;
   readonly disabled?: boolean;
   readonly tone?: 'default' | 'danger';
-  /** Marks the item the current state corresponds to, e.g. the active theme. */
+  /**
+   * The language the label is written in, when it differs from the page's -
+   * a language switcher's "Tiếng Việt" on an English page. Screen readers
+   * switch voice on it.
+   */
+  readonly lang?: string;
+  /**
+   * In a `choice` menu, marks the option currently in effect - the active
+   * theme, the active language. Ignored in an `actions` menu.
+   */
   readonly selected?: boolean;
 }
+
+/**
+ * What the menu is for, which decides the role of its items.
+ *
+ *  - `actions` - each item does something (`menuitem`);
+ *  - `choice`  - the items are mutually exclusive options and one of them is
+ *                in effect (`menuitemradio` with `aria-checked`).
+ *
+ * A screen reader announces the second as "Dark, radio, checked, 2 of 3" -
+ * which is the whole state of the control. Phase 1 marked the chosen item
+ * with `aria-current`, which is not a supported state for a menu item and
+ * was read out inconsistently or not at all.
+ */
+export type DropdownKind = 'actions' | 'choice';
 
 /**
  * A menu of actions hanging off a trigger.
@@ -31,7 +54,7 @@ export interface DropdownItem {
  */
 @Component({
   selector: 'app-dropdown',
-  imports: [CdkMenu, CdkMenuItem, CdkMenuTrigger],
+  imports: [CdkMenu, CdkMenuItem, CdkMenuItemRadio, CdkMenuTrigger],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <button type="button" class="dropdown__trigger" [cdkMenuTriggerFor]="menu">
@@ -41,17 +64,31 @@ export interface DropdownItem {
     <ng-template #menu>
       <div cdkMenu class="dropdown__menu" [attr.aria-label]="menuLabel() || null">
         @for (item of items(); track item.id) {
-          <button
-            type="button"
-            cdkMenuItem
-            class="dropdown__item"
-            [attr.data-tone]="item.tone ?? 'default'"
-            [disabled]="item.disabled ?? false"
-            [attr.aria-current]="item.selected ? 'true' : null"
-            (cdkMenuItemTriggered)="selected.emit(item.id)"
-          >
-            {{ item.label }}
-          </button>
+          @if (kind() === 'choice') {
+            <button
+              type="button"
+              cdkMenuItemRadio
+              class="dropdown__item"
+              [cdkMenuItemChecked]="item.selected ?? false"
+              [attr.lang]="item.lang ?? null"
+              [disabled]="item.disabled ?? false"
+              (cdkMenuItemTriggered)="itemSelected.emit(item.id)"
+            >
+              {{ item.label }}
+            </button>
+          } @else {
+            <button
+              type="button"
+              cdkMenuItem
+              class="dropdown__item"
+              [attr.data-tone]="item.tone ?? 'default'"
+              [attr.lang]="item.lang ?? null"
+              [disabled]="item.disabled ?? false"
+              (cdkMenuItemTriggered)="itemSelected.emit(item.id)"
+            >
+              {{ item.label }}
+            </button>
+          }
         }
       </div>
     </ng-template>
@@ -122,9 +159,9 @@ export interface DropdownItem {
       color: var(--danger-text);
     }
 
-    /* The selected entry is marked for sighted users too; aria-current
+    /* The checked option is marked for sighted users too; aria-checked
        alone reaches only assistive technology. */
-    .dropdown__item[aria-current='true']::after {
+    .dropdown__item[aria-checked='true']::after {
       content: '¹3';
     }
   `,
@@ -133,6 +170,12 @@ export class Dropdown {
   readonly items = input.required<readonly DropdownItem[]>();
   /** Accessible name for the menu itself, when the trigger's is not enough. */
   readonly menuLabel = input('');
+  readonly kind = input<DropdownKind>('actions');
 
-  readonly selected = output<string>();
+  /**
+   * The id of the item the user activated. Named for the event, not the
+   * state: `selected` read like a property and collided with
+   * `DropdownItem.selected`, which means something else.
+   */
+  readonly itemSelected = output<string>();
 }

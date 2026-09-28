@@ -10,8 +10,12 @@ import { defineConfig, devices } from '@playwright/test';
  * dev proxy, so the browser sees one origin - which is what makes the session
  * cookie first-party, exactly as a deployed setup behind a reverse proxy would.
  *
- * Phase 0.5 runs one browser. Phase 6 widens the matrix, when there is enough
- * UI for cross-browser differences to mean anything.
+ * Chromium always runs. `E2E_BROWSERS=all` adds Firefox and WebKit - the
+ * engines behind the two other browsers people use, and the ones where Web
+ * Locks, BroadcastChannel and the Permissions API differ (debt row 28). Opt-in
+ * rather than default because each engine is a separate download that a
+ * sandboxed environment may not reach: the Phase 6 session could not fetch
+ * them, so they are configured and not yet exercised. See docs/testing-strategy.md.
  */
 const WEB_PORT = 4200;
 const API_PORT = 4300;
@@ -32,7 +36,15 @@ export default defineConfig({
     screenshot: 'only-on-failure',
   },
 
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  projects: [
+    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+    ...(process.env['E2E_BROWSERS'] === 'all'
+      ? [
+          { name: 'firefox', use: { ...devices['Desktop Firefox'] } },
+          { name: 'webkit', use: { ...devices['Desktop Safari'] } },
+        ]
+      : []),
+  ],
 
   webServer: [
     {

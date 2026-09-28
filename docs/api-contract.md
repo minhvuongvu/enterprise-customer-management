@@ -37,7 +37,10 @@ Every non-2xx response has this shape:
     "code": "VALIDATION_FAILED",
     "message": "Invalid customer.",
     "correlationId": "2f1c…",
-    "details": { "fieldErrors": { "address.city": ["Required"] } }
+    "details": {
+      "fieldErrors": { "address.city": ["Invalid input: expected string"] },
+      "fieldIssues": { "address.city": [{ "code": "REQUIRED" }] }
+    }
   }
 }
 ```
@@ -61,13 +64,19 @@ One code, one status, always.
 | `CONFLICT`               | 409    | Duplicate email, or a stale write. `details.currentVersion` when versioned         |
 | `PAYLOAD_TOO_LARGE`      | 413    | Upload or import beyond the limit                                                  |
 | `UNSUPPORTED_MEDIA_TYPE` | 415    | File type not allowed                                                              |
-| `VALIDATION_FAILED`      | 422    | Well-formed but invalid. `details.fieldErrors`                                     |
+| `VALIDATION_FAILED`      | 422    | Well-formed but invalid. `details.fieldErrors` and `details.fieldIssues`           |
 | `RATE_LIMITED`           | 429    | `details.retryAfterSeconds` and a `Retry-After` header                             |
 | `INTERNAL_ERROR`         | 500    | Unexpected                                                                         |
 
 `fieldErrors` keys are **dotted paths** — `address.city`, not `address` — so a form can
 mark the exact control. Errors belonging to the payload as a whole (an unknown key, a
 failed cross-field rule) are collected under `_`.
+
+`fieldIssues` (Phase 6, [ADR-0035](decisions/0035-machine-readable-validation-reasons.md))
+has the same keys and says **why**, as codes a client can translate: `REQUIRED`,
+`TOO_LONG` and `TOO_MANY` (both with `limit`), `INVALID_FORMAT`, `INVALID_VALUE`,
+`UNKNOWN_FIELD`. `fieldErrors` stays: its prose is for logs, and a client that predates
+`fieldIssues` keeps working. The client never renders either server string.
 
 ---
 

@@ -9,6 +9,7 @@ import {
 } from '@angular/core';
 import { Meta } from '@angular/platform-browser';
 import { TranslocoDirective } from '@jsverse/transloco';
+import { PluralPipe } from '../../core/i18n/locale-pipes';
 import { PageLoadMetrics } from './page-load-metrics';
 import {
   RENDERING_SPECIMENS,
@@ -44,7 +45,7 @@ import { SpecimenCatalogue } from './specimen-catalogue';
  */
 @Component({
   selector: 'app-rendering-specimen-page',
-  imports: [PageLoadMetrics, SpecimenCatalogue, TranslocoDirective],
+  imports: [PageLoadMetrics, PluralPipe, SpecimenCatalogue, TranslocoDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <main class="specimen" *transloco="let t; prefix: 'pages.labs.rendering'">
@@ -60,7 +61,7 @@ import { SpecimenCatalogue } from './specimen-catalogue';
             data-testid="specimen-counter"
             (click)="clicks.set(clicks() + 1)"
           >
-            {{ t('specimen.clicks', { count: clicks() }) }}
+            {{ 'pages.labs.rendering.specimen.clicks' | appPlural: clicks() }}
           </button>
         </div>
 

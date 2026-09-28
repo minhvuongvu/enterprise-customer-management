@@ -54,9 +54,51 @@ export const API_ERROR_STATUS: Readonly<Record<ApiErrorCode, number>> = {
 export const fieldErrorsSchema = z.record(z.string(), z.array(z.string()));
 export type FieldErrors = z.infer<typeof fieldErrorsSchema>;
 
+/**
+ * Why a field was rejected, as a code a client can translate.
+ *
+ * `fieldErrors` says *which* field in developer prose; this says *why*, in a
+ * closed vocabulary. Added in Phase 6 (debt row 12): until then a client could
+ * only say "the server rejected this value", because the one explanation it
+ * received was an English sentence it must not show.
+ *
+ * Deliberately coarse. A code names the rule that failed, not the schema
+ * construct that expressed it, so the vocabulary survives a change of
+ * validation library - and a client needs one sentence per code, not one per
+ * Zod issue type.
+ */
+export const fieldIssueCodeSchema = z.enum([
+  /** Missing, or empty where a value is needed. */
+  'REQUIRED',
+  /** Longer than `limit` characters. */
+  'TOO_LONG',
+  /** More than `limit` items in a list. */
+  'TOO_MANY',
+  /** Not in the expected shape - an email, a date, a country code. */
+  'INVALID_FORMAT',
+  /** Well formed, but not an allowed value - an unknown status. */
+  'INVALID_VALUE',
+  /** A field the endpoint does not accept. */
+  'UNKNOWN_FIELD',
+]);
+export type FieldIssueCode = z.infer<typeof fieldIssueCodeSchema>;
+
+export const fieldIssueSchema = z.object({
+  code: fieldIssueCodeSchema,
+  /** The bound that was exceeded, for `TOO_LONG` and `TOO_MANY`. */
+  limit: z.int().nonnegative().optional(),
+});
+export type FieldIssue = z.infer<typeof fieldIssueSchema>;
+
+/** Same keys as `fieldErrors`: dotted paths, and `_` for the whole payload. */
+export const fieldIssuesSchema = z.record(z.string(), z.array(fieldIssueSchema));
+export type FieldIssues = z.infer<typeof fieldIssuesSchema>;
+
 export const apiErrorDetailsSchema = z.object({
   /** Present when the code is VALIDATION_FAILED. */
   fieldErrors: fieldErrorsSchema.optional(),
+  /** Present when the code is VALIDATION_FAILED, keyed like `fieldErrors`. */
+  fieldIssues: fieldIssuesSchema.optional(),
   /** Present when the code is RATE_LIMITED. */
   retryAfterSeconds: z.number().nonnegative().optional(),
   /** Present when the code is CONFLICT on a versioned write. */

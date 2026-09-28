@@ -1,4 +1,3 @@
-import { DatePipe } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -9,14 +8,14 @@ import {
   input,
   signal,
 } from '@angular/core';
-import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
 import type { Customer } from '@ecm/contracts';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
 import { IfPermitted } from '../../core/auth/if-permitted.directive';
 import { isAppError, messageKeyOf } from '../../core/errors/app-error';
 import { NotificationService } from '../../core/notifications/notification.service';
-import { formatDateOnly } from '../../core/time/instant';
+import { DateOnlyPipe, InstantPipe } from '../../core/i18n/locale-pipes';
 import { PageContainer } from '../../layout/page-container';
 import { PageHeader } from '../../layout/page-header';
 import { Badge } from '../../shared/ui/badge/badge';
@@ -51,10 +50,11 @@ import { valueOf } from '../state/remote-data';
     Badge,
     Button,
     CustomerAvatar,
-    DatePipe,
+    DateOnlyPipe,
     Dialog,
     ErrorState,
     IfPermitted,
+    InstantPipe,
     PageContainer,
     PageHeader,
     Skeleton,
@@ -192,7 +192,18 @@ import { valueOf } from '../state/remote-data';
               </div>
               <div class="fact">
                 <dt>{{ t('customers.field.dateOfBirth') }}</dt>
-                <dd>{{ dateOfBirth(record) || t('common.notProvided') }}</dd>
+                <dd>
+                  <!-- A calendar date: it is formatted from its parts and
+                       never becomes a moment, so it reads the same in every
+                       time zone (rule 9, core/time/instant.ts). -->
+                  @if (record.dateOfBirth) {
+                    <time [attr.datetime]="record.dateOfBirth" data-testid="date-of-birth">{{
+                      record.dateOfBirth | appDateOnly
+                    }}</time>
+                  } @else {
+                    {{ t('common.notProvided') }}
+                  }
+                </dd>
               </div>
               <div class="fact">
                 <dt>{{ t('customers.field.gender') }}</dt>
@@ -222,7 +233,7 @@ import { valueOf } from '../state/remote-data';
                 <dt>{{ t('customers.field.createdAt') }}</dt>
                 <dd>
                   <time [attr.datetime]="record.createdAt">
-                    {{ record.createdAt | date: 'medium' }}
+                    {{ record.createdAt | appInstant: 'medium' }}
                   </time>
                 </dd>
               </div>
@@ -230,7 +241,7 @@ import { valueOf } from '../state/remote-data';
                 <dt>{{ t('customers.field.updatedAt') }}</dt>
                 <dd>
                   <time [attr.datetime]="record.updatedAt">
-                    {{ record.updatedAt | date: 'medium' }}
+                    {{ record.updatedAt | appInstant: 'medium' }}
                   </time>
                 </dd>
               </div>
@@ -242,7 +253,7 @@ import { valueOf } from '../state/remote-data';
       <app-dialog
         [open]="confirmingDelete()"
         [heading]="t('pages.customers.detail.deleteHeading')"
-        (closed)="confirmingDelete.set(false)"
+        (dismissed)="confirmingDelete.set(false)"
       >
         <p>{{ t('pages.customers.detail.deleteBody', { name: customer()?.fullName ?? '' }) }}</p>
         @if (deleteError()) {
@@ -356,10 +367,6 @@ export class CustomerDetailPage {
   private readonly customerId = computed(() => parseCustomerId(this.id()));
   private readonly state = this.store.detail;
 
-  private readonly activeLang = toSignal(this.transloco.langChanges$, {
-    initialValue: this.transloco.getActiveLang(),
-  });
-
   protected readonly customer = computed(() => valueOf(this.state()));
   protected readonly pending = computed(
     () => this.state().status === 'loading' || this.state().status === 'refreshing',
@@ -424,11 +431,6 @@ export class CustomerDetailPage {
 
   protected genderKey(record: Customer): string {
     return genderLabelKey(record.gender);
-  }
-
-  /** A calendar date, rendered without ever becoming a moment in time. */
-  protected dateOfBirth(record: Customer): string {
-    return record.dateOfBirth ? formatDateOnly(record.dateOfBirth, this.activeLang()) : '';
   }
 
   /** One line, skipping the parts this customer does not have. */

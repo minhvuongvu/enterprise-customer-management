@@ -1,6 +1,6 @@
-import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { TranslocoDirective } from '@jsverse/transloco';
+import { InstantPipe } from '../../core/i18n/locale-pipes';
 import { PageContainer } from '../../layout/page-container';
 import { PageHeader } from '../../layout/page-header';
 import { Badge } from '../../shared/ui/badge/badge';
@@ -20,7 +20,7 @@ import { OfflineDirectoryApi } from './offline-directory.api';
  */
 @Component({
   selector: 'app-offline-lab',
-  imports: [Badge, Button, DatePipe, LabSection, PageContainer, PageHeader, TranslocoDirective],
+  imports: [Badge, Button, InstantPipe, LabSection, PageContainer, PageHeader, TranslocoDirective],
   providers: [OfflineDirectory, OfflineDirectoryApi],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -48,10 +48,10 @@ import { OfflineDirectoryApi } from './offline-directory.api';
         <p data-testid="directory-source" [attr.data-source]="state.source" role="status">
           @switch (state.source) {
             @case ('network') {
-              {{ t('directory.fromNetwork', { at: state.asOf | date: 'medium' }) }}
+              {{ t('directory.fromNetwork', { at: state.asOf | appInstant: 'medium' }) }}
             }
             @case ('saved') {
-              {{ t('directory.fromSaved', { at: state.asOf | date: 'medium' }) }}
+              {{ t('directory.fromSaved', { at: state.asOf | appInstant: 'medium' }) }}
             }
             @default {
               {{ state.loading ? t('directory.loading') : t('directory.nothing') }}

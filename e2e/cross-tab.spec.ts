@@ -61,7 +61,7 @@ test.describe('the application across tabs', () => {
     await expect(tabB.getByRole('button', { name: 'Colour theme' })).toBeVisible();
 
     await tabA.getByRole('button', { name: 'Colour theme' }).click();
-    await tabA.getByRole('menuitem', { name: 'Dark' }).click();
+    await tabA.getByRole('menuitemradio', { name: 'Dark' }).click();
 
     await expect(tabB.locator('html')).toHaveAttribute('data-theme', 'dark');
   });

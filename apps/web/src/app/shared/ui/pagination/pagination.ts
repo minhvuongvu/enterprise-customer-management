@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { TranslocoDirective } from '@jsverse/transloco';
+import { NumberPipe } from '../../../core/i18n/locale-pipes';
 
 /** A rendered slot: either a page number, or the gap between two ranges. */
 type PageSlot = number | 'gap';
@@ -26,12 +27,17 @@ const MAX_LISTED_PAGES = 7;
  */
 @Component({
   selector: 'app-pagination',
-  imports: [TranslocoDirective],
+  imports: [NumberPipe, TranslocoDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <nav class="pagination" *transloco="let t" [attr.aria-label]="t('ui.pagination.label')">
       <p class="pagination__summary">
-        {{ t('ui.pagination.summary', { page: page(), totalPages: totalPages() }) }}
+        {{
+          t('ui.pagination.summary', {
+            page: (page() | appNumber),
+            totalPages: (totalPages() | appNumber),
+          })
+        }}
       </p>
 
       <ul class="pagination__list">
@@ -55,11 +61,11 @@ const MAX_LISTED_PAGES = 7;
               <button
                 type="button"
                 class="pagination__button"
-                [attr.aria-label]="t('ui.pagination.goToPage', { page: slot })"
+                [attr.aria-label]="t('ui.pagination.goToPage', { page: (slot | appNumber) })"
                 [attr.aria-current]="slot === page() ? 'page' : null"
                 (click)="goTo(slot)"
               >
-                {{ slot }}
+                {{ slot | appNumber }}
               </button>
             }
           </li>

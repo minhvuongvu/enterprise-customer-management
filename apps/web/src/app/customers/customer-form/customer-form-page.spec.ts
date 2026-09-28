@@ -197,6 +197,35 @@ describe('CustomerFormPage', () => {
       expect(TestBed.inject(Router).url).toBe(`/customers/${customer.id}`);
     });
 
+    it('explains a 422 in the words its own validator would use, when the server says why', async () => {
+      const root = await open('/customers/new');
+      type(root, 'Full name', 'Nguyễn Văn A');
+      type(root, 'Email', 'an@example.test');
+      await settleEmailCheck();
+
+      save(root);
+      backend
+        .expectOne((candidate) => candidate.method === 'POST')
+        .flush(
+          {
+            error: {
+              code: 'VALIDATION_FAILED',
+              message: 'Invalid customer',
+              correlationId: 'test',
+              details: {
+                fieldErrors: { fullName: ['Too big: expected string to have <=150 characters'] },
+                fieldIssues: { fullName: [{ code: 'TOO_LONG', limit: 150 }] },
+              },
+            },
+          },
+          { status: 422, statusText: 'Unprocessable Entity' },
+        );
+      harness.detectChanges();
+
+      expect(root.textContent).toContain('Use 150 characters or fewer.');
+      expect(root.textContent).not.toContain('Too big');
+    });
+
     it('marks the field a 422 names, without showing the server sentence', async () => {
       const root = await open('/customers/new');
       type(root, 'Full name', 'Nguyễn Văn A');

@@ -76,6 +76,12 @@ export const TECHNICAL_LABS: readonly LabDescriptor[] = [
     descriptionKey: 'pages.labs.leaderElection.description',
     plannedPhase: null,
   },
+  {
+    id: 'locale',
+    titleKey: 'pages.labs.locale.title',
+    descriptionKey: 'pages.labs.locale.description',
+    plannedPhase: null,
+  },
 ];
 
 export function findLab(id: string): LabDescriptor | undefined {

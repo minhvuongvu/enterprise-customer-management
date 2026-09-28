@@ -1,3 +1,4 @@
+import type { FieldIssue } from '@ecm/contracts';
 import type { CorrelationId } from '../logging/correlation-id';
 
 /**
@@ -39,8 +40,17 @@ interface AppErrorBase {
 
 export interface ValidationError extends AppErrorBase {
   readonly kind: 'validation';
-  /** Field name to translation keys. Empty until the API envelope exists. */
+  /**
+   * Field path to the server's developer sentences. Used for *which* field;
+   * never rendered.
+   */
   readonly fieldErrors: Readonly<Record<string, readonly string[]>>;
+  /**
+   * Field path to the reasons, as codes (Phase 6). Empty when the server sent
+   * none - an older server, or a fault injected without them - and a form
+   * then falls back to "the server rejected this value".
+   */
+  readonly fieldIssues: Readonly<Record<string, readonly FieldIssue[]>>;
 }
 
 export interface RateLimitedError extends AppErrorBase {

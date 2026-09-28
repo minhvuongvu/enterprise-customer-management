@@ -7,6 +7,7 @@ import { sessionResponseFor } from '../testing/session-testing';
 import {
   MAX_VISIBLE_MESSAGES,
   NotificationService,
+  RESUME_MINIMUM_MS,
   SNACKBAR_DURATION_MS,
   TOAST_DURATION_MS,
 } from './notification.service';
@@ -73,6 +74,54 @@ describe('NotificationService', () => {
       expect(shown).toEqual([2, 3, 4, 5]);
       // Dropped messages do not leave timers behind.
       expect(vi.getTimerCount()).toBe(MAX_VISIBLE_MESSAGES);
+    });
+  });
+
+  describe('holding the timers while the user reads', () => {
+    it('keeps every message while held, however long that is', () => {
+      notifications.toast('customers.avatar.done');
+      vi.advanceTimersByTime(TOAST_DURATION_MS - 1000);
+
+      notifications.hold();
+      vi.advanceTimersByTime(TOAST_DURATION_MS * 10);
+
+      expect(notifications.messages()).toHaveLength(1);
+    });
+
+    it('resumes with the time that was left', () => {
+      notifications.toast('customers.avatar.done');
+      vi.advanceTimersByTime(1000);
+      notifications.hold();
+      vi.advanceTimersByTime(60_000);
+      notifications.release();
+
+      vi.advanceTimersByTime(TOAST_DURATION_MS - 1000 - 1);
+      expect(notifications.messages()).toHaveLength(1);
+      vi.advanceTimersByTime(1);
+      expect(notifications.messages()).toHaveLength(0);
+    });
+
+    it('never resumes with less than a moment to read', () => {
+      notifications.toast('customers.avatar.done');
+      vi.advanceTimersByTime(TOAST_DURATION_MS - 10);
+      notifications.hold();
+      notifications.release();
+
+      vi.advanceTimersByTime(RESUME_MINIMUM_MS - 1);
+      expect(notifications.messages()).toHaveLength(1);
+      vi.advanceTimersByTime(1);
+      expect(notifications.messages()).toHaveLength(0);
+    });
+
+    it('holds a message that arrives while held', () => {
+      notifications.hold();
+      notifications.toast('customers.avatar.done');
+      vi.advanceTimersByTime(TOAST_DURATION_MS * 2);
+      expect(notifications.messages()).toHaveLength(1);
+
+      notifications.release();
+      vi.advanceTimersByTime(TOAST_DURATION_MS);
+      expect(notifications.messages()).toHaveLength(0);
     });
   });
 

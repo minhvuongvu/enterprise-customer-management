@@ -1,6 +1,7 @@
 import { computed, DestroyRef, inject, Injectable, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { SessionService } from '../auth/session.service';
+import { now, type Instant } from '../time/instant';
 
 /**
  * The application's notifications: transient messages on screen, and the
@@ -53,7 +54,7 @@ export interface NotificationEntry {
   readonly params: MessageParams;
   readonly tone: NotificationTone;
   /** UTC ISO-8601; formatted only when rendered. */
-  readonly at: string;
+  readonly at: Instant;
   readonly read: boolean;
   /** Router commands for "take me there", if there is a there. */
   readonly link: readonly string[] | null;
@@ -64,13 +65,28 @@ export const TOAST_DURATION_MS = 5_000;
 export const SNACKBAR_DURATION_MS = 10_000;
 /** Messages on screen at once. More than this is noise, and the oldest go first. */
 export const MAX_VISIBLE_MESSAGES = 4;
+/**
+ * The least time a message is left on screen after the user stops hovering or
+ * focusing it. Resuming with the few milliseconds that were left would make
+ * it vanish the moment the pointer moved off - which is the opposite of what
+ * pausing is for.
+ */
+export const RESUME_MINIMUM_MS = 2_000;
 /** History kept in the centre. Older entries are dropped, not paged. */
 export const MAX_CENTRE_ENTRIES = 50;
 
 @Injectable({ providedIn: 'root' })
 export class NotificationService {
   private nextId = 1;
-  private readonly timers = new Map<number, ReturnType<typeof setTimeout>>();
+  /**
+   * One dismissal timer per message on screen. `remaining` is what is left
+   * of its time; `handle` is null while the timers are held.
+   */
+  private readonly timers = new Map<
+    number,
+    { handle: ReturnType<typeof setTimeout> | null; remaining: number; startedAt: number }
+  >();
+  private held = false;
 
   private readonly messageState = signal<readonly TransientMessage[]>([]);
   private readonly entryState = signal<readonly NotificationEntry[]>([]);
@@ -119,12 +135,40 @@ export class NotificationService {
   }
 
   dismiss(id: number): void {
-    const timer = this.timers.get(id);
-    if (timer !== undefined) {
-      clearTimeout(timer);
-      this.timers.delete(id);
-    }
+    this.clearTimer(id);
     this.messageState.update((messages) => messages.filter((message) => message.id !== id));
+  }
+
+  /**
+   * Stops every message from dismissing itself, for as long as the user is
+   * pointing at or focused inside the messages (WCAG 2.2.1, timing
+   * adjustable). A message someone is reading, or whose action button has
+   * focus, must not disappear underneath them. Debt row 23.
+   */
+  hold(): void {
+    if (this.held) {
+      return;
+    }
+    this.held = true;
+    const now = Date.now();
+    for (const timer of this.timers.values()) {
+      if (timer.handle !== null) {
+        clearTimeout(timer.handle);
+        timer.handle = null;
+        timer.remaining = Math.max(0, timer.remaining - (now - timer.startedAt));
+      }
+    }
+  }
+
+  /** Lets the messages dismiss themselves again, each with what it had left. */
+  release(): void {
+    if (!this.held) {
+      return;
+    }
+    this.held = false;
+    for (const [id, timer] of this.timers) {
+      this.start(id, Math.max(timer.remaining, RESUME_MINIMUM_MS));
+    }
   }
 
   /** Runs a snackbar's action, then removes it: an answered question is gone. */
@@ -145,7 +189,7 @@ export class NotificationService {
       messageKey,
       params: options.params ?? {},
       tone: options.tone ?? 'info',
-      at: new Date().toISOString(),
+      at: now(),
       read: false,
       link: options.link ?? null,
     };
@@ -176,29 +220,42 @@ export class NotificationService {
       }
       return next.slice(-MAX_VISIBLE_MESSAGES);
     });
-    this.timers.set(
-      id,
-      setTimeout(
-        () => this.dismiss(id),
-        message.kind === 'snackbar' ? SNACKBAR_DURATION_MS : TOAST_DURATION_MS,
-      ),
-    );
+    const duration = message.kind === 'snackbar' ? SNACKBAR_DURATION_MS : TOAST_DURATION_MS;
+    if (this.held) {
+      // Arrived while the user is reading the others: it waits with them.
+      this.timers.set(id, { handle: null, remaining: duration, startedAt: Date.now() });
+    } else {
+      this.start(id, duration);
+    }
     return id;
+  }
+
+  private start(id: number, duration: number): void {
+    this.timers.set(id, {
+      handle: setTimeout(() => this.dismiss(id), duration),
+      remaining: duration,
+      startedAt: Date.now(),
+    });
   }
 
   private clearTimer(id: number): void {
     const timer = this.timers.get(id);
     if (timer !== undefined) {
-      clearTimeout(timer);
+      if (timer.handle !== null) {
+        clearTimeout(timer.handle);
+      }
       this.timers.delete(id);
     }
   }
 
   private clearAll(): void {
     for (const timer of this.timers.values()) {
-      clearTimeout(timer);
+      if (timer.handle !== null) {
+        clearTimeout(timer.handle);
+      }
     }
     this.timers.clear();
+    this.held = false;
     this.messageState.set([]);
     this.entryState.set([]);
   }

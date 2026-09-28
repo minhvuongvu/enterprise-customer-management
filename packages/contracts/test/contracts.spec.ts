@@ -148,6 +148,24 @@ describe('error envelope', () => {
     expect(apiErrorBodySchema.safeParse(body).success).toBe(true);
   });
 
+  it('accepts validation reasons as codes, and rejects a code outside the vocabulary', () => {
+    const withIssues = (code: string) => ({
+      error: {
+        code: 'VALIDATION_FAILED',
+        message: 'Invalid customer.',
+        correlationId: 'cid-2',
+        details: {
+          fieldErrors: { fullName: ['Too big'] },
+          fieldIssues: { fullName: [{ code, limit: 150 }] },
+        },
+      },
+    });
+    expect(apiErrorBodySchema.safeParse(withIssues('TOO_LONG')).success).toBe(true);
+    // A code the client has no sentence for is a contract break, not a new
+    // message: it has to be added here, and reviewed, first.
+    expect(apiErrorBodySchema.safeParse(withIssues('TOO_SHOUTY')).success).toBe(false);
+  });
+
   it('maps every code to exactly one status', () => {
     const codes = Object.keys(API_ERROR_STATUS);
     expect(new Set(codes).size).toBe(codes.length);

@@ -20,7 +20,7 @@ skipped, or broke.
 | 3     | Authentication, Authorization & Security        | **Done**    | `phase-3`    | 2026-09-25 |
 | 4     | Enterprise UX, Files, Notifications & Realtime  | **Done**    | `phase-4`    | 2026-09-25 |
 | 5     | Performance, Rendering, Offline & Browser APIs  | **Done**    | `phase-5`    | 2026-09-25 |
-| 6     | Accessibility, i18n, Design System & UX Quality | Not started | `phase-6`    | —          |
+| 6     | Accessibility, i18n, Design System & UX Quality | **Done**    | `phase-6`    | 2026-09-28 |
 | 7     | Observability, Testing, CI/CD & Hardening       | Not started | `phase-7`    | —          |
 | 8     | Enterprise Codebase Review                      | Not started | `phase-8`    | —          |
 
@@ -62,6 +62,149 @@ Two things were fixed on 2026-09-20 and will look confusing if rediscovered late
 ## Phase log
 
 Newest entry first. One entry per phase, appended at the end of that phase.
+
+### Phase 6 - Accessibility, i18n, Design System & UX Quality
+
+**Completed:** 2026-09-28 - **Tag:** `phase-6-complete`
+
+**Built**
+
+- **Vietnamese**, complete (`translations/vi.json`, every key), switched at runtime
+  with no reload. `LanguageService` (`core/i18n/`): the active language as a signal,
+  its locale (`en-US`, `vi-VN`) and direction; chunk loaded before activation;
+  persisted in `localStorage`, followed across tabs; the starting language is the
+  stored choice, else runtime config's `defaultLanguage`. `<html lang dir>` follow it.
+  A language switcher (header, drawer, sign-in page) whose options carry their own
+  `lang`. ADR-0032.
+- **Locale formatting through `Intl`**: `LocaleFormat` + five impure pipes
+  (`appInstant`, `appDateOnly`, `appNumber`, `appCurrency`, `appPlural`). `DatePipe` is
+  gone - which also dropped the initial bundle **524.6 → 515.4 kB**. Every raw number
+  on screen (counts, page numbers, lab results, coordinates) is now grouped for the
+  locale; message parameters recorded elsewhere are formatted by their host
+  (`LocaleFormat.params`). Currency belongs to the amount. ADR-0032.
+- **Plurals** by CLDR category keys chosen by `Intl.PluralRules` - 23 entries; it fixed
+  "1 were changed", "Clicked 1 times", "1 rows skipped". `translations.spec.ts` checks
+  both files for identical keys, parameters and plural shapes. ADR-0033.
+- **Locale lab** (`/technical-labs/locale`): numbers, four currencies, plurals, and an
+  instant vs a date of birth in six time zones - the naive `new Date('1990-01-01')`
+  visibly moving to 31 December west of Greenwich.
+- **Time policy verified** in the browser: `dateOfBirth` identical in four zones from
+  UTC-11 to UTC+14; a save from UTC-11 leaves it unchanged.
+- **Accessibility audit** (`e2e/accessibility.spec.ts`): axe, WCAG 2.2 A/AA + best
+  practice, on **every route in both themes** plus open dialog, menu, panel, form errors
+  and drawer - 64 states; critical/serious fail the build. Fixes in docs/accessibility.md
+  §2, among them a **2.6:1 danger button in dark** (`--danger-solid`).
+- **Keyboard** (`e2e/keyboard.spec.ts`): every journey with keys only. It found three
+  focus defects, all fixed (ADR-0037): focus now moves to the new page's `<h1>` on a
+  path change (not on query-only changes); to the first invalid field after a failed
+  save; and back to the pagination/sort/size control after a skeleton re-render
+  destroyed it.
+- **Adaptive layouts** (ADR-0034): on a phone the customer list is a `<ul>` of cards
+  with a labelled sort select, the page actions become primary + "More actions" menu,
+  the secondary filters fold behind a disclosure, and language, theme, user and
+  sign-out move from the header into the drawer. `e2e/responsive.spec.ts`: no sideways
+  scroll on nine routes at 375/820/1280 px.
+- **Design system**: `app-select` gained the `app-text-input` error contract;
+  `app-dropdown` gained `kind` (`menuitemradio` + `aria-checked` for choices) and item
+  `lang`, and its output became `itemSelected`; `app-dialog`'s output became `dismissed`
+  and it locks page scroll (`lockScrollWhile`, also the drawer); `app-table` contains
+  its content; `app-pagination` formats its numbers. docs/design-system.md.
+- **Style lint** (`lint/styles.ts`, in `npm run lint`): no literal colours or palette
+  tokens outside the token file, logical directions only (RTL readiness), no
+  `outline: none`. It found four violations on its first run. ADR-0036.
+- **Validation reasons as codes** (`details.fieldIssues`, contract change, additive):
+  a server rejection now reads in the same words as the client's own validator.
+  ADR-0035.
+- **Search ignores diacritics** in the mock (`foldForSearch`): "nguyen" finds "Nguyễn",
+  "duc" finds "Đức".
+- **Toasts hold** while the pointer or focus is on them (WCAG 2.2.1).
+- Opt-in browser matrix: `E2E_BROWSERS=all` adds Firefox and WebKit.
+
+**Architectural decisions**
+
+- [ADR-0032](decisions/0032-runtime-locale-formatting.md) - `Intl` formatting keyed to
+  the active language; impure pipes; no `LOCALE_ID`.
+- [ADR-0033](decisions/0033-plurals-by-cldr-category.md) - plural keys per CLDR
+  category, not ICU MessageFormat.
+- [ADR-0034](decisions/0034-adaptive-layouts.md) - swap components in TypeScript,
+  restyle in CSS.
+- [ADR-0035](decisions/0035-machine-readable-validation-reasons.md) - `fieldIssues`.
+- [ADR-0036](decisions/0036-style-rules-and-logical-properties.md) - a repository
+  style lint rather than stylelint; logical properties for RTL.
+- [ADR-0037](decisions/0037-focus-management.md) - focus on navigation, failed save
+  and re-rendered controls.
+
+**Deviated from the plan**
+
+- **Contracts changed** (additive): `fieldIssues` in the error envelope. The mock API
+  changed twice: `parseOrThrow` emits the codes; search folds diacritics.
+- **Two shared-UI outputs were renamed** (`Dropdown.selected` → `itemSelected`,
+  `Dialog.closed` → `dismissed`) - three call sites, found by the API review.
+- **The customer feature changed** for the phone layout (card list, action menu,
+  filter disclosure), the focus fixes (form page, list page), the select errors, and
+  the plural/number formatting. Each is Phase 6 scope.
+- **Debt row 10 was paid with a script, not stylelint** - the styles are inline
+  template literals, which stylelint reads only through a custom-syntax plugin.
+- **Debt row 28 is configured, not paid**: Firefox and WebKit could not be downloaded
+  in this environment (the Playwright CDN is blocked). Moved to Phase 7 (CI).
+- **Debt row 20 was not taken**: re-authenticating in place is a product decision
+  Phase 6 did not make; moved to Phase 8.
+- The rendering specimen's catalogue now formats its amounts as currency, so the
+  Phase 5 rendering numbers were measured on slightly different markup; they were not
+  re-measured.
+
+**Deliberately not done**
+
+- No RTL language, no mirroring of CSS-drawn glyphs (debt row 31).
+- No ICU MessageFormat (ADR-0033). No `@angular/localize` (ADR-0001).
+- No `inert` behind dialogs (debt row 30) and no manual screen-reader pass (debt row 29) - both listed in docs/accessibility.md §4.
+- No change to the store's "skeleton for an uncached page" rule (ADR-0013); the focus
+  loss it caused is repaired in the page instead.
+
+**Checks**
+
+| Check                    | Result                                                                                             |
+| ------------------------ | -------------------------------------------------------------------------------------------------- |
+| `npm run format:check`   | clean                                                                                              |
+| `npm run lint`           | clean - root + workspaces + `lint:styles`, 0 errors, 0 warnings                                    |
+| `npm run typecheck`      | clean across all three packages, templates and the worker config included                          |
+| `npm test`               | 614 passed - 454 web, 126 mock-api, 34 contracts (was 574)                                         |
+| `npm run build`          | succeeded, browser + server, 4 routes prerendered, no budget warning (initial 515.4 kB, was 524.6) |
+| `npm run e2e`            | 208 passed (was 87) - incl. 64 axe states, 12 keyboard journeys, 36 responsive, 9 i18n             |
+| `npm run e2e:production` | 4 passed                                                                                           |
+| Import cycles            | none - `apps/web/src` 232 modules / 720 edges with specs; mock API 25 / 62                         |
+| Labs isolated            | no import from `technical-labs/` into a feature, core, layout or shared                            |
+| axe                      | 0 critical, 0 serious on every route in both themes; 1 moderate (`region`, CDK overlay) documented |
+
+The Phase 6 tests were checked for teeth: the pagination and sort focus tests fail
+with the focus restore removed; the dark-theme axe scan failed on the danger button
+before `--danger-solid`; the phone overflow test failed before `app-table` contained
+its hidden text; `lint/styles.ts` failed on four real violations before they were
+fixed.
+
+**Findings worth carrying forward**
+
+- **`.visually-hidden` inside a scroll region escapes it** unless the region is the
+  containing block (`position: relative`): the hidden text is `position: absolute`
+  and is laid out against the page.
+- **jsdom has no media queries**: CDK then reports the narrowest layout. Component
+  tests of anything layout-dependent use `provideLayoutMode()`.
+- **Playwright matches accessible names by substring**, and "Go to page 2" matches
+  "Go to page 2,500" - use `exact: true` for anything numeric.
+- **A skeleton that replaces a focused control strands keyboard users** on `<body>`;
+  only a keyboard test notices.
+- **Axe's `region` rule flags the CDK overlay container** while a menu is open; it is
+  appended to `<body>`, outside every landmark.
+
+**For the next phase (7)**
+
+- Run `E2E_BROWSERS=all` in CI, where the browsers can be installed (debt row 28).
+- The i18n lint allow-list is at 18 (debt row 16) - a custom rule is due at ~20.
+- `npm run verify` now also runs `lint:styles`; the E2E suite grew by the four Phase 6
+  specs (the axe audit alone is 64 tests).
+- Visual regression would now have stable baselines in two languages and two themes.
+
+---
 
 ### Phase 5 - Performance, Rendering, Offline & Browser APIs
 
@@ -993,25 +1136,23 @@ it. Recorded as debt row 8 rather than silenced by raising the budget.
 
 Debt is only acceptable when it is written down. Remove the row when it is paid.
 
-| #   | Debt                                                                                                                                                                                             | Added in  | Why accepted                                                                                                                       | Pay by                                                       | Status |
-| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------- | ---------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ | ------ |
-| 2   | Dependency direction is enforced by review, not by a tool                                                                                                                                        | Phase 0   | There is one package and few boundaries to break                                                                                   | Phase 7                                                      | Open   |
-| 3   | Four npm packages have unapproved install scripts (`esbuild`, `lmdb`, `msgpackr-extract`, `@parcel/watcher`) under npm 11's new gating; builds work without them                                 | Phase 0   | No observed impact on build, test or serve                                                                                         | Phase 7                                                      | Open   |
-| 5   | `packages/contracts` must be built before the apps typecheck; a bare `tsc` in `apps/web` fails on a fresh clone                                                                                  | Phase 0.5 | The root scripts handle it; only a hand-run command is affected                                                                    | Phase 7 (CI)                                                 | Open   |
-| 6   | The mock API rate limiter is fixed-window, so a client can send up to twice the limit across a boundary                                                                                          | Phase 0.5 | It exists to make 429 a real code path, not to be a real limiter                                                                   | not planned - documented instead                             | Open   |
-| 9   | `app-dialog` renders inline rather than in a CDK overlay, and does not lock background scrolling                                                                                                 | Phase 1   | No page yet has a transformed ancestor or a scroll to lock                                                                         | Phase 6 (confirmations never stack - ADR-0022)               | Open   |
-| 10  | "Components use only semantic tokens" is enforced by review and a grep, not by a linter                                                                                                          | Phase 1   | The grep for hex literals and `--palette-*` in components is clean today                                                           | Phase 6 (stylelint)                                          | Open   |
-| 12  | A `VALIDATION_FAILED` response names the field but not the reason in any machine-readable form                                                                                                   | Phase 2   | The envelope's messages are developer prose and cannot be translated, so the client says which field and supplies its own sentence | Phase 6 (contract change)                                    | Open   |
-| 14  | Search does not match across diacritics - "nguyen" does not find "Nguyễn"                                                                                                                        | Phase 2   | The mock's index is a plain lowercase substring match, which is honest about what a naive search does                              | Phase 6                                                      | Open   |
-| 16  | The i18n lint rule's `ignoreAttributes` list has grown to 17 entries                                                                                                                             | Phase 2   | Every entry is genuinely not copy, and the rule still catches real violations                                                      | Phase 6 (a custom rule is cheaper past ~20)                  | Open   |
-| 17  | No Content-Security-Policy on the application document                                                                                                                                           | Phase 3   | It belongs to the server that serves `index.html`, and needs nonces for Angular's inline styles and event-replay script            | Phase 7                                                      | Open   |
-| 20  | A session that ends - by expiry or by pressing sign out - while a form has unsaved changes asks whether to discard them on the way to sign-in; staying leaves a signed-out form that cannot save | Phase 3   | Nothing is lost silently, which is the property that matters; the better flow (re-authenticate in place) is a UX design question   | Phase 6 (re-authenticating in place is a UX design question) | Open   |
-| 21  | A signed-out cold visit sends one refresh request that fails with 403 (no CSRF cookie) before settling on "anonymous"                                                                            | Phase 3   | One wasted request, handled correctly; skipping it would mean the client reasoning about cookies it is meant not to depend on      | Phase 7                                                      | Open   |
-| 23  | Toasts dismiss on a timer and do not pause on hover or focus                                                                                                                                     | Phase 4   | Anything that must not be missed also goes to the notification centre, where it waits                                              | Phase 6                                                      | Open   |
-| 24  | Changing `@ecm/contracts`' exports needs `apps/web/.angular/cache` deleted before `npm start` / E2E see them                                                                                     | Phase 4   | A fresh clone and CI are unaffected; the symptom is loud ("does not provide an export named")                                      | Phase 7 (tooling)                                            | Open   |
-| 26  | The rendering measurements are uncompressed: the Express SSR server does not gzip, so server-rendered pages transfer 144 kB more HTML than a real deployment would                               | Phase 5   | Stated in docs/rendering.md; the comparison between modes holds, the absolute bytes do not                                         | Phase 7 (deployment / reverse proxy)                         | Open   |
-| 27  | The offline lab's snapshot survives on disk if every tab that opened the lab is closed before the session ends                                                                                   | Phase 5   | Four fields, never shown to another user, deleted on the next visit if the user differs                                            | not planned - documented in docs/offline.md                  | Open   |
-| 28  | Web Locks, BroadcastChannel and Permissions API names have been exercised only in Chromium                                                                                                       | Phase 5   | Each degrades explicitly where missing (unguarded refresh, no cross-tab messages, 'not supported')                                 | Phase 6 (browser matrix)                                     | Open   |
+| #   | Debt                                                                                                                                                                                             | Added in  | Why accepted                                                                                                                     | Pay by                                                          | Status |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------- | -------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- | ------ |
+| 2   | Dependency direction is enforced by review, not by a tool                                                                                                                                        | Phase 0   | There is one package and few boundaries to break                                                                                 | Phase 7                                                         | Open   |
+| 3   | Four npm packages have unapproved install scripts (`esbuild`, `lmdb`, `msgpackr-extract`, `@parcel/watcher`) under npm 11's new gating; builds work without them                                 | Phase 0   | No observed impact on build, test or serve                                                                                       | Phase 7                                                         | Open   |
+| 5   | `packages/contracts` must be built before the apps typecheck; a bare `tsc` in `apps/web` fails on a fresh clone                                                                                  | Phase 0.5 | The root scripts handle it; only a hand-run command is affected                                                                  | Phase 7 (CI)                                                    | Open   |
+| 6   | The mock API rate limiter is fixed-window, so a client can send up to twice the limit across a boundary                                                                                          | Phase 0.5 | It exists to make 429 a real code path, not to be a real limiter                                                                 | not planned - documented instead                                | Open   |
+| 16  | The i18n lint rule's `ignoreAttributes` list has grown to 18 entries                                                                                                                             | Phase 2   | Every entry is genuinely not copy, and the rule still catches real violations                                                    | Phase 7 (a custom rule is cheaper past ~20)                     | Open   |
+| 17  | No Content-Security-Policy on the application document                                                                                                                                           | Phase 3   | It belongs to the server that serves `index.html`, and needs nonces for Angular's inline styles and event-replay script          | Phase 7                                                         | Open   |
+| 20  | A session that ends - by expiry or by pressing sign out - while a form has unsaved changes asks whether to discard them on the way to sign-in; staying leaves a signed-out form that cannot save | Phase 3   | Nothing is lost silently, which is the property that matters; the better flow (re-authenticate in place) is a UX design question | Phase 8 (a product decision; Phase 6 did not take it)           | Open   |
+| 21  | A signed-out cold visit sends one refresh request that fails with 403 (no CSRF cookie) before settling on "anonymous"                                                                            | Phase 3   | One wasted request, handled correctly; skipping it would mean the client reasoning about cookies it is meant not to depend on    | Phase 7                                                         | Open   |
+| 24  | Changing `@ecm/contracts`' exports needs `apps/web/.angular/cache` deleted before `npm start` / E2E see them                                                                                     | Phase 4   | A fresh clone and CI are unaffected; the symptom is loud ("does not provide an export named")                                    | Phase 7 (tooling)                                               | Open   |
+| 26  | The rendering measurements are uncompressed: the Express SSR server does not gzip, so server-rendered pages transfer 144 kB more HTML than a real deployment would                               | Phase 5   | Stated in docs/rendering.md; the comparison between modes holds, the absolute bytes do not                                       | Phase 7 (deployment / reverse proxy)                            | Open   |
+| 27  | The offline lab's snapshot survives on disk if every tab that opened the lab is closed before the session ends                                                                                   | Phase 5   | Four fields, never shown to another user, deleted on the next visit if the user differs                                          | not planned - documented in docs/offline.md                     | Open   |
+| 28  | Web Locks, BroadcastChannel and Permissions API names have been exercised only in Chromium                                                                                                       | Phase 5   | Each degrades explicitly where missing (unguarded refresh, no cross-tab messages, 'not supported')                               | Phase 7 (configured: `E2E_BROWSERS=all`; not downloadable here) | Open   |
+| 29  | No test with a real screen reader has been recorded; semantics are asserted by role and accessible name, which is what a reader consumes, not how it speaks                                      | Phase 6   | The environment has no screen reader; the E2E suite pins every role, name and state a reader would announce                      | Phase 8 (manual NVDA / VoiceOver pass)                          | Open   |
+| 30  | A dialog hides the page behind it from assistive technology with `aria-modal` only, not `inert`                                                                                                  | Phase 6   | Current NVDA, JAWS, VoiceOver and TalkBack honour `aria-modal`; `inert` needs a service coordinating the shell and the host      | Phase 8                                                         | Open   |
+| 31  | CSS-drawn directional glyphs (pagination chevrons, filter disclosure, breadcrumb separator) would not mirror under `dir="rtl"`                                                                   | Phase 6   | No right-to-left language ships; the stylesheets are otherwise logical and linted                                                | not planned - when an RTL language is added (docs/i18n.md)      | Open   |
 
 ---
 

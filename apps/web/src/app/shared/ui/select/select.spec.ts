@@ -13,6 +13,8 @@ import { Select, type SelectOption } from './select';
       label="Status"
       [options]="options()"
       [placeholder]="placeholder()"
+      [error]="error()"
+      [hint]="hint()"
     />
   `,
 })
@@ -24,6 +26,8 @@ class SelectHost {
     { value: 'ARCHIVED', label: 'Archived', disabled: true },
   ]);
   readonly placeholder = signal('');
+  readonly error = signal('');
+  readonly hint = signal('');
 }
 
 describe('Select', () => {
@@ -48,6 +52,23 @@ describe('Select', () => {
 
     expect(label?.getAttribute('for')).toBe(select(fixture).id);
     expect(label?.textContent?.trim()).toBe('Status');
+  });
+
+  it('shares the error contract of app-text-input: invalid, described, announced', async () => {
+    const fixture = await render();
+    expect(select(fixture).hasAttribute('aria-invalid')).toBe(false);
+
+    fixture.componentInstance.hint.set('Pick one');
+    fixture.componentInstance.error.set('The server rejected this value.');
+    fixture.detectChanges();
+
+    const element = select(fixture);
+    expect(element.getAttribute('aria-invalid')).toBe('true');
+    const ids = (element.getAttribute('aria-describedby') ?? '').split(' ');
+    expect(ids).toHaveLength(2);
+    const error = (fixture.nativeElement as HTMLElement).querySelector(`[id="${ids[1]}"]`);
+    expect(error?.textContent?.trim()).toBe('The server rejected this value.');
+    expect(error?.getAttribute('role')).toBe('alert');
   });
 
   it('renders the options in the order given, disabled state included', async () => {

@@ -11,7 +11,7 @@ import translations from '../../../core/i18n/translations/en.json';
   template: `
     <button type="button" id="trigger" (click)="open.set(true)">Delete</button>
 
-    <app-dialog [open]="open()" heading="Delete this customer?" (closed)="open.set(false)">
+    <app-dialog [open]="open()" heading="Delete this customer?" (dismissed)="open.set(false)">
       <p>This cannot be undone.</p>
       <div dialogActions>
         <button type="button" id="confirm">Confirm</button>

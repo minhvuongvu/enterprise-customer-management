@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { TranslocoDirective } from '@jsverse/transloco';
+import { PluralPipe } from '../../core/i18n/locale-pipes';
 import { WINDOW } from '../../core/platform/platform.tokens';
 
 /** How many leading bytes to show - enough for any common file signature. */
@@ -55,7 +56,7 @@ export async function readFileFacts(file: File, subtle: SubtleCrypto | null): Pr
 
 @Component({
   selector: 'app-file-demo',
-  imports: [TranslocoDirective],
+  imports: [PluralPipe, TranslocoDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="demo" *transloco="let t; prefix: 'pages.labs.browserApis.file'">
@@ -71,7 +72,9 @@ export async function readFileFacts(file: File, subtle: SubtleCrypto | null): Pr
           </div>
           <div>
             <dt>{{ t('size') }}</dt>
-            <dd data-testid="file-size">{{ t('bytes', { count: file.size }) }}</dd>
+            <dd data-testid="file-size">
+              {{ 'pages.labs.browserApis.file.bytes' | appPlural: file.size }}
+            </dd>
           </div>
           <div>
             <dt>{{ t('type') }}</dt>

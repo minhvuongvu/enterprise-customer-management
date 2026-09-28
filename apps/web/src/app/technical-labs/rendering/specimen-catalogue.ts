@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, input, signal } from '@angular/core';
 import { TranslocoDirective } from '@jsverse/transloco';
+import { CurrencyPipe, NumberPipe, PluralPipe } from '../../core/i18n/locale-pipes';
 import type { SpecimenRow } from './rendering-specimens';
 
 /**
@@ -12,13 +13,13 @@ import type { SpecimenRow } from './rendering-specimens';
  */
 @Component({
   selector: 'app-specimen-catalogue',
-  imports: [TranslocoDirective],
+  imports: [CurrencyPipe, NumberPipe, PluralPipe, TranslocoDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <table class="catalogue" *transloco="let t; prefix: 'pages.labs.rendering.specimen'">
       <caption>
         {{
-          t('catalogueCaption', { count: rows().length })
+          'pages.labs.rendering.specimen.catalogueCaption' | appPlural: rows().length
         }}
       </caption>
       <thead>
@@ -35,8 +36,8 @@ import type { SpecimenRow } from './rendering-specimens';
           <tr>
             <td>{{ row.code }}</td>
             <td>{{ t('categories.' + row.category) }}</td>
-            <td>{{ row.quantity }}</td>
-            <td>{{ row.amountCents / 100 }}</td>
+            <td>{{ row.quantity | appNumber }}</td>
+            <td>{{ row.amountCents / 100 | appCurrency: 'USD' }}</td>
             <td>
               <button type="button" class="catalogue__toggle" (click)="toggle(row.code)">
                 {{ expanded() === row.code ? t('hide') : t('show') }}

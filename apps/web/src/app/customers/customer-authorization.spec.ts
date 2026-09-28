@@ -13,6 +13,7 @@ import { CustomerListPage } from './customer-list/customer-list-page';
 import { CustomerCache } from './state/customer-cache';
 import { CustomerStore } from './state/customer-store';
 import { aCustomer, aPage } from './testing/customer.fixture';
+import { provideLayoutMode } from '../layout/testing/layout-testing';
 
 /**
  * UI and action authorization in the customer feature, per role.
@@ -35,6 +36,7 @@ describe('customer authorization', () => {
       imports: [provideTestTranslations()],
       providers: [
         provideTestHttp(),
+        provideLayoutMode('desktop'),
         provideSignedInAs(username),
         provideLocationMocks(),
         provideRouter(

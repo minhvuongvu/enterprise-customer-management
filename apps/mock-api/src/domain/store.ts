@@ -28,7 +28,7 @@ import { generateCustomers } from './seed.ts';
  * everything, which is stated in docs/mock-backend.md rather than discovered.
  *
  * Reads are served from an array and writes keep three indexes in step:
- * id, email and a lowercased search blob. Scanning 50,000 records per keystroke
+ * id, email and a folded search blob (see `foldForSearch`). Scanning 50,000 records per keystroke
  * would make the mock the bottleneck and hide the frontend problems it exists
  * to expose.
  */
@@ -42,6 +42,31 @@ type ChangeListener = (event: RealtimeEvent) => void;
 const REPLAY_BUFFER_SIZE = 200;
 
 const COLLATOR = new Intl.Collator('en', { sensitivity: 'base', numeric: true });
+
+/**
+ * Text as search compares it: lowercase, and without diacritics.
+ *
+ * Vietnamese names are written with tone marks that most people leave out
+ * when they type a search - "nguyen" is how "Nguyễn" is looked up on a
+ * keyboard without a Vietnamese layout, and the Phase 2 search, which only
+ * lowercased, found nothing for it (debt row 14). Unicode normalisation to
+ * NFD splits "ễ" into "e" plus two combining marks, which are then dropped.
+ *
+ * "đ" needs its own rule: it is a separate letter, not "d" with a combining
+ * mark, so normalisation leaves it alone - and "Đức" searched as "duc" is
+ * exactly the case that must work.
+ *
+ * Both sides are folded, the index and the query, so "Nguyễn" typed with its
+ * marks still matches too.
+ */
+export function foldForSearch(text: string): string {
+  return text
+    .normalize('NFD')
+    .replace(/\p{Mn}/gu, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D')
+    .toLowerCase();
+}
 
 function nowInstant(): Instant {
   return new Date().toISOString() as Instant;
@@ -138,7 +163,7 @@ export class MockStore {
     this.byEmail.set(customer.email.toLowerCase(), customer.id);
     this.searchIndex.set(
       customer.id,
-      `${customer.fullName}\u0000${customer.email}\u0000${customer.customerCode}`.toLowerCase(),
+      foldForSearch(`${customer.fullName}\u0000${customer.email}\u0000${customer.customerCode}`),
     );
   }
 
@@ -183,7 +208,8 @@ export class MockStore {
   }
 
   list(query: ParsedCustomerListQuery): PageResponse<Customer> {
-    const search = query.search?.trim().toLowerCase();
+    const trimmed = query.search?.trim();
+    const search = trimmed ? foldForSearch(trimmed) : undefined;
     const from = query.createdFrom;
     const to = query.createdTo;
 

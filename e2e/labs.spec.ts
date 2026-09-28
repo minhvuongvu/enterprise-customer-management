@@ -145,11 +145,11 @@ test.describe('workers lab', () => {
 
     await page.getByTestId('primes-main').click();
     const main = page.locator('[data-testid="primes-result"][data-where="main-thread"]');
-    await expect(main).toContainText('1270607 primes', { timeout: 30_000 });
+    await expect(main).toContainText('1,270,607 primes', { timeout: 30_000 });
 
     await page.getByTestId('primes-worker').click();
     const worker = page.locator('[data-testid="primes-result"][data-where="worker"]');
-    await expect(worker).toContainText('1270607 primes', { timeout: 30_000 });
+    await expect(worker).toContainText('1,270,607 primes', { timeout: 30_000 });
 
     const longestFrame = async (text: string | null) => Number(text?.match(/took (\d+) ms/)?.[1]);
     expect(await longestFrame(await worker.textContent())).toBeLessThan(

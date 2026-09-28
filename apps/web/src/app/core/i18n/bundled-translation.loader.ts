@@ -10,10 +10,12 @@ import type { Translation, TranslocoLoader } from '@jsverse/transloco';
  * in Node, keeps the language out of the initial bundle, and still switches at
  * runtime - which is the requirement `@angular/localize` could not meet.
  *
- * Adding a language in Phase 6 is one file plus one entry here.
+ * Adding a language is one file, one entry here and one in `languages.ts`. A
+ * unit test fails if the two lists disagree.
  */
 const TRANSLATION_CHUNKS: Readonly<Record<string, () => Promise<{ default: Translation }>>> = {
   en: () => import('./translations/en.json'),
+  vi: () => import('./translations/vi.json'),
 };
 
 export function availableLanguages(): readonly string[] {

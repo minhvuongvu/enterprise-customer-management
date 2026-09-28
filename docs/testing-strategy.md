@@ -120,21 +120,34 @@ intermittently - the worst kind of failure, because it looks like an application
 
 **The axe scan runs in both themes.** A palette that passes contrast in light routinely
 fails in dark, and finding that in Phase 6 would mean re-tuning tokens that six phases
-of components already depend on.
+of components already depend on. (Phase 6's full audit found one anyway: the danger
+button was red-400 behind white text in dark, 2.6:1. `--danger-solid` fixed it.)
+
+### Phase 6: the accessibility, keyboard, responsive and i18n suites
+
+| Spec                    | What it proves                                                                                                                                                                                                                                   |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `accessibility.spec.ts` | axe (WCAG 2.2 A/AA + best practice) on **every route**, light and dark, plus open dialog/menu/panel/form errors/drawer; critical and serious fail, the rest are attached and listed in docs/accessibility.md; reduced motion honoured            |
+| `keyboard.spec.ts`      | every journey with Tab/Enter/Space/Escape/arrows only - sign-in, skip link, menus, sort, pagination, selection, a trapped dialog, the form, toasts - asserting where focus is after each step                                                    |
+| `responsive.spec.ts`    | no sideways scroll on nine routes at 375/820/1280 px; the phone's card list, sort select, folded filters, action menu, drawer account section; scroll lock under dialogs and the drawer                                                          |
+| `i18n.spec.ts`          | runtime switch with no reload (a window marker survives), `<html lang>`, title, locale number grouping, persistence, the prerendered page; `dateOfBirth` identical in four time zones from UTC-11 to UTC+14, and unchanged by a save from UTC-11 |
+
+Each was checked for teeth: the pagination and sort focus tests fail with the focus
+restore removed; the dark-theme scan failed before `--danger-solid`; the phone overflow
+test failed before `app-table` contained its hidden text.
 
 ## Known gaps
 
 These are gaps, not oversights. Each has an owner.
 
-| Gap                                               | Why it is acceptable now                                                        | Closed in |
-| ------------------------------------------------- | ------------------------------------------------------------------------------- | --------- |
-| No coverage thresholds                            | A number without a policy is not a signal; Phase 7 sets both at once            | Phase 7   |
-| One browser (Chromium)                            | There is not enough UI for cross-browser differences to exist                   | Phase 6   |
-| No visual regression                              | Nothing has a stable visual identity yet                                        | Phase 7   |
-| No architecture/dependency tests                  | Boundaries are enforced by review until there are boundaries worth automating   | Phase 7   |
-| Search does not match across diacritics           | The mock's index is a plain lowercase substring match                           | Phase 6   |
-| Layouts checked at three fixed widths             | Real devices differ in more than width; these three are where the shape changes | Phase 6   |
-| Bulk `CONFLICT` outcome only reached by injection | A natural version race needs two concurrent clients                             | Phase 7   |
+| Gap                                               | Why it is acceptable now                                                        | Closed in                                    |
+| ------------------------------------------------- | ------------------------------------------------------------------------------- | -------------------------------------------- |
+| No coverage thresholds                            | A number without a policy is not a signal; Phase 7 sets both at once            | Phase 7                                      |
+| Firefox and WebKit configured, not yet run        | `E2E_BROWSERS=all` adds them; the Phase 6 sandbox could not download them       | Phase 7                                      |
+| No visual regression                              | Nothing has a stable visual identity yet                                        | Phase 7                                      |
+| No architecture/dependency tests                  | Boundaries are enforced by review until there are boundaries worth automating   | Phase 7                                      |
+| Layouts checked at three fixed widths             | Real devices differ in more than width; these three are where the shape changes | not planned - the widths are the breakpoints |
+| Bulk `CONFLICT` outcome only reached by injection | A natural version race needs two concurrent clients                             | Phase 7                                      |
 
 ## How this grows
 

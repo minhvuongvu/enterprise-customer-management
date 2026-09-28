@@ -1,6 +1,9 @@
 import { HttpTestingController } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
+import { TranslocoService } from '@jsverse/transloco';
 import { provideTestHttp, SilentLogger } from '../testing/http-testing';
+import { provideTestTranslations } from '../testing/i18n-testing';
+import { LOCAL_STORAGE } from '../platform/platform.tokens';
 import { Logger } from '../logging/logger';
 import { AppConfigStore, DEFAULT_APP_CONFIG } from './app-config';
 import { provideRuntimeConfig } from './runtime-config.provider';
@@ -21,12 +24,16 @@ describe('provideRuntimeConfig', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
+      imports: [provideTestTranslations()],
       providers: [provideTestHttp(), provideRuntimeConfig()],
     });
     backend = TestBed.inject(HttpTestingController);
   });
 
-  afterEach(() => backend.verify());
+  afterEach(() => {
+    backend.verify();
+    TestBed.inject(LOCAL_STORAGE).remove('ecm.language');
+  });
 
   it('applies what the file says over the compiled-in defaults', async () => {
     const store = TestBed.inject(AppConfigStore);
@@ -46,6 +53,25 @@ describe('provideRuntimeConfig', () => {
     await Promise.resolve();
 
     expect(store.config().features.technicalLabs).toBe(false);
+  });
+
+  it("starts in the deployment's default language", async () => {
+    TestBed.inject(AppConfigStore);
+
+    backend.expectOne('/config.json').flush({ defaultLanguage: 'vi' });
+    await new Promise((resolve) => setTimeout(resolve));
+
+    expect(TestBed.inject(TranslocoService).getActiveLang()).toBe('vi');
+  });
+
+  it("prefers the user's stored choice over the deployment's default", async () => {
+    TestBed.inject(LOCAL_STORAGE).write('ecm.language', 'vi');
+    TestBed.inject(AppConfigStore);
+
+    backend.expectOne('/config.json').flush({ defaultLanguage: 'en' });
+    await new Promise((resolve) => setTimeout(resolve));
+
+    expect(TestBed.inject(TranslocoService).getActiveLang()).toBe('vi');
   });
 
   it('starts on the defaults, and says so, when the file is missing', async () => {

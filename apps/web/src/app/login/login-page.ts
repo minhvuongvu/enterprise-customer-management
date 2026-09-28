@@ -16,6 +16,7 @@ import { TranslocoDirective } from '@jsverse/transloco';
 import { safeReturnUrl } from '../core/auth/return-url';
 import { SessionService } from '../core/auth/session.service';
 import { isAppError } from '../core/errors/app-error';
+import { LanguageSwitcher } from '../layout/language-switcher';
 import { ThemeToggle } from '../layout/theme-toggle';
 import { Button } from '../shared/ui/button/button';
 import { TextInput } from '../shared/ui/text-input/text-input';
@@ -61,14 +62,24 @@ import { TextInput } from '../shared/ui/text-input/text-input';
  */
 @Component({
   selector: 'app-login-page',
-  imports: [Button, ReactiveFormsModule, TextInput, ThemeToggle, TranslocoDirective],
+  imports: [
+    Button,
+    LanguageSwitcher,
+    ReactiveFormsModule,
+    TextInput,
+    ThemeToggle,
+    TranslocoDirective,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <main class="login" *transloco="let t">
       <section class="login__card">
         <div class="login__top">
           <h1>{{ t('pages.login.heading') }}</h1>
-          <app-theme-toggle />
+          <div class="login__preferences">
+            <app-language-switcher />
+            <app-theme-toggle />
+          </div>
         </div>
 
         @if (expired()) {
@@ -146,9 +157,15 @@ import { TextInput } from '../shared/ui/text-input/text-input';
 
     .login__top {
       display: flex;
+      flex-wrap: wrap;
       align-items: center;
       justify-content: space-between;
       gap: var(--space-3);
+    }
+
+    .login__preferences {
+      display: flex;
+      gap: var(--space-1);
     }
 
     .login__note {

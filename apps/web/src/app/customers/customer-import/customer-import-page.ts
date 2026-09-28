@@ -20,6 +20,7 @@ import { NgTemplateOutlet } from '@angular/common';
 import { TranslocoDirective } from '@jsverse/transloco';
 import type { Observable, Subscription } from 'rxjs';
 import { messageKeyOf } from '../../core/errors/app-error';
+import { NumberPipe, PluralPipe } from '../../core/i18n/locale-pipes';
 import { NotificationService } from '../../core/notifications/notification.service';
 import { PageContainer } from '../../layout/page-container';
 import { PageHeader } from '../../layout/page-header';
@@ -90,8 +91,10 @@ type Step =
     Button,
     FileDrop,
     NgTemplateOutlet,
+    NumberPipe,
     PageContainer,
     PageHeader,
+    PluralPipe,
     TranslocoDirective,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -157,11 +160,10 @@ type Step =
               <h2>{{ t('pages.customers.import.previewHeading') }}</h2>
               <p data-testid="preview-summary">
                 {{
-                  t('pages.customers.import.previewSummary', {
-                    total: p.totalRows,
-                    valid: p.validRows,
-                    invalid: p.invalidRows,
-                  })
+                  'pages.customers.import.previewSummary'
+                    | appPlural
+                      : p.totalRows
+                      : { valid: (p.validRows | appNumber), invalid: (p.invalidRows | appNumber) }
                 }}
               </p>
 
@@ -188,7 +190,7 @@ type Step =
                 <table>
                   <caption class="visually-hidden">
                     {{
-                      t('pages.customers.import.previewCaption', { count: p.rows.length })
+                      'pages.customers.import.previewCaption' | appPlural: p.rows.length
                     }}
                   </caption>
                   <thead>
@@ -233,7 +235,7 @@ type Step =
                   (click)="confirmImport()"
                   data-testid="confirm-import"
                 >
-                  {{ t('pages.customers.import.confirm', { count: p.validRows }) }}
+                  {{ 'pages.customers.import.confirm' | appPlural: p.validRows }}
                 </app-button>
                 <app-button (click)="restart()">
                   {{ t('pages.customers.import.chooseAnother') }}
@@ -248,12 +250,11 @@ type Step =
             <section class="panel" role="status" data-testid="import-result">
               <h2>{{ t('pages.customers.import.resultHeading') }}</h2>
               <p data-testid="result-summary">
-                {{
-                  t('pages.customers.import.resultSummary', {
-                    succeeded: r.succeeded,
-                    failed: r.failed,
-                  })
-                }}
+                <!-- Two sentences, each with its own count: a plural form is
+                     chosen per number, and one sentence cannot agree with
+                     two numbers at once. -->
+                {{ 'pages.customers.import.resultImported' | appPlural: r.succeeded }}
+                {{ 'pages.customers.import.resultSkipped' | appPlural: r.failed }}
               </p>
               @if (r.errors.length) {
                 <ng-container *ngTemplateOutlet="errorList; context: { errors: r.errors }" />

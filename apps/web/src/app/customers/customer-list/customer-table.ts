@@ -1,14 +1,14 @@
-import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { parseSortParam, type Customer, type CustomerId } from '@ecm/contracts';
 import { TranslocoDirective } from '@jsverse/transloco';
+import { InstantPipe } from '../../core/i18n/locale-pipes';
 import { Badge } from '../../shared/ui/badge/badge';
 import { Table } from '../../shared/ui/table/table';
 import { genderLabelKey, statusLabelKey, statusTone } from '../customer-vocabulary';
 
 /** A column that can be ordered by, paired with the API's sort field name. */
-interface SortableColumn {
+export interface SortableColumn {
   readonly field: string;
   readonly labelKey: string;
 }
@@ -20,7 +20,7 @@ interface SortableColumn {
  * column the API cannot sort by must not render a sort control: an ordering
  * request that silently does nothing is worse than no control at all.
  */
-const SORTABLE_COLUMNS: readonly SortableColumn[] = [
+export const SORTABLE_COLUMNS: readonly SortableColumn[] = [
   { field: 'customerCode', labelKey: 'customers.field.customerCode' },
   { field: 'fullName', labelKey: 'customers.field.fullName' },
   { field: 'email', labelKey: 'customers.field.email' },
@@ -53,7 +53,7 @@ const SORTABLE_COLUMNS: readonly SortableColumn[] = [
  */
 @Component({
   selector: 'app-customer-table',
-  imports: [Badge, DatePipe, RouterLink, Table, TranslocoDirective],
+  imports: [Badge, InstantPipe, RouterLink, Table, TranslocoDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <app-table [caption]="t('pages.customers.list.table.caption')" *transloco="let t">
@@ -121,7 +121,9 @@ const SORTABLE_COLUMNS: readonly SortableColumn[] = [
               <td>
                 <!-- An Instant is UTC on the wire and local only here, which is
                      the whole point of keeping the two apart. -->
-                <time [attr.datetime]="row.updatedAt">{{ row.updatedAt | date: 'short' }}</time>
+                <time [attr.datetime]="row.updatedAt">{{
+                  row.updatedAt | appInstant: 'short'
+                }}</time>
               </td>
               <td>{{ t(genderKey(row)) }}</td>
             </tr>

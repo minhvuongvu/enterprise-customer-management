@@ -87,7 +87,8 @@ describe('Pagination', () => {
     const labels = buttons(fixture)
       .map((button) => button.textContent?.trim())
       .filter((text) => text !== '');
-    expect(labels).toEqual(['1', '299', '300', '301', '2500']);
+    // Page numbers are numbers, so they are grouped by locale like any other.
+    expect(labels).toEqual(['1', '299', '300', '301', '2,500']);
   });
 
   it('asks for the page the user clicked', async () => {

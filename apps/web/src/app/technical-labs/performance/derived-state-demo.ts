@@ -8,6 +8,7 @@ import {
   signal,
 } from '@angular/core';
 import { TranslocoDirective } from '@jsverse/transloco';
+import { CurrencyPipe, NumberPipe, PluralPipe } from '../../core/i18n/locale-pipes';
 import { Button } from '../../shared/ui/button/button';
 import { injectLabClock } from './lab-clock';
 import { summarize, type DatasetRow, type DatasetSummary } from './performance-dataset';
@@ -37,24 +38,35 @@ type Strategy = 'method' | 'computed';
  */
 @Component({
   selector: 'app-derived-state-demo',
-  imports: [Button, TranslocoDirective],
+  imports: [Button, CurrencyPipe, NumberPipe, PluralPipe, TranslocoDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="demo" *transloco="let t; prefix: 'pages.labs.performance.derived'">
       <div class="demo__controls">
         <app-button data-testid="derived-run-method" (click)="run('method')">
-          {{ t('runMethod', { count: rerenders }) }}
+          {{ 'pages.labs.performance.derived.runMethod' | appPlural: rerenders }}
         </app-button>
         <app-button data-testid="derived-run-computed" (click)="run('computed')">
-          {{ t('runComputed', { count: rerenders }) }}
+          {{ 'pages.labs.performance.derived.runComputed' | appPlural: rerenders }}
         </app-button>
       </div>
 
       <!-- Only the active strategy is in the template, so each run measures one. -->
       @if (strategy() === 'method') {
-        <p>{{ t('total', { cents: summaryByMethod().totalCents, tick: tick() }) }}</p>
+        <p>
+          {{
+            t('total', {
+              amount: (summaryByMethod().totalCents / 100 | appCurrency: 'USD'),
+              tick: tick(),
+            })
+          }}
+        </p>
       } @else if (strategy() === 'computed') {
-        <p>{{ t('total', { cents: summary().totalCents, tick: tick() }) }}</p>
+        <p>
+          {{
+            t('total', { amount: (summary().totalCents / 100 | appCurrency: 'USD'), tick: tick() })
+          }}
+        </p>
       }
 
       @if (result(); as last) {
@@ -62,9 +74,9 @@ type Strategy = 'method' | 'computed';
           {{
             t('result', {
               strategy: t(last.strategy),
-              recomputed: last.recomputed,
-              renders: rerenders,
-              ms: last.ms,
+              recomputed: (last.recomputed | appNumber),
+              renders: (rerenders | appNumber),
+              ms: (last.ms | appNumber),
             })
           }}
         </p>

@@ -151,6 +151,11 @@
   --danger: var(--palette-red-600);
   --danger-subtle: var(--palette-red-100);
   --danger-text: var(--palette-red-700);
+  /* A filled surface carrying white text - a destructive button, a count
+     badge. Separate from `--danger` for the reason `--accent` does not
+     lighten in the dark theme: see there. */
+  --danger-solid: var(--palette-red-600);
+  --danger-solid-hover: var(--palette-red-700);
 
   --warning: var(--palette-amber-600);
   --warning-subtle: var(--palette-amber-100);
@@ -214,6 +219,10 @@
   --danger: var(--palette-red-400);
   --danger-subtle: var(--palette-red-900);
   --danger-text: var(--palette-red-400);
+  /* Unchanged from light. Phase 6's audit found the danger button filled
+     with `--danger` here - red-400 behind white text, 2.6:1. */
+  --danger-solid: var(--palette-red-600);
+  --danger-solid-hover: var(--palette-red-700);
 
   --warning: var(--palette-amber-400);
   --warning-subtle: var(--palette-amber-900);

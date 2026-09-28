@@ -27,7 +27,7 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
       width: var(--spinner-size);
       height: var(--spinner-size);
       border: 2px solid currentcolor;
-      border-right-color: transparent;
+      border-inline-end-color: transparent;
       border-radius: var(--radius-pill);
       opacity: 0.75;
       animation: spin 700ms linear infinite;

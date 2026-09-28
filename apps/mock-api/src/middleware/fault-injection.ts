@@ -141,6 +141,7 @@ export const faultInjection: RequestHandler = (req, res, next) => {
       next(
         new ApiError('VALIDATION_FAILED', 'Injected validation failure.', {
           fieldErrors: { email: ['Injected validation failure.'] },
+          fieldIssues: { email: [{ code: 'INVALID_FORMAT' }] },
         }),
       );
       return;

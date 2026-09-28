@@ -99,6 +99,49 @@ describe('status codes', () => {
     );
   });
 
+  it('422 says why, as codes a client can translate', async () => {
+    const client = server.client();
+    await client.login('admin');
+    const response = await client.call('/api/customers', {
+      method: 'POST',
+      body: {
+        fullName: '',
+        email: 'not-an-email',
+        tags: Array.from({ length: 21 }, (_, index) => `tag-${index}`),
+        address: {
+          line1: 'x'.repeat(201),
+          line2: null,
+          city: 'Hanoi',
+          postalCode: null,
+          country: 'VNM',
+        },
+      },
+    });
+
+    const body = await expectEnvelope(response, 'VALIDATION_FAILED');
+    const issues = body.error.details?.fieldIssues ?? {};
+    expect(issues['fullName']).toEqual([{ code: 'REQUIRED' }]);
+    expect(issues['email']).toEqual([{ code: 'INVALID_FORMAT' }]);
+    expect(issues['tags']).toEqual([{ code: 'TOO_MANY', limit: 20 }]);
+    expect(issues['address.line1']).toEqual([{ code: 'TOO_LONG', limit: 200 }]);
+    // An exact length is a format rule, not an upper bound.
+    expect(issues['address.country']).toEqual([{ code: 'INVALID_FORMAT' }]);
+  });
+
+  it('422 reports a missing field as required, and an unknown one as unknown', async () => {
+    const client = server.client();
+    await client.login('admin');
+    const response = await client.call('/api/customers', {
+      method: 'POST',
+      body: { email: 'someone@example.test', nickname: 'Bee' },
+    });
+
+    const body = await expectEnvelope(response, 'VALIDATION_FAILED');
+    const issues = body.error.details?.fieldIssues ?? {};
+    expect(issues['fullName']).toEqual([{ code: 'REQUIRED' }]);
+    expect(issues['_']).toEqual([{ code: 'UNKNOWN_FIELD' }]);
+  });
+
   it('422 reports a nested field by its dotted path', async () => {
     const client = server.client();
     await client.login('admin');

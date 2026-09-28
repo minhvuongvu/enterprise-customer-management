@@ -81,6 +81,12 @@ export const technicalLabsRoutes: Routes = [
       import('./leader-election/leader-election-lab').then((m) => m.LeaderElectionLab),
   },
   {
+    path: 'locale',
+    title: 'pages.labs.locale.title',
+    data: withMetadata({ breadcrumb: 'pages.labs.locale.breadcrumb' }),
+    loadComponent: () => import('./locale/locale-lab').then((m) => m.LocaleLab),
+  },
+  {
     path: ':labId',
     title: 'pages.labs.placeholder.title',
     data: withMetadata({ breadcrumb: 'pages.labs.placeholder.breadcrumb' }),

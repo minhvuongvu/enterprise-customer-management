@@ -1,10 +1,13 @@
 import {
+  afterNextRender,
   ChangeDetectionStrategy,
   Component,
   computed,
   DestroyRef,
   effect,
+  ElementRef,
   inject,
+  Injector,
   input,
   signal,
 } from '@angular/core';
@@ -17,18 +20,22 @@ import { distinctUntilChanged } from 'rxjs';
 import { IfPermitted } from '../../core/auth/if-permitted.directive';
 import { SessionService } from '../../core/auth/session.service';
 import { messageKeyOf } from '../../core/errors/app-error';
+import { NumberPipe, PluralPipe } from '../../core/i18n/locale-pipes';
 import { Logger } from '../../core/logging/logger';
 import { ConfirmationService } from '../../core/notifications/confirmation.service';
 import { NotificationService } from '../../core/notifications/notification.service';
 import { PageContainer } from '../../layout/page-container';
 import { PageHeader } from '../../layout/page-header';
+import { LayoutBreakpoints } from '../../layout/layout-breakpoints';
 import { Button } from '../../shared/ui/button/button';
+import { Dropdown, type DropdownItem } from '../../shared/ui/dropdown/dropdown';
 import { EmptyState } from '../../shared/ui/empty-state/empty-state';
 import { ErrorState } from '../../shared/ui/error-state/error-state';
 import { Pagination } from '../../shared/ui/pagination/pagination';
 import { Select, type SelectOption } from '../../shared/ui/select/select';
 import { Skeleton } from '../../shared/ui/skeleton/skeleton';
 import {
+  criteriaKey,
   criteriaToQueryParams,
   hasActiveFilters,
   PAGE_SIZE_OPTIONS,
@@ -41,6 +48,7 @@ import { FileSaver } from '../files/file-saver';
 import { CustomerStore } from '../state/customer-store';
 import { valueOf } from '../state/remote-data';
 import { CustomerBulkBar } from './customer-bulk-bar';
+import { CustomerCardList } from './customer-card-list';
 import { CustomerFilters } from './customer-filters';
 import { CustomerTable } from './customer-table';
 
@@ -73,14 +81,18 @@ import { CustomerTable } from './customer-table';
   imports: [
     Button,
     CustomerBulkBar,
+    CustomerCardList,
     CustomerFilters,
     CustomerTable,
+    Dropdown,
     EmptyState,
     ErrorState,
     IfPermitted,
     PageContainer,
     PageHeader,
+    NumberPipe,
     Pagination,
+    PluralPipe,
     ReactiveFormsModule,
     Select,
     Skeleton,
@@ -94,33 +106,50 @@ import { CustomerTable } from './customer-table';
         [description]="t('pages.customers.list.description')"
       >
         <div pageActions>
-          <app-button
-            variant="secondary"
-            [loading]="pending()"
-            (click)="refresh()"
-            data-testid="refresh"
-          >
-            {{ t('pages.customers.list.refresh') }}
-          </app-button>
-          <app-button
-            *appIfPermitted="'CUSTOMER_EXPORT'"
-            variant="secondary"
-            [loading]="exporting()"
-            (click)="exportCsv()"
-            data-testid="export"
-          >
-            {{ t('pages.customers.list.export') }}
-          </app-button>
-          <app-button
-            *appIfPermitted="'CUSTOMER_IMPORT'"
-            variant="secondary"
-            link="/customers/import"
-          >
-            {{ t('pages.customers.list.import') }}
-          </app-button>
-          <app-button *appIfPermitted="'CUSTOMER_CREATE'" variant="primary" link="/customers/new">
-            {{ t('pages.customers.list.create') }}
-          </app-button>
+          @if (compact()) {
+            <!-- On a phone four buttons wrap into a wall above the list. The
+                 one most people came for stays a button; the rest move into
+                 a menu - the same actions, one tap further away. -->
+            <app-button *appIfPermitted="'CUSTOMER_CREATE'" variant="primary" link="/customers/new">
+              {{ t('pages.customers.list.create') }}
+            </app-button>
+            <app-dropdown
+              [items]="moreActions(t)"
+              [menuLabel]="t('pages.customers.list.moreActions')"
+              (itemSelected)="runAction($event)"
+              data-testid="more-actions"
+            >
+              {{ t('pages.customers.list.moreActions') }}
+            </app-dropdown>
+          } @else {
+            <app-button
+              variant="secondary"
+              [loading]="pending()"
+              (click)="refresh()"
+              data-testid="refresh"
+            >
+              {{ t('pages.customers.list.refresh') }}
+            </app-button>
+            <app-button
+              *appIfPermitted="'CUSTOMER_EXPORT'"
+              variant="secondary"
+              [loading]="exporting()"
+              (click)="exportCsv()"
+              data-testid="export"
+            >
+              {{ t('pages.customers.list.export') }}
+            </app-button>
+            <app-button
+              *appIfPermitted="'CUSTOMER_IMPORT'"
+              variant="secondary"
+              link="/customers/import"
+            >
+              {{ t('pages.customers.list.import') }}
+            </app-button>
+            <app-button *appIfPermitted="'CUSTOMER_CREATE'" variant="primary" link="/customers/new">
+              {{ t('pages.customers.list.create') }}
+            </app-button>
+          }
         </div>
       </app-page-header>
 
@@ -212,23 +241,36 @@ import { CustomerTable } from './customer-table';
               </p>
             }
 
-            <app-customer-table
-              [rows]="rows()"
-              [sort]="criteria().sort"
-              [selectable]="canBulkEdit()"
-              [selectedIds]="selected()"
-              (sortChange)="applySort($event)"
-              (rowToggled)="toggleRow($event)"
-              (allToggled)="toggleAll($event)"
-            />
+            <!-- A table where there is room for columns, a list of cards
+                 where there is not. Same inputs, same outputs: the page does
+                 not care which one the user is looking at. -->
+            @if (compact()) {
+              <app-customer-card-list
+                [rows]="rows()"
+                [sort]="criteria().sort"
+                [selectable]="canBulkEdit()"
+                [selectedIds]="selected()"
+                (sortChange)="applySort($event)"
+                (rowToggled)="toggleRow($event)"
+                (allToggled)="toggleAll($event)"
+              />
+            } @else {
+              <app-customer-table
+                [rows]="rows()"
+                [sort]="criteria().sort"
+                [selectable]="canBulkEdit()"
+                [selectedIds]="selected()"
+                (sortChange)="applySort($event)"
+                (rowToggled)="toggleRow($event)"
+                (allToggled)="toggleAll($event)"
+              />
+            }
 
             <div class="results__footer">
               <p class="results__summary" data-testid="list-summary">
                 {{
-                  t('pages.customers.list.summary', {
-                    shown: rows().length,
-                    total: totalItems(),
-                  })
+                  'pages.customers.list.summary'
+                    | appPlural: totalItems() : { shown: (rows().length | appNumber) }
                 }}
               </p>
 
@@ -266,7 +308,8 @@ import { CustomerTable } from './customer-table';
       gap: var(--space-4);
     }
 
-    .results[aria-busy='true'] app-customer-table {
+    .results[aria-busy='true'] app-customer-table,
+    .results[aria-busy='true'] app-customer-card-list {
       opacity: 0.6;
       transition: opacity var(--motion-fast) var(--motion-ease);
     }
@@ -327,6 +370,19 @@ export class CustomerListPage {
   private readonly confirmation = inject(ConfirmationService);
   private readonly notifications = inject(NotificationService);
   private readonly files = inject(FileSaver);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly injector = inject(Injector);
+  private readonly focusReturn = signal<{ selector: string; criteria: string } | null>(null);
+
+  /**
+   * The phone layout: cards instead of a table, a menu instead of a row of
+   * buttons. Decided in TypeScript rather than CSS because it swaps which
+   * components exist, not how they look - rendering both and hiding one
+   * would put every row in the DOM twice and every checkbox in the tab order
+   * twice.
+   */
+  private readonly breakpoints = inject(LayoutBreakpoints);
+  protected readonly compact = computed(() => this.breakpoints.mode() === 'mobile');
 
   protected readonly criteria = computed<CustomerListCriteria>(() =>
     readCriteria({
@@ -436,8 +492,56 @@ export class CustomerListPage {
     this.sizeControl.valueChanges
       .pipe(distinctUntilChanged(), takeUntilDestroyed())
       .subscribe((value) =>
-        this.applyCriteria(withFilterChange(this.criteria(), { size: Number(value) })),
+        this.applyCriteria(
+          withFilterChange(this.criteria(), { size: Number(value) }),
+          'select[name="size"]',
+        ),
       );
+
+    // See `returnFocusTo`.
+    effect(() => {
+      const target = this.focusReturn();
+      if (
+        target === null ||
+        criteriaKey(this.criteria()) !== target.criteria ||
+        this.view() !== 'rows' ||
+        this.pending()
+      ) {
+        return;
+      }
+      this.focusReturn.set(null);
+      const selector = target.selector;
+      afterNextRender(
+        () => {
+          const active = this.host.nativeElement.ownerDocument.activeElement;
+          const lost = active === null || active === this.host.nativeElement.ownerDocument.body;
+          if (lost) {
+            this.host.nativeElement.querySelector<HTMLElement>(selector)?.focus();
+          }
+        },
+        { injector: this.injector },
+      );
+    });
+  }
+
+  /**
+   * Where focus goes back to once the results for `criteria` have rendered.
+   *
+   * A page of results that has never been loaded shows a skeleton while it
+   * loads (the rows on screen would answer a different question), and the
+   * skeleton replaces the table - including the pagination button, sort
+   * header or page-size select the user just operated. The focused element
+   * is destroyed, focus falls to `<body>`, and the next Tab starts at the top
+   * of the document. The keyboard pass in Phase 6 found exactly that.
+   *
+   * So the control says where it lives, as a selector for its counterpart in
+   * the next render, and focus is put there once *those* results are on
+   * screen - but only if it was really lost. A cached page never shows the
+   * skeleton, so focus is never lost and nothing moves; a user who has
+   * already moved on keeps their focus.
+   */
+  private returnFocusTo(selector: string, criteria: CustomerListCriteria): void {
+    this.focusReturn.set({ selector, criteria: criteriaKey(criteria) });
   }
 
   // ------------------------------------------------------------ navigation
@@ -450,7 +554,10 @@ export class CustomerListPage {
    * whether it was a page, a filter or a sort - and what makes the state on
    * screen reconstructible from the address bar alone.
    */
-  protected applyCriteria(criteria: CustomerListCriteria): void {
+  protected applyCriteria(criteria: CustomerListCriteria, focusSelector?: string): void {
+    if (focusSelector) {
+      this.returnFocusTo(focusSelector, criteria);
+    }
     this.router.navigate([], {
       relativeTo: this.route,
       queryParams: criteriaToQueryParams(criteria),
@@ -462,11 +569,14 @@ export class CustomerListPage {
   }
 
   protected goToPage(page: number): void {
-    this.applyCriteria({ ...this.criteria(), page });
+    this.applyCriteria({ ...this.criteria(), page }, 'app-pagination [aria-current="page"]');
   }
 
   protected applySort(sort: string): void {
-    this.applyCriteria(withFilterChange(this.criteria(), { sort }));
+    this.applyCriteria(
+      withFilterChange(this.criteria(), { sort }),
+      this.compact() ? 'select[name="sort"]' : 'th:not([aria-sort="none"]) button',
+    );
   }
 
   protected resetFilters(): void {
@@ -479,6 +589,42 @@ export class CustomerListPage {
         createdTo: '',
       }),
     );
+  }
+
+  /**
+   * The secondary page actions, as menu items for the phone layout. The same
+   * permissions decide them as decide the buttons (`*appIfPermitted` there,
+   * `hasPermission` here) - UX, not security (rule 10).
+   */
+  protected moreActions(t: (key: string) => string): readonly DropdownItem[] {
+    const items: DropdownItem[] = [
+      { id: 'refresh', label: t('pages.customers.list.refresh'), disabled: this.pending() },
+    ];
+    if (this.session.hasPermission('CUSTOMER_EXPORT')) {
+      items.push({
+        id: 'export',
+        label: t('pages.customers.list.export'),
+        disabled: this.exporting(),
+      });
+    }
+    if (this.session.hasPermission('CUSTOMER_IMPORT')) {
+      items.push({ id: 'import', label: t('pages.customers.list.import') });
+    }
+    return items;
+  }
+
+  protected runAction(id: string): void {
+    switch (id) {
+      case 'refresh':
+        this.refresh();
+        return;
+      case 'export':
+        this.exportCsv();
+        return;
+      case 'import':
+        void this.router.navigateByUrl('/customers/import');
+        return;
+    }
   }
 
   protected refresh(): void {
@@ -513,7 +659,7 @@ export class CustomerListPage {
         headingKey: 'pages.customers.list.bulk.confirmHeading',
         bodyKey: 'pages.customers.list.bulk.confirmBody',
         confirmKey: 'pages.customers.list.bulk.delete',
-        params: { count: this.selectedCount() },
+        count: this.selectedCount(),
         tone: 'danger',
       })
       .pipe(takeUntilDestroyed(this.destroyRef))

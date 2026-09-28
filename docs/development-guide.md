@@ -124,9 +124,9 @@ Two mistakes are cheap to make and expensive to find later, so they fail the bui
 direct global breaks the server build, sometimes only in production.
 
 **No hardcoded user-facing strings.** Everything a user reads goes through the
-translation layer, today, while only English exists. The expensive part of i18n is
-never the second language — it is finding six phases of strings that were typed
-inline.
+translation layer - in English and Vietnamese, with the same keys in both (a unit
+test compares the files). Numbers, dates and money go through the `Intl` pipes in
+`core/i18n/locale-pipes.ts`, never through string building; see [`i18n.md`](i18n.md).
 
 Since Phase 1 this covers **attributes** as well as text, because `aria-label`,
 `placeholder` and `title` are read out to screen-reader users and are exactly the
@@ -140,10 +140,12 @@ watching lint reject it — in Phase 0 for text, and again in Phase 1 for attrib
 
 ## Things that are deliberately not here yet
 
-| Missing           | Arrives in |
-| ----------------- | ---------- |
-| A second language | Phase 6    |
-| CI pipeline       | Phase 7    |
+| Missing     | Arrives in |
+| ----------- | ---------- |
+| CI pipeline | Phase 7    |
+
+**Styles are linted too** (`npm run lint:styles`, Phase 6): semantic tokens only,
+logical directions only, focus outline intact - see [`design-system.md`](design-system.md).
 
 Authentication, refresh and authorization arrived in Phase 3; how they work and what
 protects what is in [`security.md`](security.md).
