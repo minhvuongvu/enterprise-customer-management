@@ -62,14 +62,15 @@ flaky test is a bug to fix, not a pass.
 A gate that never fails is decoration. Each was shown failing on a real violation before
 it was trusted:
 
-| Gate                     | Shown failing on                                                                                                     |
-| ------------------------ | -------------------------------------------------------------------------------------------------------------------- |
-| architecture check       | `app.routes.ts` importing `technical-labs.guard.ts` - a real violation on its first run, fixed by `featureEnabled()` |
-| bundle budgets           | `memory-log-sink.ts` in the production `main` bundle - a real leak on its first run, fixed with `fileReplacements`   |
-| visual regression        | the dropdown's check mark rendering as "¹3" - a real Phase 6 bug on its first run                                    |
-| secret scan              | its own test file's connection-string example - on its first run                                                     |
-| the pipeline, end to end | a deliberate violation pushed to `phase-7` and reverted: see PROGRESS.md, Phase 7 "Checks"                           |
-| unit tests of the tools  | `lint/*.test.ts`: every architecture rule and every secret pattern shown a violation it must report                  |
+| Gate                     | Shown failing on                                                                                                                                                                 |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| architecture check       | `app.routes.ts` importing `technical-labs.guard.ts` - a real violation on its first run, fixed by `featureEnabled()`                                                             |
+| bundle budgets           | `memory-log-sink.ts` in the production `main` bundle - a real leak on its first run, fixed with `fileReplacements`                                                               |
+| visual regression        | the dropdown's check mark rendering as "¹3" - a real Phase 6 bug on its first run                                                                                                |
+| secret scan              | its own test file's connection-string example - on its first run                                                                                                                 |
+| the pipeline, end to end | run #3: a lab importing the customer store, pushed deliberately - `quality` failed on `features-are-isolated`, nothing downstream ran; reverted (PROGRESS.md, Phase 7 "CI runs") |
+| coverage gate            | run #1, not deliberately: contracts branch coverage 94.73 % against 95 %                                                                                                         |
+| unit tests of the tools  | `lint/*.test.ts`: every architecture rule and every secret pattern shown a violation it must report                                                                              |
 
 ## 5. Required checks (repository settings)
 
