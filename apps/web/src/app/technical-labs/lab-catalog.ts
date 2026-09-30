@@ -93,7 +93,3 @@ export const TECHNICAL_LABS: readonly LabDescriptor[] = [
 export function findLab(id: string): LabDescriptor | undefined {
   return TECHNICAL_LABS.find((lab) => lab.id === id);
 }
-
-// DELIBERATE VIOLATION - proves CI fails on a forbidden import; reverted next.
-import type { CustomerStore } from '../customers/state/customer-store';
-export type LabCustomerStore = CustomerStore;
