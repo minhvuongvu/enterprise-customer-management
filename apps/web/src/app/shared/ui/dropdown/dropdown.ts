@@ -160,9 +160,15 @@ export type DropdownKind = 'actions' | 'choice';
     }
 
     /* The checked option is marked for sighted users too; aria-checked
-       alone reaches only assistive technology. */
+       alone reaches only assistive technology. Written as a CSS escape,
+       like every glyph here: Phase 6 shipped this line holding the literal
+       characters of a mangled escape, and the menu showed a stray mark
+       instead of a tick until the Phase 7 visual suite saw it. The second
+       declaration makes the glyph decorative where the alternative-text
+       syntax is supported; elsewhere it is ignored and the first applies. */
     .dropdown__item[aria-checked='true']::after {
-      content: '¹3';
+      content: '\\2713';
+      content: '\\2713' / '';
     }
   `,
 })

@@ -1,3 +1,4 @@
+import { Injectable } from '@angular/core';
 import { HttpClient, provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
@@ -18,6 +19,7 @@ interface RecordedLog {
  * Hand-written double: it records what was logged so a test can assert on it.
  * Smaller than mocking the console, and it states its own contract.
  */
+@Injectable()
 class RecordingLogger extends Logger {
   readonly entries: RecordedLog[] = [];
 
@@ -127,9 +129,13 @@ describe('HTTP interceptors', () => {
     backend.expectOne('/api/customers/1').flush(null, { status: 403, statusText: 'Forbidden' });
     await failure;
 
-    expect(logger.errors).toHaveLength(1);
-    expect(logger.errors[0].fields?.['kind']).toBe('authorization');
-    expect(logger.errors[0].fields?.['status']).toBe(403);
+    const failures = logger.entries.filter((entry) => entry.message === 'HTTP request failed');
+    expect(failures).toHaveLength(1);
+    expect(failures[0].fields?.['kind']).toBe('authorization');
+    expect(failures[0].fields?.['status']).toBe(403);
+    // Expected and handled by the caller: a warning, not an error to alert on.
+    expect(failures[0].level).toBe('warn');
+    expect(logger.errors).toHaveLength(0);
   });
 
   it('times a request that succeeds, at debug level', () => {

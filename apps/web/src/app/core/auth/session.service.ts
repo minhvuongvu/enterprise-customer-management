@@ -16,6 +16,7 @@ import {
 } from 'rxjs';
 import { SessionApi } from '../api/session.api';
 import { isAppError } from '../errors/app-error';
+import { Telemetry } from '../observability/telemetry';
 import { NAVIGATOR } from '../platform/platform.tokens';
 
 /**
@@ -74,6 +75,7 @@ const ANONYMOUS: SessionState = { status: 'anonymous', user: null, expiresAt: nu
 @Injectable({ providedIn: 'root' })
 export class SessionService {
   private readonly api = inject(SessionApi);
+  private readonly telemetry = inject(Telemetry);
   private readonly locks = inject(NAVIGATOR)?.locks ?? null;
 
   private readonly state = signal<SessionState>(UNKNOWN);
@@ -162,7 +164,10 @@ export class SessionService {
    */
   signIn(username: string, password: string): Observable<SessionUser> {
     return this.api.login({ username, password }).pipe(
-      tap((response) => this.establish(response)),
+      tap((response) => {
+        this.establish(response);
+        this.telemetry.track({ name: 'session.signed_in', role: response.user.role });
+      }),
       map((response) => response.user),
     );
   }
@@ -179,7 +184,10 @@ export class SessionService {
   signOut(): Observable<void> {
     return this.api.logout().pipe(
       catchError(() => of(undefined)),
-      tap(() => this.end('signed-out')),
+      tap(() => {
+        this.end('signed-out');
+        this.telemetry.track({ name: 'session.signed_out' });
+      }),
     );
   }
 

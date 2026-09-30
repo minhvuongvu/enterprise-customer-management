@@ -1,0 +1,257 @@
+# The quality pipeline (docs/ci.md, ADR-0042).
+#
+#   quality ──┬── unit ────────┬── e2e (2 shards) ── cross-browser
+#             │                ├── accessibility
+#             └── build ───────┼── e2e-production (incl. performance budgets)
+#                  │           └── visual
+#                  └── bundle report (optional, never fails the run)
+#
+# Every job is a gate: a red job fails the pipeline, and a pull request cannot
+# be merged past it once branch protection lists these checks (docs/ci.md,
+# "Required checks"). Nothing here is `continue-on-error` except the bundle
+# report, which only describes.
+#
+# Browser jobs run inside the Playwright image, so the browsers - and for the
+# visual suite, the fonts and the rendering - are exactly the ones the
+# baselines were made with. Its tag must match @playwright/test in
+# package.json; bump both together.
+
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+# A newer push to the same branch makes an older run's answer irrelevant.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # npm prints a progress bar and funding notices nobody reads in a log.
+  NPM_CONFIG_FUND: 'false'
+  NPM_CONFIG_AUDIT: 'false'
+
+jobs:
+  quality:
+    name: Format, lint, architecture, secrets, typecheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Format
+        run: npm run format:check
+      # eslint (both configs), the style rules, the architecture check
+      # (cycles and forbidden imports) and the secret scan.
+      - name: Lint
+        run: npm run lint
+      - name: Typecheck (strict + strictTemplates)
+        run: npm run typecheck
+      # Known vulnerabilities in what ships (dependencies, not devDependencies),
+      # high and critical. Dependabot opens the update (.github/dependabot.yml).
+      - name: Dependency audit
+        run: npm audit --omit=dev --audit-level=high
+
+  unit:
+    name: Unit and component tests, with coverage
+    needs: quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      # Fails below the coverage thresholds (angular.json, vitest.config.ts).
+      - run: npm run test:coverage
+      - name: Coverage summary
+        if: always()
+        run: |
+          {
+            echo '### Coverage (lines)'
+            for f in apps/web/coverage/web/coverage-summary.json apps/mock-api/coverage/coverage-summary.json packages/contracts/coverage/coverage-summary.json; do
+              [ -f "$f" ] && node -e "const t=require('./$f').total; console.log('- \`$f\`: ' + t.lines.pct + '% lines, ' + t.branches.pct + '% branches')"
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  build:
+    name: Production build and bundle budgets
+    needs: quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      # Fails past angular.json's initial-bundle error budget.
+      - run: npm run build
+      # Fails past perf/budgets.json: lazy chunks, total JavaScript, and any
+      # build-time-flagged or test code that reached the bundle.
+      - run: npm run perf:budgets
+      - name: Bundle report (optional analysis)
+        continue-on-error: true
+        run: |
+          {
+            echo '### Initial bundle by package'
+            echo '```'
+            node perf/bundle-report.ts
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: |
+            apps/web/dist
+            packages/contracts/dist
+          retention-days: 3
+
+  e2e:
+    name: E2E (shard ${{ matrix.shard }}/2)
+    needs: [unit, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    container:
+      image: mcr.microsoft.com/playwright:v1.63.0-noble
+      options: --ipc=host
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
+    env:
+      # Firefox refuses a HOME owned by another user, which is what the
+      # runner mounts; the image's own root home is correct.
+      HOME: /root
+      E2E_SUITE: functional
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm ci
+      - run: npm run build:contracts
+      - run: npx playwright test --shard=${{ matrix.shard }}/2
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: e2e-report-${{ matrix.shard }}
+          path: playwright-report
+          retention-days: 7
+
+  accessibility:
+    name: Accessibility (axe on every route, keyboard journeys)
+    needs: [unit, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    container:
+      image: mcr.microsoft.com/playwright:v1.63.0-noble
+      options: --ipc=host
+    env:
+      HOME: /root
+      E2E_SUITE: accessibility
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm ci
+      - run: npm run build:contracts
+      # Critical and serious axe violations fail the job (e2e/accessibility.spec.ts).
+      - run: npx playwright test
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: accessibility-report
+          path: playwright-report
+          retention-days: 7
+
+  e2e-production:
+    name: Production build E2E and performance budgets
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    container:
+      image: mcr.microsoft.com/playwright:v1.63.0-noble
+      options: --ipc=host
+    env:
+      HOME: /root
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm ci
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: .
+      # Service worker, preloading, hydration - and the runtime budgets:
+      # load, navigation, API latency and long tasks, measured by the
+      # application's own monitor (e2e-production/performance-budgets.spec.ts).
+      - run: npx playwright test --config playwright.production.config.ts
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: e2e-production-report
+          path: playwright-report
+          retention-days: 7
+
+  visual:
+    name: Visual regression
+    needs: [unit, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    container:
+      image: mcr.microsoft.com/playwright:v1.63.0-noble
+      options: --ipc=host
+    env:
+      HOME: /root
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm ci
+      - run: npm run build:contracts
+      - run: npx playwright test --config playwright.visual.config.ts
+      # The diff images are the point of a failure here: download, look,
+      # then either fix the change or run `npm run e2e:visual:update`.
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: visual-diffs
+          path: |
+            playwright-report
+            test-results
+          retention-days: 7
+
+  cross-browser:
+    name: Firefox and WebKit
+    needs: e2e
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    container:
+      image: mcr.microsoft.com/playwright:v1.63.0-noble
+      options: --ipc=host
+    env:
+      HOME: /root
+      E2E_BROWSERS: all
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm ci
+      - run: npm run build:contracts
+      # The journeys, and the specs that exercise the APIs that differ between
+      # engines: Web Locks, BroadcastChannel, Permissions (debt row 28, paid).
+      # Chromium already ran everything in the e2e job.
+      - run: >-
+          npx playwright test --project=firefox --project=webkit
+          e2e/smoke.spec.ts e2e/auth.spec.ts e2e/customer-crud.spec.ts
+          e2e/cross-tab.spec.ts e2e/labs.spec.ts
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: cross-browser-report
+          path: playwright-report
+          retention-days: 7

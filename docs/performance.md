@@ -39,6 +39,50 @@ transferred** - the zod fix, minus what Phase 5 added (below).
 
 ---
 
+## Budgets
+
+Phase 7 turned the numbers above into **gates CI enforces** (docs/ci.md), in two groups.
+
+**Bundle budgets** - fail the `build` job:
+
+| Budget                                   | Limit        | At `phase-7-complete` | Enforced by                                                        |
+| ---------------------------------------- | ------------ | --------------------- | ------------------------------------------------------------------ |
+| Initial bundle, JS + CSS (warning/error) | 530 / 540 kB | 520.4 kB              | `angular.json` - `ng build` fails past the error                   |
+| Initial JavaScript                       | 520 kB       | 511 kB                | `perf/budgets.json`                                                |
+| Largest lazy chunk                       | 80 kB        | 52 kB                 | `perf/budgets.json`                                                |
+| All browser JavaScript                   | 1 150 kB     | 1 050 kB              | `perf/budgets.json`                                                |
+| Never in production                      | -            | none                  | `neverInProduction`: the dev-tools sink, `testing/` helpers, specs |
+
+All are ratchets (ADR-0025): lowered when the bundle shrinks, raised only with a
+measurement (`node perf/bundle-report.ts`) in the same commit. Phase 7 grew the initial
+bundle by 5 kB (515.4 → 520.4 kB) for the logger, the redaction policy, the error tracker
+and the performance monitor.
+
+**Runtime budgets** - measured in the running app by `PerformanceMonitor`
+(`core/observability/performance-budgets.ts`), logged as `warn` in the field, and
+**asserted on the production build** by `e2e-production/performance-budgets.spec.ts`:
+
+| Budget                   | Limit    | Why this number                | Measured, production build, 3 runs             |
+| ------------------------ | -------- | ------------------------------ | ---------------------------------------------- |
+| Time to first byte       | 800 ms   | Core Web Vitals "good"         | 8-15 ms                                        |
+| First contentful paint   | 1 800 ms | Lighthouse "good", desktop     | 80-144 ms                                      |
+| Largest contentful paint | 2 500 ms | Core Web Vitals "good"         | 80-144 ms                                      |
+| Route navigation         | 1 000 ms | RAIL: a task, not a tap        | 4-91 ms (list → record → audit → edit)         |
+| API call                 | 1 000 ms | where waiting turns into doubt | 15-201 ms (the 50 000-row list is the slowest) |
+| Long task                | 200 ms   | RAIL: input delay a user feels | none over 200 ms on the journey                |
+
+Local production build, loopback, mock API without latency, 2026-09-30. The margins are
+wide on purpose: the gate catches a regression - a route that suddenly ships a
+megabyte, a render that blocks a second - not a slow network, and a margin this size
+does not flake on a shared runner.
+
+The test first failed to have teeth: the monitor reported at `load`, which on a fast
+production page comes **before the first paint**, so FCP and LCP were `null` - and
+`Number(null)` is 0, under every budget. The monitor now waits for the first paint, and
+the test requires every metric to be a number.
+
+---
+
 ## Bundle analysis
 
 - **Problem**: the initial download was 808 kB against a 500 kB budget since

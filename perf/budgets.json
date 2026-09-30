@@ -1,0 +1,7 @@
+{
+  "$comment": "Bundle budgets enforced by `npm run perf:budgets` in CI (docs/performance.md, 'Budgets'). Raw bytes, as Angular's own budget counts them. A ratchet: lower a number when the bundle shrinks; raise one only with the measurement that justifies it (node perf/bundle-report.ts) in the same commit.",
+  "initialKB": 520,
+  "largestLazyChunkKB": 80,
+  "totalBrowserJavaScriptKB": 1150,
+  "neverInProduction": ["src/app/core/logging/memory-log-sink.ts", "/testing/", ".spec.ts"]
+}

@@ -1,3 +1,5 @@
+import { isLogLevel, type LogLevel } from './logging/logger.ts';
+
 /**
  * Configuration and the mutable controls tests and demos use to steer the mock.
  *
@@ -21,6 +23,12 @@ export interface MockApiConfig {
    * everywhere else - a Secure cookie is simply dropped over http://.
    */
   readonly secureCookies: boolean;
+  /**
+   * Lowest level written to stdout. `info` logs every request; the E2E suite
+   * sets `warn`, because thousands of request lines would bury its report.
+   * The `/api/_mock/logs` buffer keeps every level either way.
+   */
+  readonly logLevel: LogLevel;
 }
 
 export interface MockControls {
@@ -49,6 +57,16 @@ function intFromEnv(env: NodeJS.ProcessEnv, key: string, fallback: number): numb
   return parsed;
 }
 
+function logLevelFromEnv(raw: string | undefined): LogLevel {
+  if (raw === undefined) {
+    return 'info';
+  }
+  if (!isLogLevel(raw)) {
+    throw new Error(`MOCK_API_LOG_LEVEL must be debug, info, warn or error, received "${raw}".`);
+  }
+  return raw;
+}
+
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): MockApiConfig {
   return {
     port: intFromEnv(env, 'MOCK_API_PORT', 4300),
@@ -61,6 +79,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): MockApiConfig 
     refreshTtlSeconds: intFromEnv(env, 'MOCK_API_REFRESH_TTL', 8 * 60 * 60),
     rateLimitPerMinute: intFromEnv(env, 'MOCK_API_RATE_LIMIT', 600),
     secureCookies: env['MOCK_API_SECURE_COOKIES'] === 'true',
+    logLevel: logLevelFromEnv(env['MOCK_API_LOG_LEVEL']),
   };
 }
 

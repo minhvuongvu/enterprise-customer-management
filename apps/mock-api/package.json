@@ -11,6 +11,7 @@
     "start": "node --watch src/main.ts",
     "serve": "node src/main.ts",
     "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
@@ -26,6 +27,7 @@
     "@types/express": "5.0.6",
     "@types/multer": "2.2.0",
     "@types/node": "24.13.6",
+    "@vitest/coverage-v8": "4.1.11",
     "typescript": "6.0.3",
     "vitest": "4.1.11"
   }

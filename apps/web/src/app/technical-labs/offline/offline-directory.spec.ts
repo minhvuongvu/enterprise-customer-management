@@ -1,6 +1,7 @@
 import { signal, type WritableSignal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { findFixtureUserByUsername, type Customer, type CustomerId } from '@ecm/contracts';
+import { findFixtureUserByUsername } from '@ecm/contracts';
+import { aCustomer } from '@ecm/contracts/testing';
 import { firstValueFrom, of, Subject, throwError } from 'rxjs';
 import { SessionService } from '../../core/auth/session.service';
 import { ConnectivityService } from '../../core/connectivity/connectivity.service';
@@ -24,28 +25,11 @@ class MemorySnapshots {
 }
 
 /**
- * A whole customer record, as the API returns it. Written out here rather
- * than borrowed from the customer feature's test fixtures: a lab does not
- * import from a feature, tests included (rule 4).
+ * A whole customer record, as the API returns it - from the shared test data
+ * in `@ecm/contracts/testing`, not the customer feature's fixtures: a lab does
+ * not import from a feature, tests included (rule 4).
  */
-const customer = {
-  id: '11111111-1111-4111-8111-111111111112' as CustomerId,
-  customerCode: 'C-000001',
-  fullName: 'Nguyễn Văn A',
-  email: 'an@example.test',
-  phone: '+84900000000',
-  dateOfBirth: '1990-01-01',
-  gender: 'MALE',
-  status: 'ACTIVE',
-  address: { line1: '1 Lê Lợi', line2: null, city: 'Hà Nội', postalCode: '100000', country: 'VN' },
-  avatarUrl: null,
-  tags: [],
-  createdAt: '2026-01-01T00:00:00.000Z',
-  updatedAt: '2026-01-02T00:00:00.000Z',
-  createdBy: '11111111-1111-4111-8111-111111111111',
-  updatedBy: '11111111-1111-4111-8111-111111111111',
-  version: 1,
-} as unknown as Customer;
+const customer = aCustomer({ tags: [] });
 
 describe('OfflineDirectory', () => {
   const admin = findFixtureUserByUsername('admin')!;

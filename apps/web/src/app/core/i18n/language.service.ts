@@ -2,6 +2,7 @@ import { computed, DestroyRef, inject, Injectable, signal } from '@angular/core'
 import { toSignal } from '@angular/core/rxjs-interop';
 import { TranslocoService } from '@jsverse/transloco';
 import { firstValueFrom } from 'rxjs';
+import { Telemetry } from '../observability/telemetry';
 import { IS_BROWSER, LOCAL_STORAGE, WINDOW } from '../platform/platform.tokens';
 import { findLanguage, languageDefinition, SUPPORTED_LANGUAGES } from './languages';
 
@@ -33,6 +34,7 @@ export class LanguageService {
   private readonly transloco = inject(TranslocoService);
   private readonly storage = inject(LOCAL_STORAGE);
   private readonly isBrowser = inject(IS_BROWSER);
+  private readonly telemetry = inject(Telemetry);
 
   readonly supported = SUPPORTED_LANGUAGES;
 
@@ -66,6 +68,7 @@ export class LanguageService {
     }
     this.storage.write(STORAGE_KEY, language.code);
     await this.activate(language.code);
+    this.telemetry.track({ name: 'preferences.language_changed', language: language.code });
   }
 
   /**

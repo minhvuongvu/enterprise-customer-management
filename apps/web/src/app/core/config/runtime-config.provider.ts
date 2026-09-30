@@ -6,9 +6,8 @@ import {
   provideAppInitializer,
 } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
-import { AppConfigStore } from './app-config';
+import { AppConfigStore, appConfigOverridesSchema } from './app-config';
 import { LanguageService } from '../i18n/language.service';
-import type { AppConfigOverrides } from './app-config';
 import { Logger } from '../logging/logger';
 import { IS_BROWSER } from '../platform/platform.tokens';
 
@@ -36,15 +35,29 @@ export function provideRuntimeConfig(): EnvironmentProviders {
       const logger = inject(Logger);
       const language = inject(LanguageService);
 
+      let raw: unknown;
       try {
-        const overrides = await firstValueFrom(http.get<AppConfigOverrides>(RUNTIME_CONFIG_URL));
-        store.apply(overrides);
+        raw = await firstValueFrom(http.get<unknown>(RUNTIME_CONFIG_URL));
       } catch {
         // Starting with defaults beats not starting. The warning is what makes
-        // a missing or malformed file visible instead of mysterious.
+        // a missing file visible instead of mysterious.
         logger.warn('Runtime configuration unavailable; using defaults', {
           url: RUNTIME_CONFIG_URL,
         });
+      }
+
+      if (raw !== undefined) {
+        const parsed = appConfigOverridesSchema.safeParse(raw);
+        if (parsed.success) {
+          store.apply(parsed.data);
+        } else {
+          // All or nothing: half a configuration - the API URL applied, the
+          // flags not - is a state nobody tested. The defaults are one.
+          logger.error('Runtime configuration invalid; using defaults', {
+            url: RUNTIME_CONFIG_URL,
+            issues: parsed.error.issues.map((issue) => `${issue.path.join('.')}: ${issue.message}`),
+          });
+        }
       }
 
       // The starting language depends on the configuration (its default), so

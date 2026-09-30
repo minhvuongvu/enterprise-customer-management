@@ -19,6 +19,7 @@ import { TranslocoDirective } from '@jsverse/transloco';
 import { distinctUntilChanged } from 'rxjs';
 import { IfPermitted } from '../../core/auth/if-permitted.directive';
 import { SessionService } from '../../core/auth/session.service';
+import { FeatureFlags } from '../../core/config/feature-flags';
 import { messageKeyOf } from '../../core/errors/app-error';
 import { NumberPipe, PluralPipe } from '../../core/i18n/locale-pipes';
 import { Logger } from '../../core/logging/logger';
@@ -139,13 +140,15 @@ import { CustomerTable } from './customer-table';
             >
               {{ t('pages.customers.list.export') }}
             </app-button>
-            <app-button
-              *appIfPermitted="'CUSTOMER_IMPORT'"
-              variant="secondary"
-              link="/customers/import"
-            >
-              {{ t('pages.customers.list.import') }}
-            </app-button>
+            @if (importEnabled()) {
+              <app-button
+                *appIfPermitted="'CUSTOMER_IMPORT'"
+                variant="secondary"
+                link="/customers/import"
+              >
+                {{ t('pages.customers.list.import') }}
+              </app-button>
+            }
             <app-button *appIfPermitted="'CUSTOMER_CREATE'" variant="primary" link="/customers/new">
               {{ t('pages.customers.list.create') }}
             </app-button>
@@ -363,6 +366,10 @@ export class CustomerListPage {
 
   private readonly store = inject(CustomerStore);
   private readonly session = inject(SessionService);
+  private readonly features = inject(FeatureFlags);
+
+  /** Runtime kill switch for bulk import (docs/feature-flags.md). */
+  protected readonly importEnabled = computed(() => this.features.isEnabled('customerImport'));
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly logger = inject(Logger);
@@ -607,7 +614,7 @@ export class CustomerListPage {
         disabled: this.exporting(),
       });
     }
-    if (this.session.hasPermission('CUSTOMER_IMPORT')) {
+    if (this.importEnabled() && this.session.hasPermission('CUSTOMER_IMPORT')) {
       items.push({ id: 'import', label: t('pages.customers.list.import') });
     }
     return items;

@@ -52,6 +52,10 @@ test.describe('signing in', () => {
   }) => {
     await page.goto('/login');
     await expect(page.getByRole('heading', { level: 1, name: 'Sign in' })).toBeVisible();
+    // The page is server-rendered; the button is enabled once it has hydrated.
+    // Typing before that is a different test (e2e-production/login-hydration):
+    // here, on a loaded CI runner, a key pressed mid-hydration was dropped.
+    await expect(page.getByRole('button', { name: 'Sign in' })).toBeEnabled();
 
     await tabTo(page, page.getByLabel('Username'));
     await page.keyboard.type('admin');

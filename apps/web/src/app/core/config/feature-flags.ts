@@ -1,27 +1,31 @@
 import { inject, Injectable } from '@angular/core';
 import { AppConfigStore } from './app-config';
 import type { FeatureFlag } from './app-config';
-import { environment } from '../../../environments/environment';
 
 /**
- * Feature flag seam.
+ * Runtime feature flags (docs/feature-flags.md).
  *
- * Runtime flags come from `config.json` and can differ per environment without
- * a rebuild. Build-time flags live in `BuildEnvironment` and disappear from the
- * bundle when disabled. Phase 7 decides whether anything more is warranted;
- * this is deliberately not a feature-flag platform.
+ * Read from `config.json`, so they differ per deployment of the same bundle.
+ * Reactive: a `computed()` or template that calls `isEnabled` re-evaluates
+ * when the configuration arrives.
+ *
+ * Build-time flags are deliberately **not** readable here. They live in
+ * `environments/` and must be read as constants
+ * (`if (environment.buildFlags.enableDevTools)`) at the place that decides
+ * whether code ships - read through a method, the bundler can no longer see
+ * that the branch is dead, and the code the flag was meant to remove stays in
+ * the bundle. That is the one property a build-time flag exists for.
+ *
+ * Deliberately not a feature-flag platform: no targeting, no percentages, no
+ * remote evaluation. When a flag needs one of those, it needs a service
+ * (LaunchDarkly, Unleash, a backend endpoint), and this class becomes its
+ * adapter.
  */
 @Injectable({ providedIn: 'root' })
 export class FeatureFlags {
   private readonly config = inject(AppConfigStore).config;
 
-  /** Reads a runtime flag. Reactive: signal-based callers re-evaluate. */
   isEnabled(flag: FeatureFlag): boolean {
     return this.config().features[flag];
-  }
-
-  /** True when this build shipped developer tooling. */
-  get devToolsEnabled(): boolean {
-    return environment.buildFlags.enableDevTools;
   }
 }

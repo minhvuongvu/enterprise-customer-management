@@ -2,6 +2,7 @@ import { BreakpointObserver } from '@angular/cdk/layout';
 import { computed, DestroyRef, DOCUMENT, effect, inject, Injectable, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { map } from 'rxjs';
+import { Telemetry } from '../observability/telemetry';
 import { IS_BROWSER, LOCAL_STORAGE, WINDOW } from '../platform/platform.tokens';
 
 /**
@@ -38,6 +39,7 @@ export class ThemeService {
   private readonly storage = inject(LOCAL_STORAGE);
   private readonly document = inject(DOCUMENT);
   private readonly isBrowser = inject(IS_BROWSER);
+  private readonly telemetry = inject(Telemetry);
 
   private readonly current = signal<ThemePreference>('system');
 
@@ -74,6 +76,7 @@ export class ThemeService {
 
   set(preference: ThemePreference): void {
     this.current.set(preference);
+    this.telemetry.track({ name: 'preferences.theme_changed', theme: preference });
 
     if (preference === 'system') {
       this.storage.remove(STORAGE_KEY);

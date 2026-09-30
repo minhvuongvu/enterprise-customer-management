@@ -770,6 +770,62 @@
           "dateOnly": "Ngày sinh, đọc như một ngày lịch",
           "shifted": "(đã bị lệch sang ngày khác)"
         }
+      },
+      "observability": {
+        "title": "Khả năng quan sát",
+        "breadcrumb": "Khả năng quan sát",
+        "heading": "Khả năng quan sát",
+        "description": "Những gì ứng dụng tự đo và ghi log: thời gian tải, điều hướng, độ trễ API, tác vụ dài và nhật ký.",
+        "lede": "Mọi số liệu ở đây đều trực tiếp. Hãy dùng ứng dụng trong tab này rồi quay lại: các con số là những lượt truy cập của bạn.",
+        "notMeasured": "Trình duyệt này không đo",
+        "milliseconds": "{{value}} ms",
+        "budget": "Ngân sách {{value}} ms",
+        "duration": "Thời lượng",
+        "load": {
+          "heading": "Tải lần đầu",
+          "description": "Lần tải trang này mất bao lâu, theo số đo của chính trình duyệt. Màu đỏ là vượt ngân sách.",
+          "pending": "Đang chờ trang tải xong…",
+          "timeToFirstByteMs": "Thời gian đến byte đầu tiên",
+          "firstContentfulPaintMs": "Lần vẽ nội dung đầu tiên",
+          "largestContentfulPaintMs": "Lần vẽ nội dung lớn nhất"
+        },
+        "navigation": {
+          "heading": "Điều hướng giữa các trang",
+          "description": "Mỗi lần điều hướng kể từ khi tải trang, từ lúc bắt đầu đến khi hiển thị xong. Ngân sách {{budget}} ms.",
+          "empty": "Chưa có lần điều hướng nào. Hãy mở một trang khác rồi quay lại.",
+          "caption": "Các lần điều hướng, cũ nhất trước",
+          "route": "Tuyến"
+        },
+        "api": {
+          "heading": "Độ trễ API",
+          "description": "Mọi yêu cầu tab này đã gửi, nhóm theo endpoint - id được thay thế, nên mỗi endpoint là một dòng. Ngân sách {{budget}} ms.",
+          "caption": "Độ trễ API theo endpoint, chậm nhất trước",
+          "endpoint": "Endpoint",
+          "count": "Số yêu cầu",
+          "p50": "Trung vị",
+          "p95": "Phân vị 95",
+          "max": "Chậm nhất"
+        },
+        "longTasks": {
+          "heading": "Tác vụ dài",
+          "description": "Công việc trên luồng chính dài hơn 50 ms, làm chậm phản hồi với cú nhấp hoặc phím bấm. Tác vụ dài hơn {{budget}} ms được ghi log dạng cảnh báo.",
+          "unsupported": "Trình duyệt này không báo cáo tác vụ dài.",
+          "count": "Số tác vụ dài",
+          "total": "Tổng thời gian",
+          "longest": "Dài nhất"
+        },
+        "log": {
+          "heading": "Nhật ký",
+          "description": "Các mục mới nhất của nhật ký có cấu trúc của ứng dụng, mới nhất trước - đã được che thông tin nhạy cảm, đúng như mọi nơi nhận log.",
+          "throw": "Gây một lỗi không được xử lý",
+          "clear": "Xóa",
+          "caption": "Các mục nhật ký mới nhất, mới nhất trước",
+          "time": "Thời gian",
+          "level": "Mức",
+          "message": "Thông điệp",
+          "correlationId": "Mã tương quan",
+          "unavailable": "Bản build này không giữ nhật ký trong bộ nhớ: nơi lưu trong bộ nhớ là công cụ cho nhà phát triển, bị loại khỏi bản production. Nhật ký nằm trong console của trình duyệt."
+        }
       }
     }
   },

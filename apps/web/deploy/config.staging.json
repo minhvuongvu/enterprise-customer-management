@@ -1,0 +1,10 @@
+{
+  "apiBaseUrl": "/api",
+  "defaultLanguage": "en",
+  "logLevel": "info",
+  "features": {
+    "technicalLabs": true,
+    "routePreloading": true,
+    "customerImport": true
+  }
+}

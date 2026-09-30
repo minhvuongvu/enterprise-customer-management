@@ -4,6 +4,7 @@
   "logLevel": "debug",
   "features": {
     "technicalLabs": true,
-    "routePreloading": true
+    "routePreloading": true,
+    "customerImport": true
   }
 }

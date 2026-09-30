@@ -50,13 +50,17 @@
                 {
                   "replace": "src/environments/environment.ts",
                   "with": "src/environments/environment.production.ts"
+                },
+                {
+                  "replace": "src/app/core/observability/dev-tools.providers.ts",
+                  "with": "src/app/core/observability/dev-tools.providers.production.ts"
                 }
               ],
               "budgets": [
                 {
                   "type": "initial",
                   "maximumWarning": "530kB",
-                  "maximumError": "1MB"
+                  "maximumError": "540kB"
                 },
                 {
                   "type": "anyComponentStyle",
@@ -65,7 +69,8 @@
                 }
               ],
               "outputHashing": "all",
-              "serviceWorker": "ngsw-config.json"
+              "serviceWorker": "ngsw-config.json",
+              "statsJson": true
             },
             "development": {
               "optimization": false,
@@ -78,7 +83,10 @@
         "serve": {
           "builder": "@angular/build:dev-server",
           "options": {
-            "proxyConfig": "proxy.conf.json"
+            "proxyConfig": "proxy.conf.json",
+            "prebundle": {
+              "exclude": ["@ecm/contracts"]
+            }
           },
           "configurations": {
             "production": {
@@ -91,7 +99,17 @@
           "defaultConfiguration": "development"
         },
         "test": {
-          "builder": "@angular/build:unit-test"
+          "builder": "@angular/build:unit-test",
+          "options": {
+            "coverageExclude": ["src/app/**/testing/**"],
+            "coverageReporters": ["text-summary", "json-summary"],
+            "coverageThresholds": {
+              "statements": 78,
+              "branches": 76,
+              "functions": 77,
+              "lines": 80
+            }
+          }
         },
         "lint": {
           "builder": "@angular-eslint/builder:lint",

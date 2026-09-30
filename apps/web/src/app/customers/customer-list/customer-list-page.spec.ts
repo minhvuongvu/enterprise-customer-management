@@ -11,6 +11,7 @@ import { aCustomer, anotherCustomer, aPage } from '../testing/customer.fixture';
 import { CustomerListPage } from './customer-list-page';
 import { provideSignedInAs } from '../../core/testing/session-testing';
 import { provideLayoutMode } from '../../layout/testing/layout-testing';
+import { AppConfigStore } from '../../core/config/app-config';
 
 /**
  * The list, end to end within the browser.
@@ -105,6 +106,20 @@ describe('CustomerListPage', () => {
 
     expect(root.querySelectorAll('tbody tr')).toHaveLength(2);
     expect(text(root)).toContain('Nguyễn Văn A');
+  });
+
+  it('offers import only while the deployment has it switched on', async () => {
+    const root = await open();
+    listRequest().flush(aPage([aCustomer()]));
+    harness.detectChanges();
+    const importLink = () => root.querySelector('a[href="/customers/import"]');
+    expect(importLink()).not.toBeNull();
+
+    // A runtime kill switch: config.json turns it off without a release.
+    TestBed.inject(AppConfigStore).apply({ features: { customerImport: false } });
+    harness.detectChanges();
+
+    expect(importLink()).toBeNull();
   });
 
   it('distinguishes an empty search from an empty database', async () => {

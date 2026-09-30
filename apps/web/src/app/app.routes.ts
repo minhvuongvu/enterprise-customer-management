@@ -1,7 +1,7 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/auth/auth.guard';
+import { featureEnabled } from './core/config/feature-flag.guard';
 import { withMetadata } from './core/routing/route-metadata';
-import { technicalLabsEnabled } from './technical-labs/technical-labs.guard';
 
 /**
  * The application's route tree.
@@ -75,7 +75,7 @@ export const routes: Routes = [
         path: 'technical-labs',
         // A disabled flag makes the branch stop matching, so the request falls
         // through to the wildcard below and the chunk is never loaded.
-        canMatch: [technicalLabsEnabled],
+        canMatch: [featureEnabled('technicalLabs')],
         data: withMetadata({ breadcrumb: 'nav.technicalLabs' }),
         loadChildren: () =>
           import('./technical-labs/technical-labs.routes').then((m) => m.technicalLabsRoutes),

@@ -136,19 +136,6 @@ Each was checked for teeth: the pagination and sort focus tests fail with the fo
 restore removed; the dark-theme scan failed before `--danger-solid`; the phone overflow
 test failed before `app-table` contained its hidden text.
 
-## Known gaps
-
-These are gaps, not oversights. Each has an owner.
-
-| Gap                                               | Why it is acceptable now                                                        | Closed in                                    |
-| ------------------------------------------------- | ------------------------------------------------------------------------------- | -------------------------------------------- |
-| No coverage thresholds                            | A number without a policy is not a signal; Phase 7 sets both at once            | Phase 7                                      |
-| Firefox and WebKit configured, not yet run        | `E2E_BROWSERS=all` adds them; the Phase 6 sandbox could not download them       | Phase 7                                      |
-| No visual regression                              | Nothing has a stable visual identity yet                                        | Phase 7                                      |
-| No architecture/dependency tests                  | Boundaries are enforced by review until there are boundaries worth automating   | Phase 7                                      |
-| Layouts checked at three fixed widths             | Real devices differ in more than width; these three are where the shape changes | not planned - the widths are the breakpoints |
-| Bulk `CONFLICT` outcome only reached by injection | A natural version race needs two concurrent clients                             | Phase 7                                      |
-
 ## How this grows
 
 Phase 3 added authorization tests that assert the _UI_ reflects a role
@@ -191,4 +178,124 @@ medians; the numbers are in [performance.md](performance.md) and
 debounced search scans once, a `computed()` is not recomputed, a virtual list
 holds under 200 elements, the optimized images are the 400/800 px WebP files.
 
-Phase 7 reviews the whole pyramid, adds coverage gates and wires it into CI.
+Phase 7 reviewed the whole pyramid, gated coverage, added visual regression and the
+cross-browser run, and wired all of it into CI - below.
+
+## The testing pyramid at `phase-7-complete`
+
+Real numbers, from the test runners (and, for the web split, from classifying each spec
+file by what it mounts: a spec that renders a component _and_ goes through the HTTP
+stack is an integration test).
+
+```text
+                        ┌──────────────┐  14 visual (Docker image)
+                        │  visual      │
+                   ┌────┴──────────────┴────┐  7 production-build (+ 3 performance budgets)
+                   │  E2E  (Playwright)     │  215 Chromium = 139 functional + 76 accessibility
+                   │                        │  + Firefox/WebKit on 5 specs (48 tests each)
+              ┌────┴────────────────────────┴────┐
+              │  integration                     │  web: 22 files (component+store+HTTP: 9,
+              │                                  │       service+HTTP: 13) · mock API: 133 over HTTP
+         ┌────┴──────────────────────────────────┴────┐
+         │  component (TestBed)                        │  web: 14 files
+    ┌────┴─────────────────────────────────────────────┴────┐
+    │  unit                                                  │  web: 34 files · contracts: 44 · lint tools: 16
+    └────────────────────────────────────────────────────────┘
+```
+
+| Suite                              | Runner             | Tests            | Coverage (lines) | Gate                                                   |
+| ---------------------------------- | ------------------ | ---------------- | ---------------- | ------------------------------------------------------ |
+| web: unit, component, integration  | Vitest + jsdom     | 475              | 81.5 %           | ≥ 80 % lines, 78 statements, 76 branches, 77 functions |
+| mock API (over a real socket)      | Vitest             | 133              | 89.9 %           | ≥ 88 % lines                                           |
+| contracts (built package)          | Vitest             | 44               | 98.3 %           | ≥ 95 % lines                                           |
+| lint tools (architecture, secrets) | `node --test`      | 16               | -                | -                                                      |
+| E2E, Chromium                      | Playwright         | 215              | -                | every test                                             |
+| production build                   | Playwright         | 7                | -                | every test, performance budgets                        |
+| visual                             | Playwright, Docker | 14               | -                | 0.2 % pixel difference                                 |
+| Firefox + WebKit                   | Playwright, Docker | 96 runs (48 × 2) | -                | every test (3 skipped, 1 expected-fail - see below)    |
+
+**Where coverage is thin, and why** (web, by area):
+
+| Area             | Lines    | Why                                                                                                                                                                                |
+| ---------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `core/*`         | 86-100 % | the infrastructure - tested hardest                                                                                                                                                |
+| `customers`      | 88 %     | the product                                                                                                                                                                        |
+| `shared/ui`      | 93 %     | tooltip 56 % - positioning is CDK overlay geometry, jsdom has none; E2E covers it                                                                                                  |
+| `layout`         | 71 %     | toast region 41 %, notification center 29 %, confirmation host 24 % - driven through the real services in E2E (`enterprise-ux.spec.ts`, `keyboard.spec.ts`), not in jsdom          |
+| `technical-labs` | 38 %     | each lab is a page around a browser API; the logic around the API is unit-tested (election, snapshot policy, worker maths), the API itself only in a real browser (`labs.spec.ts`) |
+
+Coverage is a floor, not a target: the thresholds are a **ratchet** set just under the
+current numbers, so a change that drops coverage fails and a change that raises it can
+raise them.
+
+### Visual regression
+
+Selective, as the prompt asks: **critical pages** (sign-in light/dark/Vietnamese, the
+customer list on desktop light/dark and phone Vietnamese, the record, the form with every
+kind of error) and **design-system components in a state** (danger dialog, a checked
+choice menu in both themes, empty state, pagination, button variants) - 14 screenshots.
+A component shot is cropped to the component, so it fails only when the component
+changed.
+
+Baselines are valid in one environment: the Playwright image CI uses. `npm run
+e2e:visual` runs the suite inside it on any machine with Docker; `npm run
+e2e:visual:update` rewrites the baselines. The config refuses to run outside it. The
+dataset is the fixed seed on a fresh server, the clock UTC, the locale `en-US`,
+animations off; the realtime connection indicator is masked.
+
+On its **first run** it found a Phase 6 bug nothing else had: the checked menu item
+showed "¹3" instead of a tick - the CSS escape had been written into the file as two
+literal characters. Every functional test passed; axe did not care; only the pixels were
+wrong.
+
+### Cross-browser
+
+CI runs the journeys and the engine-sensitive specs (smoke, auth, CRUD, cross-tab, labs)
+in Firefox and WebKit - debt row 28 paid: Web Locks, `BroadcastChannel`, the Permissions
+API and the offline lab pass in all three engines. Four exceptions, each explained in the
+test:
+
+- **clipboard** (skipped outside Chromium): Playwright can grant clipboard permissions
+  only in Chromium - a harness limit;
+- **geolocation refused** (skipped in Firefox): headless Firefox leaves a permission prompt
+  open, and the preference that makes it refuse also overrides a grant;
+- **optimized images** (asserted to fail in WebKit, `test.fail`): WebKit fetches the 1600 px
+  candidate for the first, eager image - debt row 34. If WebKit changes, the test starts
+  passing and Playwright reports it.
+
+### Mocking
+
+Three layers, one source each - no customer is written out by hand twice:
+
+| Layer            | Test data                                                                                                                            | Deterministic by                                                 |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------- |
+| unit/integration | `@ecm/contracts/testing`: `aCustomer`, `anotherCustomer`, `customersFrom(n)` (generated), `aPage`, `aCreateCustomerRequest`          | fixed values; `customersFrom` derives every field from the index |
+| mock API tests   | the seeded store (`MOCK_API_SEED`), 300 records per test server                                                                      | the seed                                                         |
+| E2E              | the running mock API's seeded 50 000; `anyCustomer(position)` gives each test its own record                                         | the seed + per-test positions                                    |
+| test doubles     | hand-written: `SilentLogger`, `FakeEventSource`, `FakeBroadcastNetwork`, `MemorySnapshots`, `provideSignedInAs`, `provideLayoutMode` | no timers or randomness unless faked                             |
+
+`@ecm/contracts/testing` is a separate package entry, validated by
+`packages/contracts/test/fixtures.spec.ts` (every builder's output parses against the
+schema it stands in for), and refused outside test code by `lint/architecture.ts`. It
+replaced a hand-copied customer in the offline lab's spec, which could not borrow the
+customer feature's fixture (rule 4).
+
+### Performance in tests
+
+"Speed is not asserted in tests" still holds for the unit and E2E suites. Phase 7 adds
+one deliberate exception: `e2e-production/performance-budgets.spec.ts` runs on the
+production build, alone, and asserts the _field_ budgets - which a local production
+build clears by a wide margin (measured in docs/performance.md, "Budgets"), so a failure is a regression,
+not scheduling noise. It reads the numbers from the application's own monitor, so it
+also proves the monitor works.
+
+## Known gaps
+
+| Gap                                                     | Why it is acceptable now                                                          | Owner                            |
+| ------------------------------------------------------- | --------------------------------------------------------------------------------- | -------------------------------- |
+| Layout's notification components under-covered in jsdom | Driven end to end through the real services; a jsdom test would test CDK overlays | not planned                      |
+| Bulk `CONFLICT` outcome only reached by injection       | A natural version race needs two concurrent clients writing the same batch        | Phase 8                          |
+| No real screen reader                                   | Roles, names and states are asserted (debt row 29)                                | Phase 8                          |
+| Mutation testing                                        | Coverage says a line ran, not that a test would notice it changing                | not planned - see final report   |
+| Firefox and WebKit run 5 of 16 specs                    | The others exercise no engine-specific API; the full matrix would triple CI time  | revisit if an engine bug escapes |
+| Layouts checked at three fixed widths                   | The widths are the breakpoints                                                    | not planned                      |

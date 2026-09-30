@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { requirePermission } from '../core/auth/permission.guard';
+import { featureEnabled } from '../core/config/feature-flag.guard';
 import { withMetadata } from '../core/routing/route-metadata';
 import { unsavedChangesGuard } from './customer-form/unsaved-changes.guard';
 import { CustomerCache } from './state/customer-cache';
@@ -73,8 +74,11 @@ export const customersRoutes: Routes = [
           import('./customer-form/customer-form-page').then((m) => m.CustomerFormPage),
       },
       {
-        // Before `:id` for the same reason as `new`.
+        // Before `:id` for the same reason as `new`. Behind a runtime flag: a
+        // deployment can switch bulk import off without a release
+        // (docs/feature-flags.md) - the route then does not exist.
         path: 'import',
+        canMatch: [featureEnabled('customerImport')],
         title: 'pages.customers.import.title',
         data: withMetadata({ breadcrumb: 'pages.customers.import.breadcrumb' }),
         canActivate: [requirePermission('CUSTOMER_IMPORT')],

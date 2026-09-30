@@ -28,6 +28,7 @@ import {
   type Observable,
 } from 'rxjs';
 import { SessionService } from '../../core/auth/session.service';
+import { Telemetry } from '../../core/observability/telemetry';
 import { appError, isAppError, type AppError } from '../../core/errors/app-error';
 import { CustomerApi, type ExportedFile } from '../data/customer.api';
 import type { Transfer } from '../data/transfer';
@@ -98,6 +99,7 @@ export class CustomerStore {
   private readonly api = inject(CustomerApi);
   private readonly cache = inject(CustomerCache);
   private readonly session = inject(SessionService);
+  private readonly telemetry = inject(Telemetry);
 
   // ------------------------------------------------------------------- list
 
@@ -343,6 +345,7 @@ export class CustomerStore {
           this.cache.putEntity(created);
           this.refreshList();
           this.announce('created', created);
+          this.telemetry.track({ name: 'customer.created' });
         }),
       )
     );
@@ -364,6 +367,7 @@ export class CustomerStore {
           }
           this.refreshList();
           this.announce('updated', updated);
+          this.telemetry.track({ name: 'customer.updated' });
         }),
       )
     );
@@ -384,6 +388,7 @@ export class CustomerStore {
           }
           this.refreshList();
           this.announce('deleted', removed ?? { id, customerCode: null });
+          this.telemetry.track({ name: 'customer.deleted' });
         }),
       )
     );
@@ -410,6 +415,7 @@ export class CustomerStore {
           }
           this.refreshList();
           this.ownChanges.next({ change: 'many' });
+          this.telemetry.track({ name: 'customers.bulk_action', action, count: ids.length });
         }),
       )
     );
@@ -457,6 +463,7 @@ export class CustomerStore {
         this.cache.invalidatePages();
         this.refreshList();
         this.announce('updated', saved);
+        this.telemetry.track({ name: 'customer.status_changed', status });
       }),
       catchError((error: unknown) => {
         this.rollback(optimistic, before);
@@ -549,6 +556,11 @@ export class CustomerStore {
             this.cache.invalidatePages();
             this.refreshList();
             this.ownChanges.next({ change: 'many' });
+            this.telemetry.track({
+              name: 'customers.imported',
+              imported: transfer.value.succeeded,
+              skipped: transfer.value.failed,
+            });
           }
         }),
       )
@@ -557,7 +569,16 @@ export class CustomerStore {
 
   /** Exports what the list criteria describe - every page of it. */
   exportCsv(criteria: CustomerListCriteria): Observable<Transfer<ExportedFile>> {
-    return this.refuseUnless('CUSTOMER_EXPORT') ?? this.api.exportCsv(criteria);
+    return (
+      this.refuseUnless('CUSTOMER_EXPORT') ??
+      this.api.exportCsv(criteria).pipe(
+        tap((transfer) => {
+          if (transfer.kind === 'done') {
+            this.telemetry.track({ name: 'customers.exported' });
+          }
+        }),
+      )
+    );
   }
 
   /**

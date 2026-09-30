@@ -105,21 +105,28 @@ test.describe('browser APIs lab', () => {
     await expect(page.getByTestId('file-preview')).toHaveText('hello');
   });
 
-  test('clipboard, permissions and geolocation, with permission granted', async ({
-    page,
-    context,
-    baseURL,
-  }) => {
-    await context.grantPermissions(['clipboard-read', 'clipboard-write', 'geolocation'], {
-      origin: baseURL,
-    });
-    await context.setGeolocation({ latitude: 21.0285, longitude: 105.8542, accuracy: 20 });
+  test('clipboard, with permission granted', async ({ page, context, baseURL, browserName }) => {
+    // Playwright can grant clipboard permissions only in Chromium; Firefox and
+    // WebKit reject the permission names. The lab's clipboard code is the same
+    // in every engine - this is a limit of the harness, not of the browsers.
+    test.skip(browserName !== 'chromium', 'clipboard permissions can be granted only in Chromium');
+    await context.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: baseURL });
     await page.goto('/technical-labs/browser-apis');
 
     await page.getByTestId('clipboard-copy').click();
     await expect(page.getByTestId('clipboard-outcome')).toHaveText('Copied to the clipboard.');
     await page.getByTestId('clipboard-read').click();
     await expect(page.getByTestId('clipboard-outcome')).toHaveText('The clipboard holds: C-000042');
+  });
+
+  test('permissions and geolocation, with permission granted', async ({
+    page,
+    context,
+    baseURL,
+  }) => {
+    await context.grantPermissions(['geolocation'], { origin: baseURL });
+    await context.setGeolocation({ latitude: 21.0285, longitude: 105.8542, accuracy: 20 });
+    await page.goto('/technical-labs/browser-apis');
 
     await page.getByTestId('permissions-query').click();
     await expect(page.getByTestId('permission-geolocation')).toHaveText('Granted');
@@ -130,7 +137,12 @@ test.describe('browser APIs lab', () => {
     );
   });
 
-  test('geolocation refused is an answer, not an error', async ({ page }) => {
+  test('geolocation refused is an answer, not an error', async ({ page, browserName }) => {
+    // Chromium and WebKit answer an ungranted request with "denied", as a user
+    // saying no would. Headless Firefox leaves the prompt open, and the only
+    // way to make it answer (a browser preference) also overrides a grant -
+    // which the test above needs. A limit of the harness.
+    test.skip(browserName === 'firefox', 'headless Firefox cannot be made to refuse a prompt');
     await page.goto('/technical-labs/browser-apis');
     await page.getByTestId('geolocation-locate').click();
     await expect(page.getByTestId('geolocation-outcome')).toHaveText(
@@ -208,7 +220,14 @@ test.describe('performance lab', () => {
 
   test('optimized images fetch WebP at the rendered size, not the original upload', async ({
     page,
+    browserName,
   }) => {
+    // Expected to fail in WebKit, and asserted so: it picks the 1600 px file
+    // for the first, eagerly loaded image - it chooses a srcset candidate
+    // before `sizes` applies. Every lazy image is right. A known engine
+    // difference (docs/performance.md, debt row 34); if WebKit changes, this
+    // starts passing and Playwright reports it, so the note cannot go stale.
+    test.fail(browserName === 'webkit', 'WebKit fetches the largest candidate for the eager image');
     await page.goto('/technical-labs/performance');
     const requested: string[] = [];
     page.on('request', (request) => {
@@ -221,7 +240,10 @@ test.describe('performance lab', () => {
     await expect(page.getByTestId('image-grid').locator('img').first()).toBeVisible();
     await expect.poll(() => requested.length).toBeGreaterThan(0);
     // A 16rem card needs the 400 px file (800 on a 2x screen), never the 1600.
-    expect(requested.every((url) => /photo-(400|800)\.webp/.test(url))).toBe(true);
+    expect(
+      requested.filter((url) => !/photo-(400|800)\.webp/.test(url)),
+      'files other than the rendered-size WebP',
+    ).toEqual([]);
     // Lazy loading does not show here: Chromium fetches lazy images within
     // about 1250 px of the viewport, and the whole grid is that close.
     // docs/performance.md records the bytes; this asserts the choice of file.
@@ -292,5 +314,30 @@ test.describe('offline lab and the offline banner', () => {
     await expect(page).toHaveURL(/\/login/);
 
     await expect.poll(savedCopy).toBeNull();
+  });
+});
+
+test.describe('observability lab', () => {
+  test('shows what this tab measured, and an unhandled error reported with its trail', async ({
+    page,
+  }) => {
+    await page.goto('/customers');
+    await expect(page.getByRole('table')).toBeVisible();
+    await page.getByRole('link', { name: 'Technical labs' }).first().click();
+    await page.getByRole('link', { name: /Observability/ }).click();
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Observability');
+
+    // The list request this tab made, grouped by endpoint template.
+    await expect(page.getByTestId('api-latency')).toContainText('GET /api/customers');
+    // Two in-app navigations since the load: labs, then this lab.
+    await expect(page.getByTestId('navigations')).toContainText('/technical-labs/observability');
+    await expect(page.getByTestId('initial-load')).toBeVisible();
+
+    await page.getByRole('button', { name: 'Throw an unhandled error' }).click();
+
+    // The error tracker reported it through the log, newest first.
+    const newest = page.getByTestId('log').locator('tbody tr').first();
+    await expect(newest).toHaveAttribute('data-level', 'error');
+    await expect(newest).toContainText('Unhandled error');
   });
 });

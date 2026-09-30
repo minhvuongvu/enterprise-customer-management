@@ -10,8 +10,9 @@ import type { BuildEnvironment } from './build-environment';
 export const environment: BuildEnvironment = {
   production: false,
   buildFlags: {
-    // Build-time flags are constants, so a disabled one lets the bundler drop
-    // the code behind it entirely. That is the whole reason to use one.
+    // Development and test builds include developer tooling. A disabled
+    // build-time flag removes its code from the bundle - the one reason to
+    // use one instead of a runtime flag (docs/feature-flags.md).
     enableDevTools: true,
   },
 };

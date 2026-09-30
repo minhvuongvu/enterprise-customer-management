@@ -36,7 +36,7 @@ export default defineConfig({
       url: 'http://localhost:4300/api/health',
       reuseExistingServer: !process.env['CI'],
       timeout: 120_000,
-      env: { MOCK_API_LATENCY_MS: '0', MOCK_API_JITTER_MS: '0' },
+      env: { MOCK_API_LATENCY_MS: '0', MOCK_API_JITTER_MS: '0', MOCK_API_LOG_LEVEL: 'warn' },
     },
     {
       command: 'node apps/web/dist/web/server/server.mjs',

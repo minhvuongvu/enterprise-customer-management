@@ -1,5 +1,5 @@
 import { provideHttpClientTesting } from '@angular/common/http/testing';
-import type { EnvironmentProviders, Provider } from '@angular/core';
+import { Injectable, type EnvironmentProviders, type Provider } from '@angular/core';
 import { provideAppHttp } from '../http/http.providers';
 import { Logger, type LogFields } from '../logging/logger';
 
@@ -33,6 +33,7 @@ export function provideTestHttp(): (Provider | EnvironmentProviders)[] {
  * deliberately provokes failures would otherwise print a wall of them and hide
  * the one line that matters.
  */
+@Injectable()
 export class SilentLogger extends Logger {
   readonly entries: { level: string; message: string; fields?: LogFields }[] = [];
 

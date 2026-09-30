@@ -87,6 +87,13 @@ export const technicalLabsRoutes: Routes = [
     loadComponent: () => import('./locale/locale-lab').then((m) => m.LocaleLab),
   },
   {
+    path: 'observability',
+    title: 'pages.labs.observability.title',
+    data: withMetadata({ breadcrumb: 'pages.labs.observability.breadcrumb' }),
+    loadComponent: () =>
+      import('./observability/observability-lab').then((m) => m.ObservabilityLab),
+  },
+  {
     path: ':labId',
     title: 'pages.labs.placeholder.title',
     data: withMetadata({ breadcrumb: 'pages.labs.placeholder.breadcrumb' }),

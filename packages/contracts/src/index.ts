@@ -22,3 +22,4 @@ export * from './operations.js';
 export * from './file-policy.js';
 export * from './realtime.js';
 export * from './fixtures.js';
+export * from './log-redaction.js';

@@ -789,6 +789,62 @@
           "dateOnly": "Date of birth, as a calendar date",
           "shifted": "(shifted to a different day)"
         }
+      },
+      "observability": {
+        "title": "Observability",
+        "breadcrumb": "Observability",
+        "heading": "Observability",
+        "description": "What the application measures and logs about itself: load time, navigations, API latency, long tasks and the log.",
+        "lede": "Everything here is live. Use the application - in this tab - and come back: the numbers are your visits.",
+        "notMeasured": "Not measured by this browser",
+        "milliseconds": "{{value}} ms",
+        "budget": "Budget {{value}} ms",
+        "duration": "Duration",
+        "load": {
+          "heading": "Initial load",
+          "description": "How long this page load took, from the browser's own timing. Red is over budget.",
+          "pending": "Waiting for the page to finish loading…",
+          "timeToFirstByteMs": "Time to first byte",
+          "firstContentfulPaintMs": "First contentful paint",
+          "largestContentfulPaintMs": "Largest contentful paint"
+        },
+        "navigation": {
+          "heading": "Route navigation",
+          "description": "Each navigation since this page load, from start to rendered. Budget {{budget}} ms.",
+          "empty": "No navigation yet. Open another page and come back.",
+          "caption": "Route navigations, oldest first",
+          "route": "Route"
+        },
+        "api": {
+          "heading": "API latency",
+          "description": "Every request this tab made, grouped by endpoint - ids replaced, so one endpoint is one row. Budget {{budget}} ms.",
+          "caption": "API latency by endpoint, slowest first",
+          "endpoint": "Endpoint",
+          "count": "Requests",
+          "p50": "Median",
+          "p95": "95th percentile",
+          "max": "Slowest"
+        },
+        "longTasks": {
+          "heading": "Long tasks",
+          "description": "Main-thread work over 50 ms, which delays the response to a click or a key. Tasks over {{budget}} ms are logged as warnings.",
+          "unsupported": "This browser does not report long tasks.",
+          "count": "Long tasks",
+          "total": "Total time",
+          "longest": "Longest"
+        },
+        "log": {
+          "heading": "Log",
+          "description": "The latest entries of the application's structured log, newest first - already redacted, as every sink receives them.",
+          "throw": "Throw an unhandled error",
+          "clear": "Clear",
+          "caption": "Latest log entries, newest first",
+          "time": "Time",
+          "level": "Level",
+          "message": "Message",
+          "correlationId": "Correlation id",
+          "unavailable": "This build does not keep the log in memory: the in-memory sink is developer tooling, left out of production builds. The log is in the browser console."
+        }
       }
     }
   },

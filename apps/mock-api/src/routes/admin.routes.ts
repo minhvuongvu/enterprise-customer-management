@@ -5,6 +5,7 @@ import { z } from 'zod';
 import type { MockApiConfig, MockControls } from '../config.ts';
 import type { EventStreams } from '../domain/event-streams.ts';
 import type { MockStore } from '../domain/store.ts';
+import type { MockApiLogger } from '../logging/logger.ts';
 import { parseOrThrow } from '../http/validate.ts';
 import { MOCK_SCENARIOS } from '../middleware/fault-injection.ts';
 
@@ -24,6 +25,7 @@ export function adminRoutes(
   controls: MockControls,
   config: MockApiConfig,
   streams: EventStreams,
+  logger: MockApiLogger,
 ): Router {
   const router = Router();
 
@@ -106,6 +108,19 @@ export function adminRoutes(
     }
     store.publish(event);
     res.status(202).json({ id: event.id });
+  });
+
+  /**
+   * What this server logged, optionally for one correlation id - the mock's
+   * stand-in for a query against a log aggregator. It is how the E2E suite
+   * proves that one id appears in the browser's log *and* the server's
+   * (docs/observability.md). Entries are already redacted: the buffer is
+   * written through the same policy as stdout.
+   */
+  router.get('/logs', (req, res) => {
+    const correlationId =
+      typeof req.query['correlationId'] === 'string' ? req.query['correlationId'] : undefined;
+    res.status(200).json({ entries: logger.entries(correlationId) });
   });
 
   return router;

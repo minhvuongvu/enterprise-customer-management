@@ -13,9 +13,11 @@
   "include": [
     "e2e/**/*.ts",
     "e2e-production/**/*.ts",
+    "e2e-visual/**/*.ts",
     "perf/**/*.ts",
     "lint/**/*.ts",
     "playwright.config.ts",
-    "playwright.production.config.ts"
+    "playwright.production.config.ts",
+    "playwright.visual.config.ts"
   ]
 }

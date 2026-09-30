@@ -270,11 +270,14 @@ script.
 - **No password in a URL.** Sign-in is a `POST`; the prerendered form's submit
   button is disabled until hydration so a pre-hydration press cannot fall back to
   a `GET` (Phase 2 finding). Asserted in `login-page.spec.ts`.
-- **Logs**: the request log records method, path, status, duration and
-  correlation id - never the query string (search terms are names and emails),
-  a body or a header. `redact()` masks any field whose name contains `password`,
-  `token`, `secret`, `authorization`, `apikey` or `cookie`. The server logs only
-  5xx failures, with a stack and no body.
+- **Logs** (Phase 7, docs/observability.md): both sides' request logs record method,
+  path or route template, status, duration and correlation id - never the query string
+  (search terms are names and emails), a body or a header. Every entry, on both sides,
+  passes through one redaction policy in `@ecm/contracts` (ADR-0038) before any sink:
+  credential keys and this domain's personal fields are replaced, and emails, JWTs and
+  `Bearer` tokens are masked inside any string. Interaction events are a closed type that
+  cannot carry a name or an email. Proven end to end: after a real sign-in, neither log
+  contains the password or any cookie value.
 - **Sign-out discards customer data**: the customer store and cache are
   provided by the route and destroyed when the shell is left.
 - **No credential in the repository.** The mock accepts any password for a known
@@ -320,15 +323,26 @@ always on, and HSTS (reverse proxy) keeps the browser from ever trying HTTP.
   render them without a session. They contain generated rows only, and
   `noindex` (ADR-0026).
 
+## Secrets and the pipeline (Phase 7)
+
+- `lint/secrets.ts` fails `npm run lint` and CI on private keys, cloud and SaaS token
+  shapes, credentials in URLs and any committed env or key file (docs/configuration.md).
+- CI holds no secrets and runs with a read-only token.
+- Four npm install scripts (`esbuild`, `lmdb`, `msgpackr-extract`, `@parcel/watcher`) are
+  **denied** in `package.json` `allowScripts` - a reviewed decision, not a default: each is
+  a fallback that compiles a native binary the package already ships prebuilt for every
+  platform used here. A dependency that adds an install script is now reported by npm
+  instead of running (debt row 3, paid).
+
 ## What is not done
 
 Stated here so that nothing above reads as more than it is.
 
-| Gap                                                                                                                       | Why it is acceptable here                                                                                          | Owner / phase                         |
-| ------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------- |
-| The mock does not verify passwords                                                                                        | no credential in the repository; ADR-0007                                                                          | a real backend                        |
-| No Content-Security-Policy on the application document                                                                    | Angular's inline styles and event-replay script need nonces; that belongs with the server that serves `index.html` | Reverse proxy - Phase 7 (debt row 17) |
-| No brute-force protection on sign-in beyond the global rate limit                                                         | the mock verifies no password to guess                                                                             | a real backend                        |
-| Images are signature-checked, not decoded and re-encoded; no malware scan; user content not served from a separate origin | stated rather than implied                                                                                         | a real backend                        |
-| A sign-out that never reaches the server leaves the server session alive until it expires                                 | `HttpOnly` cookies cannot be deleted from script                                                                   | inherent to ADR-0016                  |
-| Dependency vulnerability scanning                                                                                         | no pipeline yet                                                                                                    | Phase 7                               |
+| Gap                                                                                                                       | Why it is acceptable here                                                                                                                                                                                                                                                                          | Owner / phase         |
+| ------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------- |
+| The mock does not verify passwords                                                                                        | no credential in the repository; ADR-0007                                                                                                                                                                                                                                                          | a real backend        |
+| No Content-Security-Policy on the application document                                                                    | Angular's inline styles and event-replay script need nonces. Phase 7 tried Angular's `autoCsp` (hash-based): Angular 22 refuses it with SSR ("Cannot set both SSR and auto-CSP"). A nonce per request needs the SSR server to generate it and Angular to stamp it - server work, not configuration | Phase 8 (debt row 17) |
+| No brute-force protection on sign-in beyond the global rate limit                                                         | the mock verifies no password to guess                                                                                                                                                                                                                                                             | a real backend        |
+| Images are signature-checked, not decoded and re-encoded; no malware scan; user content not served from a separate origin | stated rather than implied                                                                                                                                                                                                                                                                         | a real backend        |
+| A sign-out that never reaches the server leaves the server session alive until it expires                                 | `HttpOnly` cookies cannot be deleted from script                                                                                                                                                                                                                                                   | inherent to ADR-0016  |
+| Dependency vulnerabilities are checked at `high` and above, in shipped dependencies only                                  | CI runs `npm audit --omit=dev --audit-level=high` (0 found at `phase-7-complete`); Dependabot proposes updates; a moderate advisory in a dev tool does not block                                                                                                                                   | accepted              |

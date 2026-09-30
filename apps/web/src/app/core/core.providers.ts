@@ -5,7 +5,7 @@ import { provideRuntimeConfig } from './config/runtime-config.provider';
 import { GlobalErrorHandler } from './errors/global-error-handler';
 import { provideAppHttp } from './http/http.providers';
 import { provideI18n } from './i18n/i18n.providers';
-import { ConsoleLogger, Logger } from './logging/logger';
+import { provideObservability } from './observability/observability.providers';
 import { provideDocumentLanguage } from './seo/document-language';
 
 /**
@@ -16,12 +16,12 @@ import { provideDocumentLanguage } from './seo/document-language';
  * dependencies between these providers live next to the code that explains
  * them.
  *
- * `Logger` is bound before the error handler and the HTTP layer because both
- * depend on it.
+ * Observability comes first: the error handler and the HTTP layer both log,
+ * and the log's sinks are registered there.
  */
 export function provideCore(): EnvironmentProviders {
   return makeEnvironmentProviders([
-    { provide: Logger, useClass: ConsoleLogger },
+    provideObservability(),
     { provide: ErrorHandler, useClass: GlobalErrorHandler },
     provideAppHttp(),
     provideI18n(),

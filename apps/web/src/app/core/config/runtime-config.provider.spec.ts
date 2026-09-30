@@ -74,6 +74,25 @@ describe('provideRuntimeConfig', () => {
     expect(TestBed.inject(TranslocoService).getActiveLang()).toBe('vi');
   });
 
+  it('rejects a file that does not match the schema as a whole, and says why', async () => {
+    const store = TestBed.inject(AppConfigStore);
+
+    // A string is truthy: without validation, "false" would switch the flag on.
+    backend.expectOne('/config.json').flush({
+      apiBaseUrl: 'https://api.staging.test',
+      features: { technicalLabs: 'false', customerImprot: false },
+    });
+    await Promise.resolve();
+
+    expect(store.config()).toEqual(DEFAULT_APP_CONFIG);
+    const logger = TestBed.inject(Logger) as SilentLogger;
+    const report = logger.entries.find((entry) => entry.level === 'error');
+    expect(report?.fields?.['issues']).toEqual([
+      'features.technicalLabs: Invalid input: expected boolean, received string',
+      'features: Unrecognized key: "customerImprot"',
+    ]);
+  });
+
   it('starts on the defaults, and says so, when the file is missing', async () => {
     const store = TestBed.inject(AppConfigStore);
 

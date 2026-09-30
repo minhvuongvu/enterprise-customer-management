@@ -1,6 +1,7 @@
 # Architecture
 
-What exists after Phase 2, and the rules that later phases build inside.
+What exists, and the rules later work builds inside. The phase-by-phase account is in
+`docs/PROGRESS.md`; the whole-repository review is [architecture-report.md](architecture-report.md).
 
 `ANGULAR_PROJECT_CONTEXT.md` is the authority on intent. This document describes the
 code.
@@ -66,8 +67,42 @@ Rules, in the order they get broken:
 4. **Nothing imports upward.** `core/logging` may not import `core/http`; the arrow
    only points one way.
 
-Phase 7 adds an automated dependency check. Until then this is review discipline, and
-the reason it is written down.
+**Enforced since Phase 7** by `lint/architecture.ts` (ADR-0041), in `npm run lint` and
+CI: these rules and eight more, plus "no import cycles", fail the build. The layer graph
+below is its output (`node lint/architecture.ts --graph`) - measured from the imports,
+not drawn from memory; numbers are import counts, dotted arrows are lazy `import()`:
+
+```mermaid
+flowchart TD
+  root["root"] -.->|1| feature_customers["feature:customers"]
+  root -.->|2| feature_technical_labs["feature:technical-labs"]
+  root -.->|1| feature_login["feature:login"]
+  root -.->|1| feature_forbidden["feature:forbidden"]
+  root -.->|1| feature_not_found["feature:not-found"]
+  root -.->|1| layout["layout"]
+  root -->|6| core["core"]
+  root -->|1| feature_technical_labs
+  feature_customers -->|43| core
+  feature_customers -->|12| layout
+  feature_customers -->|34| shared_ui["shared-ui"]
+  feature_technical_labs -->|52| core
+  feature_technical_labs -->|26| layout
+  feature_technical_labs -->|26| shared_ui
+  feature_login -->|3| core
+  feature_login -->|2| layout
+  feature_login -->|2| shared_ui
+  feature_forbidden -->|2| layout
+  feature_forbidden -->|1| shared_ui
+  feature_not_found -->|2| layout
+  feature_not_found -->|1| shared_ui
+  layout -->|20| core
+  layout -->|10| shared_ui
+  shared_ui -->|1| core
+```
+
+The one static root → feature edge is `app.routes.server.ts` reading the rendering
+specimens' render modes - a declared entry point. `shared-ui → core` is the pagination
+formatting its numbers through `core/i18n`, the one exception the rule allows.
 
 Within `core/`, the internal order is:
 
@@ -277,6 +312,20 @@ Two mechanisms, deliberately distinct (ADR-0005):
 | Available on the server | yes                                     | no — defaults are used                  |
 
 Nothing secret goes in either. Both are served to the browser.
+
+Phase 7: `config.json` is validated by a strict schema at start-up (a bad file is
+rejected whole, the reason logged); per-environment files live in `apps/web/deploy/` and
+are checked by a unit test; build-time flags remove code by `fileReplacements`, not by
+`if`. The environment matrix, every setting and the secrets policy are in
+[configuration.md](configuration.md); flags in [feature-flags.md](feature-flags.md).
+
+## 7a. Observability
+
+`Logger` → `StructuredLogger` (threshold, redaction, common fields) → `LOG_SINKS`;
+`ErrorTracker` behind Angular's `ErrorHandler`; `Telemetry` for interaction events;
+`PerformanceMonitor` for load, navigation, API latency and long tasks. One correlation
+id per request, from the browser's interceptor into the mock API's log. See
+[observability.md](observability.md).
 
 ---
 

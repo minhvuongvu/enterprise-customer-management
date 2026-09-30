@@ -1,26 +1,43 @@
-import { inject, Injectable } from '@angular/core';
+import { inject, Injectable, InjectionToken } from '@angular/core';
+import { redactLogFields, redactText } from '@ecm/contracts';
+import { AppConfigStore } from '../config/app-config';
 import { IS_BROWSER } from '../platform/platform.tokens';
 import type { CorrelationId } from './correlation-id';
+import { isLogLevelEnabled, type LogLevel } from './log-level';
+import { newCorrelationId } from './correlation-id';
+
+export type { LogLevel } from './log-level';
 
 /**
- * Structured client-side logging seam.
+ * Structured client-side logging.
  *
- * Phase 0 ships the abstraction and one console implementation. Phase 7 adds
- * shipping logs somewhere and measuring things; nothing outside this folder
- * should have to change when it does, because callers depend on `Logger` and
- * never on the console.
+ * Callers depend on `Logger` and nothing else. What happens to an entry -
+ * which level reaches a sink, what is redacted, where it goes - is decided
+ * here, once, so that no call site can get it wrong (docs/observability.md).
  *
- * Direct `console` use is banned everywhere else by lint. This file is the
- * single allowed exception.
+ * An entry travels: call site → `StructuredLogger` (level threshold, then
+ * redaction, then the common fields) → every `LogSink`. Redaction happens
+ * before the fan-out, so no sink - present or future - sees a raw value.
+ *
+ * Direct `console` use is banned everywhere else by lint. `ConsoleLogSink` is
+ * the single allowed exception.
  */
-
-export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
 export interface LogFields {
   readonly correlationId?: CorrelationId;
   readonly [key: string]: unknown;
 }
 
+/**
+ * Provided in root, so that any injector - a component test's included - can
+ * log. With no sink registered (`LOG_SINKS` defaults to none) that logger is
+ * silent; the application registers its sinks in `provideObservability()`.
+ *
+ * A subclass must carry its own `@Injectable()`. Without it, Angular reuses
+ * this class's factory for the subclass, and `useClass: MyTestLogger` quietly
+ * builds a `StructuredLogger` instead.
+ */
+@Injectable({ providedIn: 'root', useFactory: () => new StructuredLogger() })
 export abstract class Logger {
   abstract debug(message: string, fields?: LogFields): void;
   abstract info(message: string, fields?: LogFields): void;
@@ -29,48 +46,46 @@ export abstract class Logger {
 }
 
 /**
- * Field names whose values must never reach a log sink.
+ * One line of the log, as every sink receives it.
  *
- * Matched as case-insensitive substrings, so `accessToken`, `refresh_token`
- * and `Authorization` are all covered by three entries.
+ * The field names match the mock API's (`apps/mock-api/src/logging/`), so one
+ * query for a correlation id returns both sides' lines.
  */
-const REDACTED_KEY_PARTS = ['password', 'token', 'secret', 'authorization', 'apikey', 'cookie'];
-
-const REDACTED = '[redacted]';
-const MAX_DEPTH = 4;
-
-function isSensitive(key: string): boolean {
-  const normalized = key.toLowerCase().replace(/[_-]/g, '');
-  return REDACTED_KEY_PARTS.some((part) => normalized.includes(part));
+export interface LogEntry {
+  readonly timestamp: string;
+  readonly level: LogLevel;
+  readonly message: string;
+  readonly service: 'web';
+  /** Where the code ran: the same code runs in two places. */
+  readonly platform: 'browser' | 'server';
+  /**
+   * One id per page load. Groups everything one tab did without identifying
+   * the person - a deliberately anonymous alternative to a user id.
+   */
+  readonly pageViewId: string;
+  readonly [field: string]: unknown;
 }
 
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
+/** Where entries go. Implementations must not throw: logging never breaks the app. */
+export interface LogSink {
+  write(entry: LogEntry): void;
 }
 
 /**
- * Strips sensitive values before anything is written.
- *
- * Redaction lives at the logger rather than at each call site, because the call
- * site is exactly where someone forgets.
+ * Every sink the application writes to. `multi`, so adding one - a collector
+ * over HTTP, say - is a provider, not an edit to the logger.
  */
-export function redact(fields: LogFields, depth = 0): Record<string, unknown> {
-  const out: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(fields)) {
-    if (isSensitive(key)) {
-      out[key] = REDACTED;
-    } else if (isPlainObject(value)) {
-      out[key] = depth >= MAX_DEPTH ? REDACTED : redact(value as LogFields, depth + 1);
-    } else {
-      out[key] = value;
-    }
-  }
-  return out;
-}
+export const LOG_SINKS = new InjectionToken<readonly LogSink[]>('ecm.logSinks', {
+  providedIn: 'root',
+  factory: () => [],
+});
 
 @Injectable()
-export class ConsoleLogger extends Logger {
-  private readonly isBrowser = inject(IS_BROWSER);
+export class StructuredLogger extends Logger {
+  private readonly platform = inject(IS_BROWSER) ? 'browser' : 'server';
+  private readonly sinks = inject(LOG_SINKS);
+  private readonly config = inject(AppConfigStore).config;
+  private readonly pageViewId = newCorrelationId();
 
   debug(message: string, fields?: LogFields): void {
     this.write('debug', message, fields);
@@ -89,16 +104,39 @@ export class ConsoleLogger extends Logger {
   }
 
   private write(level: LogLevel, message: string, fields?: LogFields): void {
-    const entry = {
+    // Read at write time: `config.json` arrives after the logger exists, and
+    // a deployment's `logLevel` must apply from then on.
+    if (!isLogLevelEnabled(level, this.config().logLevel)) {
+      return;
+    }
+
+    const entry: LogEntry = {
+      ...redactLogFields(fields ?? {}),
+      // After the fields, so a caller cannot overwrite them.
+      timestamp: new Date().toISOString(),
       level,
-      message,
-      // The renderer is part of the log: the same code runs in two places and
-      // "works in the browser, fails during prerender" is a real failure mode.
-      platform: this.isBrowser ? 'browser' : 'server',
-      ...redact(fields ?? {}),
+      message: redactText(message),
+      service: 'web',
+      platform: this.platform,
+      pageViewId: this.pageViewId,
     };
 
+    for (const sink of this.sinks) {
+      try {
+        sink.write(entry);
+      } catch {
+        // A broken sink must not take the others - or the caller - down.
+      }
+    }
+  }
+}
+
+/** One JSON object per line: what a browser's console and a collector both read. */
+@Injectable()
+export class ConsoleLogSink implements LogSink {
+  write(entry: LogEntry): void {
+    const method = entry.level === 'debug' ? 'log' : entry.level;
     // eslint-disable-next-line no-console -- the one sanctioned console call
-    console[level === 'debug' ? 'log' : level](JSON.stringify(entry));
+    console[method](JSON.stringify(entry));
   }
 }

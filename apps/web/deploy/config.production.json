@@ -1,0 +1,10 @@
+{
+  "apiBaseUrl": "/api",
+  "defaultLanguage": "vi",
+  "logLevel": "warn",
+  "features": {
+    "technicalLabs": false,
+    "routePreloading": true,
+    "customerImport": true
+  }
+}

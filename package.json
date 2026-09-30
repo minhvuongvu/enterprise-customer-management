@@ -19,17 +19,24 @@
     "start": "npm run start --workspace @ecm/web",
     "start:api": "npm run start --workspace @ecm/mock-api",
     "build": "npm run build:contracts && npm run build --workspace @ecm/web",
-    "test": "npm run build:contracts && npm run test --workspaces --if-present",
-    "lint": "eslint . && npm run lint:styles && npm run lint --workspaces --if-present",
+    "perf:budgets": "node perf/check-budgets.ts",
+    "test": "npm run build:contracts && npm run test:lint && npm run test --workspaces --if-present",
+    "test:lint": "node --test lint/*.test.ts",
+    "test:coverage": "npm run build:contracts && npm run test:lint && npm run test:coverage --workspaces --if-present",
+    "lint": "eslint . && npm run lint:styles && npm run lint:architecture && npm run lint:secrets && npm run lint --workspaces --if-present",
     "lint:styles": "node lint/styles.ts",
+    "lint:architecture": "node lint/architecture.ts",
+    "lint:secrets": "node lint/secrets.ts",
     "typecheck": "npm run build:contracts && tsc -p tsconfig.json --noEmit && npm run typecheck --workspaces --if-present",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "e2e": "npm run build:contracts && playwright test",
     "e2e:ui": "playwright test --ui",
-    "verify": "npm run format:check && npm run lint && npm run typecheck && npm run test && npm run build && npm run e2e && npm run e2e:production",
+    "verify": "npm run format:check && npm run lint && npm run typecheck && npm run test && npm run build && npm run perf:budgets && npm run e2e && npm run e2e:production",
     "build:contracts": "npm run build --workspace @ecm/contracts",
-    "e2e:production": "npm run build:contracts && playwright test --config playwright.production.config.ts"
+    "e2e:production": "npm run build:contracts && playwright test --config playwright.production.config.ts",
+    "e2e:visual": "node e2e-visual/run-in-docker.ts",
+    "e2e:visual:update": "node e2e-visual/run-in-docker.ts --update"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.13.0",
@@ -40,5 +47,11 @@
     "prettier": "3.9.8",
     "typescript": "6.0.3",
     "typescript-eslint": "8.70.0"
+  },
+  "allowScripts": {
+    "@parcel/watcher": false,
+    "esbuild": false,
+    "lmdb": false,
+    "msgpackr-extract": false
   }
 }

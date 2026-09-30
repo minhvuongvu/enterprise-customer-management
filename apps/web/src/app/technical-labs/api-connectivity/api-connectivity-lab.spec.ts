@@ -1,3 +1,4 @@
+import { Injectable } from '@angular/core';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
@@ -9,6 +10,7 @@ import { ApiConnectivityLab } from './api-connectivity-lab';
 import translations from '../../core/i18n/translations/en.json';
 
 /** Captures instead of printing, so a test run stays readable. */
+@Injectable()
 class CapturingLogger extends Logger {
   readonly entries: { level: string; message: string; fields?: LogFields }[] = [];
 

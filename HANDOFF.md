@@ -8,7 +8,7 @@ session that has the git history but none of the conversation that produced it.
 `docs/PROGRESS.md` about what is done, PROGRESS wins — it is updated as part of every
 phase's Definition of Done, and this file is updated only at a handoff.
 
-Last updated at **`phase-6-complete`**.
+Last updated at **`phase-7-complete`**.
 
 ---
 
@@ -59,51 +59,58 @@ The parts that come up most often:
 
 `docs/decisions/` — read the ones that touch what you are about to change.
 
-| ADR  | Decision                                                                  |
-| ---- | ------------------------------------------------------------------------- |
-| 0001 | the locked stack, with the versions actually resolved at install          |
-| 0002 | workspace layout, zoneless, `ngc` for typechecking                        |
-| 0003 | prerender the public surface; client-render the application               |
-| 0004 | translations as lazy chunks, not HTTP                                     |
-| 0005 | runtime configuration is a browser concern                                |
-| 0006 | SSE rather than WebSocket                                                 |
-| 0007 | mock backend: in-memory, no build step, deterministic faults              |
-| 0008 | contracts is compiled; the apps run from source                           |
-| 0009 | route titles are translation keys, resolved by a `TitleStrategy`          |
-| 0010 | two token layers; the theme is one attribute on `<html>`                  |
-| 0011 | three layouts; CSS for presentation, TypeScript only for drawer behaviour |
-| 0012 | what Phase 2 borrowed from Phase 3, and what it deliberately did not      |
-| 0013 | one feature store, explicit cache, cancellation by switching              |
-| 0014 | the contract type **is** the domain type; no mapping layer                |
-| 0015 | a losing write reloads and resubmits only this user's fields              |
-| 0016 | tokens are `HttpOnly` cookies; the app never holds one (supersedes 0012)  |
-| 0017 | reactive refresh, single flight, one retry; one job per interceptor       |
-| 0018 | route, UI and action authorization by permission - none of it security    |
-| 0019 | one file policy for both sides; a byte check only the server makes        |
-| 0020 | realtime client: own reconnect, de-duplication, news never overwrites     |
-| 0021 | uploads with progress on XHR, everything else on fetch                    |
-| 0022 | notifications are justified global state; one confirmation service        |
-| 0023 | the one optimistic operation: status change, with rollback                |
-| 0024 | CSV import as preview + commit, nothing held on the server                |
-| 0025 | measure the bundle by package; zod namespace import; budget as a ratchet  |
-| 0026 | rendering modes measured on public, data-free specimen routes             |
-| 0027 | tabs: one versioned BroadcastChannel, Web Lock refresh, storage event     |
-| 0028 | the service worker caches the app shell, never API data                   |
-| 0029 | offline = one read-only, user-scoped snapshot + connectivity UI           |
-| 0030 | the leader-election lab uses a lease on purpose                           |
-| 0031 | preload only the routes flagged `preload: true`                           |
-| 0032 | locale formatting through `Intl`, keyed to the active language            |
-| 0033 | plurals as CLDR-category keys, chosen by `Intl.PluralRules`; no ICU       |
-| 0034 | adaptive layouts: swap components in TypeScript, restyle in CSS           |
-| 0035 | validation reasons as codes: `details.fieldIssues`                        |
-| 0036 | style rules checked by `lint/styles.ts`; logical properties for RTL       |
-| 0037 | focus management: navigation, failed saves, re-rendered controls          |
+| ADR  | Decision                                                                    |
+| ---- | --------------------------------------------------------------------------- |
+| 0001 | the locked stack, with the versions actually resolved at install            |
+| 0002 | workspace layout, zoneless, `ngc` for typechecking                          |
+| 0003 | prerender the public surface; client-render the application                 |
+| 0004 | translations as lazy chunks, not HTTP                                       |
+| 0005 | runtime configuration is a browser concern                                  |
+| 0006 | SSE rather than WebSocket                                                   |
+| 0007 | mock backend: in-memory, no build step, deterministic faults                |
+| 0008 | contracts is compiled; the apps run from source                             |
+| 0009 | route titles are translation keys, resolved by a `TitleStrategy`            |
+| 0010 | two token layers; the theme is one attribute on `<html>`                    |
+| 0011 | three layouts; CSS for presentation, TypeScript only for drawer behaviour   |
+| 0012 | what Phase 2 borrowed from Phase 3, and what it deliberately did not        |
+| 0013 | one feature store, explicit cache, cancellation by switching                |
+| 0014 | the contract type **is** the domain type; no mapping layer                  |
+| 0015 | a losing write reloads and resubmits only this user's fields                |
+| 0016 | tokens are `HttpOnly` cookies; the app never holds one (supersedes 0012)    |
+| 0017 | reactive refresh, single flight, one retry; one job per interceptor         |
+| 0018 | route, UI and action authorization by permission - none of it security      |
+| 0019 | one file policy for both sides; a byte check only the server makes          |
+| 0020 | realtime client: own reconnect, de-duplication, news never overwrites       |
+| 0021 | uploads with progress on XHR, everything else on fetch                      |
+| 0022 | notifications are justified global state; one confirmation service          |
+| 0023 | the one optimistic operation: status change, with rollback                  |
+| 0024 | CSV import as preview + commit, nothing held on the server                  |
+| 0025 | measure the bundle by package; zod namespace import; budget as a ratchet    |
+| 0026 | rendering modes measured on public, data-free specimen routes               |
+| 0027 | tabs: one versioned BroadcastChannel, Web Lock refresh, storage event       |
+| 0028 | the service worker caches the app shell, never API data                     |
+| 0029 | offline = one read-only, user-scoped snapshot + connectivity UI             |
+| 0030 | the leader-election lab uses a lease on purpose                             |
+| 0031 | preload only the routes flagged `preload: true`                             |
+| 0032 | locale formatting through `Intl`, keyed to the active language              |
+| 0033 | plurals as CLDR-category keys, chosen by `Intl.PluralRules`; no ICU         |
+| 0034 | adaptive layouts: swap components in TypeScript, restyle in CSS             |
+| 0035 | validation reasons as codes: `details.fieldIssues`                          |
+| 0036 | style rules checked by `lint/styles.ts`; logical properties for RTL         |
+| 0037 | focus management: navigation, failed saves, re-rendered controls            |
+| 0038 | one log-redaction policy, in the contracts, inside each logger              |
+| 0039 | error-tracking seam; interaction events as a closed union                   |
+| 0040 | runtime flags from a validated config.json; build-time flags by file swap   |
+| 0041 | a repository architecture check: cycles and forbidden imports               |
+| 0042 | CI on GitHub Actions; browser jobs and visual baselines in Playwright image |
 
 ### The ten rules
 
 `CLAUDE.md` lists ten non-negotiable rules. Two are enforced by lint and will fail the
 build if broken — no hardcoded user-facing strings, no direct browser globals. The
-other eight are enforced by review, and the ones most often broken by accident are:
+other eight were enforced by review; since Phase 7 `lint/architecture.ts` also enforces
+rules 4 and 5 (no cross-feature imports, no dumping grounds) and `lint/secrets.ts` rule 7.
+The ones most often broken by accident are:
 
 - no `HttpClient` in components (presentation → feature state → API client → HTTP);
 - no abstraction without a **named** second caller;
@@ -127,7 +134,8 @@ other eight are enforced by review, and the ones most often broken by accident a
 | 4     | Enterprise UX, Files, Notifications & RT | **Done**    |
 | 5     | Performance, Rendering, Offline & APIs   | **Done**    |
 | 6     | Accessibility, i18n, Design System & UX  | **Done**    |
-| 7–8   | see `docs/PROGRESS.md`                   | Not started |
+| 7     | Observability, Testing, CI/CD, Hardening | **Done**    |
+| 8     | Enterprise Codebase Review               | Not started |
 
 `docs/PROGRESS.md` is the phase-state file: what each phase built, what deviated, the
 technical-debt register and the open questions. **Read it before starting anything.**
@@ -137,7 +145,8 @@ technical-debt register and the open questions. **Read it before starting anythi
 History is linear; each phase branch contains everything before it.
 
 ```text
-phase-6           <- HEAD, everything is here
+phase-7           <- HEAD, everything is here
+phase-6  ed0a8ad
 phase-5  dbe6bd7
 phase-4  6863370
 phase-3  80a3703
@@ -150,30 +159,24 @@ master   ef498df  <- pre-Phase-0. Nothing has been merged into it.
 
 Two things a cloud session will trip over:
 
-- **`master` is stale on purpose.** No phase has been merged. Branch Phase 7 from
-  `phase-6`, not from `master`.
-- **Branches are on the remote. The `phase-3-complete` to `phase-6-complete` tags
+- **`master` is stale on purpose.** No phase has been merged. Branch Phase 8 from
+  `phase-7`, not from `master`.
+- **CI runs on every push** (`.github/workflows/ci.yml`); a phase branch shows its checks
+  on GitHub. The checks are not yet _required_ (debt 33).
+- **Branches are on the remote. The `phase-3-complete` to `phase-7-complete` tags
   may not be**: the cloud session's git proxy refused
   tag pushes (HTTP 403). If `git ls-remote --tags origin` does not list them,
   create them on the phase branches' heads and push from a local machine.
 
-### Verification at `phase-5-complete`
+### Verification at `phase-7-complete`
 
-`npm run verify` runs format → lint → typecheck → test → build → e2e →
-e2e:production.
-
-| Check          | Result                                                                           |
-| -------------- | -------------------------------------------------------------------------------- |
-| format, lint   | clean; 0 errors, 0 warnings                                                      |
-| typecheck      | clean across all three packages, templates and worker included                   |
-| unit tests     | 574 — 419 web, 122 mock-api, 33 contracts                                        |
-| build          | succeeds, browser + server, 4 routes prerendered, no warning                     |
-| e2e            | 87, incl. cross-tab, labs, rendering specimens, axe                              |
-| e2e:production | 4 — service worker offline, no cached API data, preloading, pre-hydration typing |
-| import cycles  | none (method in PROGRESS, Phase 3 checks)                                        |
-
-The initial bundle is 524.6 kB under a **ratchet** budget of 530 kB (ADR-0025).
-If it grows past it, measure with `node perf/bundle-report.ts` before raising it.
+`npm run verify` runs format → lint → typecheck → test → build → perf:budgets → e2e →
+e2e:production. The authoritative numbers are in the Phase 7 entry of
+`docs/PROGRESS.md` ("Checks"); in short: all clean, 669 unit/integration tests with
+coverage gates, 215 E2E, 7 production E2E, 14 visual, Firefox and WebKit on five specs,
+0 import cycles. Budgets: `perf/budgets.json` and angular.json (initial 520.4 kB of
+530/540 kB). If the bundle grows past a budget, measure with `node perf/bundle-report.ts`
+before raising it.
 
 ---
 
@@ -214,28 +217,26 @@ repository state. A Linux cloud session can ignore them.
 
 ## 5. What is still open
 
-### Next: Phase 7 — Observability, Testing, CI/CD & Enterprise Hardening
+### Next: Phase 8 — Enterprise Codebase Review
 
-The prompt is `prompts/Phase 7 — Observability, Testing, CICD & Enterprise Hardening.md`.
-Read the Phase 6 entry in `docs/PROGRESS.md` first - its "For the next phase" list is
-written for you.
+Read `docs/architecture-report.md` first: it is Phase 7's review of the whole repository,
+with a prioritised list of improvements, and the Phase 7 entry in `docs/PROGRESS.md`.
 
-Things Phase 7 will meet directly:
+Things Phase 8 will meet directly:
 
-- Firefox and WebKit are configured (`E2E_BROWSERS=all`) but have never run: the Phase 6
-  sandbox could not download them (debt row 28). CI is where they can.
-- The E2E suite is large now - the axe audit alone is 64 tests over every route in both
-  themes. Budget CI time for it rather than trimming it.
-- The i18n lint allow-list is at 18 entries (debt row 16); a custom rule is due.
-- Every page exists in two languages and two themes: visual regression has stable
-  baselines to start from.
-- `npm run lint` now also runs `lint/styles.ts`.
+- CI exists and every job is a gate, but the checks are not _required_ (debt 33).
+- Visual baselines are only valid inside the Playwright image: `npm run e2e:visual`
+  (Docker). A UI change that is intended needs `npm run e2e:visual:update` in the same
+  commit.
+- `npm run lint` now includes the architecture check: a new feature must be added to
+  `FEATURES` and `FEATURE_ENTRY_POINTS` in `lint/architecture.ts`.
+- Debt 17 (CSP) needs per-request nonces in `server.ts` - `autoCsp` is refused with SSR.
 
 ### Debt and open questions
 
 Both live in `docs/PROGRESS.md` and are not duplicated here, because a second copy
-would drift. Phase 6 paid rows 9, 10, 12, 14 and 23, moved 16 and 28 to Phase 7 and
-20 to Phase 8, and added rows 29-31.
+would drift. Phase 7 paid rows 2, 3, 5, 24 and 28, moved 17 and 21 to Phase 8, and added
+rows 32-34.
 
 ### Traps that have already cost time
 
@@ -286,6 +287,18 @@ fresh session recognises the symptom instead of re-deriving the cause:
   `translations.spec.ts` fails otherwise, with the key named.
 - **Playwright's Chromium download may be blocked in a cloud session.** Phase 3 pointed
   `PLAYWRIGHT_BROWSERS_PATH` at symlinks to the preinstalled build; see PROGRESS.
+  Phase 7 found a way to Firefox and WebKit there: start `dockerd`, pull
+  `mcr.microsoft.com/playwright:v1.63.0-noble`, and run Playwright inside it with the
+  repository mounted.
+- **A subclass of `Logger` or `ErrorTracker` needs its own `@Injectable()`** - without
+  it Angular reuses the base class's root factory, and `useClass: TestLogger` builds the
+  real logger.
+- **`if (flag)` does not remove a compiled Angular class from a bundle.** Build-time
+  flags use `fileReplacements`; `perf/check-budgets.ts` checks.
+- **Type into a server-rendered page only after it hydrates** (the Sign in button is
+  enabled) unless hydration is what the test is about - a loaded machine drops keys.
+- **Test secrets must be distinctive**: `'abc'` occurred by chance inside a random UUID
+  and made a redaction test flaky.
 
 ---
 

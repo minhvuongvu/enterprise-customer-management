@@ -1,5 +1,6 @@
 import { Injectable, signal } from '@angular/core';
-import type { LogLevel } from '../logging/logger';
+import * as z from 'zod';
+import { LOG_LEVELS, type LogLevel } from '../logging/log-level';
 
 /**
  * Runtime configuration: read at startup, not baked into the bundle.
@@ -12,8 +13,19 @@ import type { LogLevel } from '../logging/logger';
  * Nothing secret goes here. This file is served to every browser.
  */
 
-/** Runtime feature flags. Add a member, then a key in `config.json`. */
-export type FeatureFlag = 'technicalLabs' | 'routePreloading';
+/**
+ * Runtime feature flags - switched per deployment in `config.json`, without a
+ * rebuild. When to use one rather than a build-time flag is in
+ * docs/feature-flags.md; the short version: a runtime flag for a *decision*
+ * (is import open in this environment?), a build-time flag for *code that
+ * must not ship* (developer tooling).
+ *
+ * Add a member here, its default below, and a line in docs/feature-flags.md
+ * with an owner and a removal condition. A flag nobody plans to remove is
+ * configuration, and belongs in `AppConfig` as a named setting.
+ */
+export const FEATURE_FLAGS = ['technicalLabs', 'routePreloading', 'customerImport'] as const;
+export type FeatureFlag = (typeof FEATURE_FLAGS)[number];
 
 export interface AppConfig {
   /** Base URL of the API. The mock API arrives in Phase 0.5. */
@@ -38,13 +50,33 @@ export const DEFAULT_APP_CONFIG: AppConfig = {
   features: {
     technicalLabs: true,
     routePreloading: true,
+    customerImport: true,
   },
 };
 
 /**
  * What `config.json` may contain: any subset, flags included. A deployment
  * that predates a flag omits it, and gets the default.
+ *
+ * Validated, because the file is edited by hand, per environment, by people
+ * who are not reading this code: `"technicalLabs": "false"` is a string, and
+ * a string is truthy. Strict, so a misspelt key (`"customerImprot"`) is an
+ * error that names itself rather than a flag that silently never turns off.
  */
+export const appConfigOverridesSchema = z.strictObject({
+  apiBaseUrl: z.string().min(1).optional(),
+  defaultLanguage: z.string().min(2).max(10).optional(),
+  logLevel: z.enum(LOG_LEVELS as [LogLevel, ...LogLevel[]]).optional(),
+  features: z
+    .strictObject(
+      Object.fromEntries(FEATURE_FLAGS.map((flag) => [flag, z.boolean().optional()])) as Record<
+        FeatureFlag,
+        z.ZodOptional<z.ZodBoolean>
+      >,
+    )
+    .optional(),
+});
+
 export type AppConfigOverrides = Partial<Omit<AppConfig, 'features'>> & {
   readonly features?: Partial<AppConfig['features']>;
 };

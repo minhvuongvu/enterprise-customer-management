@@ -1,0 +1,30 @@
+# Dependency updates as pull requests, each gated by CI (docs/ci.md).
+#
+# Angular, TypeScript and Vitest are locked by ADR-0001 and move together, by
+# hand, in a deliberate upgrade - so they are grouped rather than ignored: one
+# PR says an upgrade is available, and nobody merges it without the ADR.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      angular-stack:
+        patterns: ['@angular/*', '@angular-devkit/*', 'typescript', 'vitest', '@vitest/*']
+      tooling:
+        patterns:
+          [
+            'eslint',
+            '@eslint/*',
+            'typescript-eslint',
+            'angular-eslint',
+            'prettier',
+            '@playwright/test',
+            '@axe-core/*',
+          ]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly

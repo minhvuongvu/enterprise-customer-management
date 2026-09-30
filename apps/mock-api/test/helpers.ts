@@ -3,6 +3,7 @@ import { CSRF_COOKIE_NAME } from '@ecm/contracts';
 import { createApp } from '../src/app.ts';
 import type { MockApiConfig } from '../src/config.ts';
 import type { MockStore } from '../src/domain/store.ts';
+import type { MockApiLogger } from '../src/logging/logger.ts';
 
 /**
  * Starts the real server on an ephemeral port.
@@ -16,6 +17,8 @@ import type { MockStore } from '../src/domain/store.ts';
 export interface TestServer {
   readonly baseUrl: string;
   readonly store: MockStore;
+  /** The server's log, buffered and already redacted - what stdout would show. */
+  readonly logger: MockApiLogger;
   close(): Promise<void>;
   client(): TestClient;
 }
@@ -34,6 +37,7 @@ export async function startTestServer(overrides: Partial<MockApiConfig> = {}): P
   return {
     baseUrl: `http://localhost:${port}`,
     store: built.store,
+    logger: built.logger,
     client: () => new TestClient(`http://localhost:${port}`),
     close: () =>
       new Promise<void>((resolve) => {

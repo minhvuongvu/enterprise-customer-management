@@ -42,6 +42,14 @@ and both are commented where they bite:
 | `MOCK_API_REFRESH_TTL`    | `28800`                 | Seconds                                                 |
 | `MOCK_API_RATE_LIMIT`     | `600`                   | Requests per minute per IP                              |
 | `MOCK_API_SECURE_COOKIES` | `false`                 | `Secure` flag — a Secure cookie is dropped over http:// |
+| `MOCK_API_LOG_LEVEL`      | `info`                  | stdout threshold; the E2E suites set `warn`             |
+
+Every variable is in `apps/mock-api/.env.example`; `node --env-file=.env src/main.ts`
+reads a local copy (git-ignored).
+
+**Logs** (Phase 7): one JSON line per request - correlation id, method, route template,
+status, duration, user id and role - through the shared redaction policy
+(docs/observability.md).
 
 The latency default is not decoration. A mock that answers in a millisecond hides every
 loading state, race and cancellation bug the frontend is supposed to handle.
@@ -130,6 +138,7 @@ loudly; ignoring it produces a green test that proves nothing.
 | `POST`          | `/api/_mock/notice`            | Publishes a `system.notice` on the SSE stream                                                                        |
 | `POST`          | `/api/_mock/events/disconnect` | Ends the caller's session's event streams (all streams without a session) - makes reconnection testable              |
 | `POST`          | `/api/_mock/events/duplicate`  | `{ customerId }` - re-delivers the newest event about that customer with the same id - makes de-duplication testable |
+| `GET`           | `/api/_mock/logs`              | `?correlationId=` - the last 5 000 log entries, already redacted; the stand-in for a log aggregator's search         |
 
 Unauthenticated on purpose: tests use them to arrange state before signing in. They are
 absent from `@ecm/contracts`, so the application has no typed way to reach them.
