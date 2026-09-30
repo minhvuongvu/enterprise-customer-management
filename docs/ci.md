@@ -81,6 +81,9 @@ which is why they are written down here.
 
 ## 6. Timing and cost
 
-Measured on the first green run (PROGRESS.md, Phase 7). The E2E suite is the long pole:
+The first green run took **7 minutes** end to end: quality 1 min; unit and build ~40 s
+each, in parallel; the E2E shards ~2 min, accessibility 3 min, visual 1.5 min and the
+production suite 1 min, in parallel; Firefox + WebKit 3 min after the E2E jobs. The E2E
+suite is the long pole:
 215 tests in a real browser against a dev server. It is sharded in two rather than
 trimmed - the axe audit alone is 64 states, and each is a regression a user would meet.

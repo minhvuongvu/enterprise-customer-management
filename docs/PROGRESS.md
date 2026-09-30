@@ -200,7 +200,13 @@ Newest entry first. One entry per phase, appended at the end of that phase.
 | CI on GitHub              | see "CI runs" below                                                                                       |
 | Import cycles             | none - now checked by CI                                                                                  |
 
-**CI runs**: _filled in after the push_.
+**CI runs** (GitHub Actions, `phase-7`):
+
+| Run                                                                                          | Commit    | Result                  | What it showed                                                                                                                                                                                                                  |
+| -------------------------------------------------------------------------------------------- | --------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [#1](https://github.com/minhvuongvu/enterprise-customer-management/actions/runs/36720467026) | `24d0c37` | **failed** - `unit`     | a real gate: contracts branch coverage 94.73 % < 95 %, the new test-data builders counted; `npm run verify` had not run coverage, so only CI saw it. Fixed in `11f98de` (test data excluded; `verify` now runs `test:coverage`) |
+| [#2](https://github.com/minhvuongvu/enterprise-customer-management/actions/runs/36721329161) | `11f98de` | **passed** - all 9 jobs | end to end in 7 min: quality 1 min, unit and build ~40 s each, E2E shards ~2 min, accessibility 3 min, visual 1.5 min, production 1 min, Firefox + WebKit 3 min                                                                 |
+| [#3](https://github.com/minhvuongvu/enterprise-customer-management/actions/runs/36722612321) | `badac1a` | **failed** - `quality`  | **the deliberate proof**: a lab importing the customer store; `lint/architecture.ts` reported `features-are-isolated` and nothing downstream ran. Reverted in the next commit                                                   |
 
 **Findings worth carrying forward**
 
