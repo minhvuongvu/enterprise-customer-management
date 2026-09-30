@@ -207,7 +207,7 @@ stack is an integration test).
 | ---------------------------------- | ------------------ | ---------------- | ---------------- | ------------------------------------------------------ |
 | web: unit, component, integration  | Vitest + jsdom     | 475              | 81.5 %           | ≥ 80 % lines, 78 statements, 76 branches, 77 functions |
 | mock API (over a real socket)      | Vitest             | 133              | 89.9 %           | ≥ 88 % lines                                           |
-| contracts (built package)          | Vitest             | 44               | 98.3 %           | ≥ 95 % lines                                           |
+| contracts (built package)          | Vitest             | 45               | 99.2 %           | ≥ 95 % lines                                           |
 | lint tools (architecture, secrets) | `node --test`      | 16               | -                | -                                                      |
 | E2E, Chromium                      | Playwright         | 215              | -                | every test                                             |
 | production build                   | Playwright         | 7                | -                | every test, performance budgets                        |

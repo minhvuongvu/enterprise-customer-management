@@ -170,7 +170,7 @@ Two things a cloud session will trip over:
 
 ### Verification at `phase-7-complete`
 
-`npm run verify` runs format → lint → typecheck → test → build → perf:budgets → e2e →
+`npm run verify` runs format → lint → typecheck → test:coverage → build → perf:budgets → e2e →
 e2e:production. The authoritative numbers are in the Phase 7 entry of
 `docs/PROGRESS.md` ("Checks"); in short: all clean, 669 unit/integration tests with
 coverage gates, 215 E2E, 7 production E2E, 14 visual, Firefox and WebKit on five specs,

@@ -96,7 +96,7 @@ holds feature data - customer data is route-scoped and destroyed on sign-out.
 | Visual regression                                      | 14                                                 | `e2e-visual/`, in the Playwright image    |
 | Firefox + WebKit                                       | 48 × 2                                             | 5 engine-sensitive specs                  |
 
-Web runs **475** tests (81.5 % lines), the mock API 133 (89.9 %), contracts 45 (98 %);
+Web runs **475** tests (81.5 % lines), the mock API 133 (89.9 %), contracts 45 (99 %);
 coverage is gated by ratchet thresholds. **Named gaps**: the shell's notification
 components are covered end to end but thin in jsdom (24-41 %); the labs are 38 % in jsdom
 by design (browser APIs are tested in a real browser); no real screen reader (debt 29);

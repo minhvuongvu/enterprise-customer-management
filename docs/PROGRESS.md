@@ -190,7 +190,7 @@ Newest entry first. One entry per phase, appended at the end of that phase.
 | `npm run lint`            | clean - eslint ×2, styles, architecture (332 files, 912 imports, 0 cycles), secrets; 0 errors, 0 warnings |
 | `npm run typecheck`       | clean across all packages, templates, worker, Playwright configs                                          |
 | `npm test`                | 669 passed - 475 web, 133 mock API, 45 contracts, 16 lint tools (was 614)                                 |
-| `npm run test:coverage`   | web 81.5 % lines, mock API 89.9 %, contracts 98.3 % - all above their thresholds                          |
+| `npm run test:coverage`   | web 81.5 % lines, mock API 89.9 %, contracts 99.2 % (test data excluded) - all above their thresholds     |
 | `npm run build`           | succeeded, browser + server; initial 520.4 kB (was 515.4), no budget warning                              |
 | `npm run perf:budgets`    | initial JS 511 / 520 kB; largest lazy 52 / 80 kB; total 1 050 / 1 150 kB; nothing forbidden shipped       |
 | `npm run e2e`             | 215 passed (was 208)                                                                                      |
