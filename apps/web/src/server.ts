@@ -25,13 +25,39 @@ const angularApp = new AngularNodeAppEngine();
  */
 
 /**
- * Serve static files from /browser
+ * A file the build names after its content - `main-<hash>.js`,
+ * `chunk-<hash>.js`, `styles-<hash>.css`. A new build gives changed content a
+ * new name, so the old name can be cached for ever.
+ */
+const FINGERPRINTED = /^(?:main|chunk|polyfills|styles|worker)-[\w-]{8,}\.(?:js|css)$/;
+
+/**
+ * Serves the built browser files - and decides how long a browser may keep
+ * each one without asking again.
+ *
+ * Only fingerprinted files are cached for a year. Everything else keeps its
+ * name across deployments and must be revalidated on every use (`no-cache`
+ * still caches; it answers 304 from the ETag when nothing changed). The
+ * scaffold's blanket `maxAge: '1y'` cached `config.json` for a year, so a
+ * browser that had seen it once never received another deployment's runtime
+ * configuration - and a kill switch (docs/feature-flags.md) never reached it.
+ * The same applied to the service worker's `ngsw.json` manifest. Found by the
+ * Phase 8 review; `e2e-production/production.spec.ts` holds it.
+ *
+ * An allow-list of what may be cached rather than a list of what may not: a
+ * mutable file added later is safe by default.
  */
 app.use(
   express.static(browserDistFolder, {
-    maxAge: '1y',
     index: false,
     redirect: false,
+    setHeaders: (res, path) => {
+      const fileName = path.split(/[\\/]/).pop() ?? '';
+      res.setHeader(
+        'Cache-Control',
+        FINGERPRINTED.test(fileName) ? 'public, max-age=31536000, immutable' : 'no-cache',
+      );
+    },
   }),
 );
 

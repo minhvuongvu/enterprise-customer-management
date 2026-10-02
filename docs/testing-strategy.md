@@ -48,6 +48,12 @@ Concretely, from Phase 0's own suite:
   double that states its contract beats a mock whose setup is longer than the test.
 - Every test is deterministic. No wall-clock dependence, no ordering dependence, no
   shared mutable state between tests.
+- **Every store operation has a "caller went away" test** (Phase 8). Subscribe, then
+  unsubscribe before the response: a read must be cancelled, a write must still
+  complete and settle the store (ADR-0043), a file transfer must be cancelled. The
+  three tests in `customer-store.phase4.spec.ts` ("a write whose caller stopped
+  listening") are the template. 669 tests (Phase 7) that all waited for the response let
+  docs/enterprise-review.md D1 live through six phases.
 
 ## Current state — end of Phase 2
 
@@ -291,11 +297,13 @@ also proves the monitor works.
 
 ## Known gaps
 
-| Gap                                                     | Why it is acceptable now                                                          | Owner                            |
-| ------------------------------------------------------- | --------------------------------------------------------------------------------- | -------------------------------- |
-| Layout's notification components under-covered in jsdom | Driven end to end through the real services; a jsdom test would test CDK overlays | not planned                      |
-| Bulk `CONFLICT` outcome only reached by injection       | A natural version race needs two concurrent clients writing the same batch        | Phase 8                          |
-| No real screen reader                                   | Roles, names and states are asserted (debt row 29)                                | Phase 8                          |
-| Mutation testing                                        | Coverage says a line ran, not that a test would notice it changing                | not planned - see final report   |
-| Firefox and WebKit run 5 of 16 specs                    | The others exercise no engine-specific API; the full matrix would triple CI time  | revisit if an engine bug escapes |
-| Layouts checked at three fixed widths                   | The widths are the breakpoints                                                    | not planned                      |
+| Gap                                                     | Why it is acceptable now                                                               | Owner                            |
+| ------------------------------------------------------- | -------------------------------------------------------------------------------------- | -------------------------------- |
+| Layout's notification components under-covered in jsdom | Driven end to end through the real services; a jsdom test would test CDK overlays      | not planned                      |
+| Bulk `CONFLICT` outcome only reached by injection       | A natural version race needs two concurrent clients writing the same batch             | not planned (Phase 8 review)     |
+| No real screen reader                                   | Roles, names and states are asserted (debt row 29)                                     | manual, before a release         |
+| "Caller went away" tests cover writes only (D1)         | The convention above exists from Phase 8; reads and transfers are older code           | debt row 38                      |
+| Response headers: caching only                          | `e2e-production` asserts caching (ADR-0044); CSP and security headers do not exist yet | with debt row 17                 |
+| Mutation testing                                        | Coverage says a line ran, not that a test would notice it changing                     | not planned - see final report   |
+| Firefox and WebKit run 5 of 16 specs                    | The others exercise no engine-specific API; the full matrix would triple CI time       | revisit if an engine bug escapes |
+| Layouts checked at three fixed widths                   | The widths are the breakpoints                                                         | not planned                      |

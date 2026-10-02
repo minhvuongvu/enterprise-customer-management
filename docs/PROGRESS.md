@@ -11,18 +11,18 @@ skipped, or broke.
 
 ## Phase status
 
-| Phase | Name                                            | Status      | Branch / tag | Completed  |
-| ----- | ----------------------------------------------- | ----------- | ------------ | ---------- |
-| 0     | Foundation & Architecture                       | **Done**    | `phase-0`    | 2026-09-20 |
-| 0.5   | Mock API & Contracts                            | **Done**    | `phase-0.5`  | 2026-09-20 |
-| 1     | Routing, Layout & Design System                 | **Done**    | `phase-1`    | 2026-09-20 |
-| 2     | Customer CRUD, Forms & Server State             | **Done**    | `phase-2`    | 2026-09-20 |
-| 3     | Authentication, Authorization & Security        | **Done**    | `phase-3`    | 2026-09-25 |
-| 4     | Enterprise UX, Files, Notifications & Realtime  | **Done**    | `phase-4`    | 2026-09-25 |
-| 5     | Performance, Rendering, Offline & Browser APIs  | **Done**    | `phase-5`    | 2026-09-25 |
-| 6     | Accessibility, i18n, Design System & UX Quality | **Done**    | `phase-6`    | 2026-09-28 |
-| 7     | Observability, Testing, CI/CD & Hardening       | **Done**    | `phase-7`    | 2026-09-30 |
-| 8     | Enterprise Codebase Review                      | Not started | `phase-8`    | —          |
+| Phase | Name                                            | Status   | Branch / tag | Completed  |
+| ----- | ----------------------------------------------- | -------- | ------------ | ---------- |
+| 0     | Foundation & Architecture                       | **Done** | `phase-0`    | 2026-09-20 |
+| 0.5   | Mock API & Contracts                            | **Done** | `phase-0.5`  | 2026-09-20 |
+| 1     | Routing, Layout & Design System                 | **Done** | `phase-1`    | 2026-09-20 |
+| 2     | Customer CRUD, Forms & Server State             | **Done** | `phase-2`    | 2026-09-20 |
+| 3     | Authentication, Authorization & Security        | **Done** | `phase-3`    | 2026-09-25 |
+| 4     | Enterprise UX, Files, Notifications & Realtime  | **Done** | `phase-4`    | 2026-09-25 |
+| 5     | Performance, Rendering, Offline & Browser APIs  | **Done** | `phase-5`    | 2026-09-25 |
+| 6     | Accessibility, i18n, Design System & UX Quality | **Done** | `phase-6`    | 2026-09-28 |
+| 7     | Observability, Testing, CI/CD & Hardening       | **Done** | `phase-7`    | 2026-09-30 |
+| 8     | Enterprise Codebase Review                      | **Done** | `phase-8`    | 2026-10-02 |
 
 Status values: `Not started` · `In progress` · `Done` · `Done with deviations`
 
@@ -62,6 +62,116 @@ Two things were fixed on 2026-09-20 and will look confusing if rediscovered late
 ## Phase log
 
 Newest entry first. One entry per phase, appended at the end of that phase.
+
+### Phase 8 - Enterprise Codebase Review
+
+**Completed:** 2026-10-02 - **Tag:** `phase-8-complete`
+
+**Built**
+
+- **`docs/enterprise-review.md`** - the review the phase asks for: the transferability
+  answer (what transfers, what is simplified, what should stay simple, what should be more
+  enterprise-like, what not to copy); the seven architecture maps (feature dependency
+  graph generated from the imports, state ownership map, request lifecycle,
+  authentication flow, error flow, main user journeys, testing architecture); findings in
+  all eleven areas, each with location, problem, why it matters, a concrete example, a
+  suggested improvement and a priority; a cross-check of earlier claims; the debt
+  reconciled. No numeric scores.
+- **Four defects fixed** - each found by the review, each with a test that failed first:
+  - **D1 - writes aborted with their page** (`customer-store.ts`). Unsubscribing - which
+    `takeUntilDestroyed` does on leaving a page - aborted the request and skipped the
+    store's cache update, the optimistic rollback and the news for other tabs. Leaving
+    the detail page right after a status toggle left an unconfirmed status on the list.
+    Now `runToCompletion()`: the store subscribes once, callers get a replay
+    (ADR-0043). 3 tests.
+  - **D2 - `config.json` cached for a year** (`server.ts`). The CLI scaffold's
+    `maxAge: '1y'` covered every file, so a new `config.json` - every runtime flag, the
+    import kill switch - never reached a browser that had loaded the app once. Now only
+    fingerprinted bundles are `immutable`; everything else is `no-cache` (ADR-0044).
+    2 production E2E tests; found with `curl`.
+  - **D3 - a cross-origin `apiBaseUrl` validated** (`app-config.ts`). The CSRF
+    interceptor stamps only relative URLs and the session cookies are first-party only
+    behind the proxy; an absolute URL passed the schema and then every write was 403.
+    The schema now requires a same-origin path. 7 tests; two existing tests used an
+    absolute URL as their valid example and were changed.
+  - **D4 - sign-in said "network error" for everything but bad credentials**
+    (`login-page.ts`) - a 429 from the rate limit included. Now the taxonomy's message.
+    1 test.
+
+**Architectural decisions**
+
+- [ADR-0043](decisions/0043-writes-run-to-completion.md) - a write, once started, runs to completion; the caller only decides whether it listens.
+- [ADR-0044](decisions/0044-static-file-caching.md) - the SSR server caches only fingerprinted files.
+
+**Deviated from the plan**
+
+- **Production code changed** - the prompt allows it only for identified defects; the
+  four above are each justified in docs/enterprise-review.md §3. Nothing else in
+  production code was touched; the findings that are refactors (API-2, MAINT-1) or
+  product decisions are written down, not done.
+- **Debt 17 (CSP) not paid**, though earlier phases had dated it "Phase 8": it needs
+  per-request nonces in `server.ts` and a decision about the prerendered `/login` - a
+  feature by this phase's rules. Widened to "no security headers at all on the document"
+  (SEC-2) and re-dated "before the first deployment".
+- **Debts 20, 21, 29, 30, 34 not paid** (all dated "Phase 8"): each is a product decision,
+  a manual task or a refactor; re-dated with a reason in the register.
+- **`master` not merged.** The rules forbid working on `master`; history is linear, so a
+  fast-forward is a repository-owner action (docs/enterprise-review.md DX-1).
+- **`docs/architecture-report.md` kept** as Phase 7's report; the enterprise review
+  supersedes its recommendations list (§7 of the review).
+
+**Found by the review, written down, not fixed** - new debt rows 35-38:
+
+- API-1: the email-availability check reads one row of a substring search - reproduced
+  against the mock API (`an@review.test` reported free after `joan@review.test` was
+  created). The server's 409 still protects the data.
+- API-2: timeout and retry live in the customer feature; the session and health clients
+  have none, so a hung `GET /auth/session` leaves the first navigation pending for ever.
+- MAINT-1: `CustomerListPage` (13 injected dependencies) and `CustomerStore` (file
+  transfers mixed with the cache).
+- TEST-1: "caller went away" tests exist for writes only.
+- A11Y-3 (row 39): `lockScrollWhile` records a lock CDK declined (page not yet taller
+  than the viewport). Found as a pre-existing flaky E2E - `responsive.spec.ts` "locks the
+  page behind the open drawer" failed 3/10 on `phase-7` code; the test now waits for the
+  cards (20/20).
+
+**Checks**
+
+| Check                     | Result                                                                                                                                 |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run format:check`    | clean                                                                                                                                  |
+| `npm run lint`            | clean - eslint, styles, architecture (333 files, 912 imports, 12 rules, 0 cycles), secrets (495 files); 0 errors, 0 warnings           |
+| `npm run typecheck`       | clean                                                                                                                                  |
+| `npm test` (coverage)     | 680 passed - 486 web (was 475), 133 mock API, 45 contracts, 16 lint tools; web 81.5 % lines, mock API 89.8 %, contracts 99.2 %         |
+| `npm run build`           | succeeded, browser + server; initial 520.6 kB                                                                                          |
+| `npm run perf:budgets`    | initial JS 511 / 520 kB; largest lazy 52 / 80 kB; nothing forbidden shipped                                                            |
+| `npm run e2e`             | 215 passed - after fixing a pre-existing flake (`responsive.spec.ts`, 3/10 failures on `phase-7`; first full run here: 214 + 1 failed) |
+| `npm run e2e:production`  | 9 passed (was 7) - incl. 2 HTTP caching tests                                                                                          |
+| Visual / Firefox / WebKit | not re-run locally: no visual change; CI runs them on push                                                                             |
+| Import cycles             | none                                                                                                                                   |
+
+**Findings worth carrying forward**
+
+- **An unsubscribe is not a cancel.** For a read it is; for a write the server may have
+  done it already. Bind a write's lifetime to the owner of the state it settles, not to
+  the view that asked.
+- **Scaffolds have opinions about deployment.** The CLI's `server.ts` cached everything
+  for a year; nothing in the application's tests could see it. Assert response headers
+  in the production suite.
+- **An invariant two modules rely on belongs in the validator of the input that can
+  break it.** The CSRF interceptor's "relative URLs only" was right and invisible.
+- **Seed data hides collisions.** Unique numbers in every seeded email meant 0 of 500
+  checks went wrong; two hand-made addresses broke it.
+- **Tests that always wait for the response cannot find lifecycle bugs.** 669 green tests
+  and D1 survived six phases.
+
+**For whoever continues**
+
+- Start with docs/enterprise-review.md §7 (order of work). The first item is not code:
+  fast-forward `master` to `phase-8-complete` and protect it (debt 33 is blocked until the
+  default branch has the workflow).
+
+---
 
 ### Phase 7 - Observability, Testing, CI/CD & Enterprise Hardening
 
@@ -1304,22 +1414,27 @@ it. Recorded as debt row 8 rather than silenced by raising the budget.
 
 Debt is only acceptable when it is written down. Remove the row when it is paid.
 
-| #   | Debt                                                                                                                                                                                             | Added in  | Why accepted                                                                                                                      | Pay by                                                                                             | Status |
-| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------- | --------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- | ------ |
-| 6   | The mock API rate limiter is fixed-window, so a client can send up to twice the limit across a boundary                                                                                          | Phase 0.5 | It exists to make 429 a real code path, not to be a real limiter                                                                  | not planned - documented instead                                                                   | Open   |
-| 16  | The i18n lint rule's `ignoreAttributes` list has grown to 18 entries                                                                                                                             | Phase 2   | Every entry is genuinely not copy, and the rule still catches real violations                                                     | when it passes ~20 (18 at `phase-7-complete`)                                                      | Open   |
-| 17  | No Content-Security-Policy on the application document                                                                                                                                           | Phase 3   | It belongs to the server that serves `index.html`, and needs nonces for Angular's inline styles and event-replay script           | Phase 8 (`autoCsp` is refused with SSR - Phase 7 tried; needs per-request nonces from `server.ts`) | Open   |
-| 20  | A session that ends - by expiry or by pressing sign out - while a form has unsaved changes asks whether to discard them on the way to sign-in; staying leaves a signed-out form that cannot save | Phase 3   | Nothing is lost silently, which is the property that matters; the better flow (re-authenticate in place) is a UX design question  | Phase 8 (a product decision; Phase 6 did not take it)                                              | Open   |
-| 21  | A signed-out cold visit sends one refresh request that fails with 403 (no CSRF cookie) before settling on "anonymous"                                                                            | Phase 3   | One wasted request, handled correctly; skipping it would mean the client reasoning about cookies it is meant not to depend on     | Phase 8                                                                                            | Open   |
-| 24  | Changing `@ecm/contracts`' exports needs `apps/web/.angular/cache` deleted before `npm start` / E2E see them                                                                                     | Phase 4   | A fresh clone and CI are unaffected; the symptom is loud ("does not provide an export named")                                     | Phase 7 (tooling)                                                                                  | Open   |
-| 26  | The rendering measurements are uncompressed: the Express SSR server does not gzip, so server-rendered pages transfer 144 kB more HTML than a real deployment would                               | Phase 5   | Stated in docs/rendering.md; the comparison between modes holds, the absolute bytes do not                                        | a deployment (reverse proxy compression); Phase 7 added none - there is no deployment              | Open   |
-| 27  | The offline lab's snapshot survives on disk if every tab that opened the lab is closed before the session ends                                                                                   | Phase 5   | Four fields, never shown to another user, deleted on the next visit if the user differs                                           | not planned - documented in docs/offline.md                                                        | Open   |
-| 29  | No test with a real screen reader has been recorded; semantics are asserted by role and accessible name, which is what a reader consumes, not how it speaks                                      | Phase 6   | The environment has no screen reader; the E2E suite pins every role, name and state a reader would announce                       | Phase 8 (manual NVDA / VoiceOver pass)                                                             | Open   |
-| 30  | A dialog hides the page behind it from assistive technology with `aria-modal` only, not `inert`                                                                                                  | Phase 6   | Current NVDA, JAWS, VoiceOver and TalkBack honour `aria-modal`; `inert` needs a service coordinating the shell and the host       | Phase 8                                                                                            | Open   |
-| 31  | CSS-drawn directional glyphs (pagination chevrons, filter disclosure, breadcrumb separator) would not mirror under `dir="rtl"`                                                                   | Phase 6   | No right-to-left language ships; the stylesheets are otherwise logical and linted                                                 | not planned - when an RTL language is added (docs/i18n.md)                                         | Open   |
-| 32  | Client logs go to the browser console only: no collector receives them, and the error tracker reports to the log                                                                                 | Phase 7   | There is no collector or vendor to send to; the `LogSink` and `ErrorTracker` seams are where one plugs in (docs/observability.md) | a deployment                                                                                       | Open   |
-| 33  | Branch protection is not applied: the CI checks are not yet _required_, so a red run advises rather than blocks                                                                                  | Phase 7   | It is a repository setting, not a file - it cannot be committed; docs/ci.md lists the checks to require                           | repository owner                                                                                   | Open   |
-| 34  | WebKit fetches the 1600 px `srcset` candidate for the first, eager image in the performance lab (Chromium and Firefox fetch 400/800)                                                             | Phase 7   | Lab only; every lazy image is right; asserted with `test.fail` so a change in WebKit is reported                                  | Phase 8 (investigate attribute order in `NgOptimizedImage`)                                        | Open   |
+| #   | Debt                                                                                                                                                                                                 | Added in  | Why accepted                                                                                                                                        | Pay by                                                                                                       | Status |
+| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ | ------ |
+| 6   | The mock API rate limiter is fixed-window, so a client can send up to twice the limit across a boundary                                                                                              | Phase 0.5 | It exists to make 429 a real code path, not to be a real limiter                                                                                    | not planned - documented instead                                                                             | Open   |
+| 16  | The i18n lint rule's `ignoreAttributes` list has grown to 18 entries                                                                                                                                 | Phase 2   | Every entry is genuinely not copy, and the rule still catches real violations                                                                       | when it passes ~20 (18 at `phase-7-complete`)                                                                | Open   |
+| 17  | No Content-Security-Policy - and, the Phase 8 review found, no security headers at all (`X-Content-Type-Options`, `frame-ancestors`, `Referrer-Policy`) - on the application document                | Phase 3   | It belongs to the server that serves `index.html`, and needs nonces for Angular's inline styles and event-replay script                             | before the first deployment (`autoCsp` is refused with SSR; design in docs/enterprise-review.md SEC-1/SEC-2) | Open   |
+| 20  | A session that ends - by expiry or by pressing sign out - while a form has unsaved changes asks whether to discard them on the way to sign-in; staying leaves a signed-out form that cannot save     | Phase 3   | Nothing is lost silently, which is the property that matters; the better flow (re-authenticate in place) is a UX design question                    | a product decision (Phase 8 review: not a review fix)                                                        | Open   |
+| 21  | A signed-out cold visit sends one refresh request that fails with 403 (no CSRF cookie) before settling on "anonymous"                                                                                | Phase 3   | One wasted request, handled correctly; skipping it would mean the client reasoning about cookies it is meant not to depend on                       | with row 36 (same client)                                                                                    | Open   |
+| 24  | Changing `@ecm/contracts`' exports needs `apps/web/.angular/cache` deleted before `npm start` / E2E see them                                                                                         | Phase 4   | A fresh clone and CI are unaffected; the symptom is loud ("does not provide an export named")                                                       | Phase 7 (tooling)                                                                                            | Open   |
+| 26  | The rendering measurements are uncompressed: the Express SSR server does not gzip, so server-rendered pages transfer 144 kB more HTML than a real deployment would                                   | Phase 5   | Stated in docs/rendering.md; the comparison between modes holds, the absolute bytes do not                                                          | a deployment (reverse proxy compression); Phase 7 added none - there is no deployment                        | Open   |
+| 27  | The offline lab's snapshot survives on disk if every tab that opened the lab is closed before the session ends                                                                                       | Phase 5   | Four fields, never shown to another user, deleted on the next visit if the user differs                                                             | not planned - documented in docs/offline.md                                                                  | Open   |
+| 29  | No test with a real screen reader has been recorded; semantics are asserted by role and accessible name, which is what a reader consumes, not how it speaks                                          | Phase 6   | The environment has no screen reader; the E2E suite pins every role, name and state a reader would announce                                         | manual NVDA / VoiceOver pass before a release (cannot be done in this environment)                           | Open   |
+| 30  | A dialog hides the page behind it from assistive technology with `aria-modal` only, not `inert`                                                                                                      | Phase 6   | Current NVDA, JAWS, VoiceOver and TalkBack honour `aria-modal`; `inert` needs a service coordinating the shell and the host                         | when the dialog is next changed (Phase 8 review: Low)                                                        | Open   |
+| 31  | CSS-drawn directional glyphs (pagination chevrons, filter disclosure, breadcrumb separator) would not mirror under `dir="rtl"`                                                                       | Phase 6   | No right-to-left language ships; the stylesheets are otherwise logical and linted                                                                   | not planned - when an RTL language is added (docs/i18n.md)                                                   | Open   |
+| 32  | Client logs go to the browser console only: no collector receives them, and the error tracker reports to the log                                                                                     | Phase 7   | There is no collector or vendor to send to; the `LogSink` and `ErrorTracker` seams are where one plugs in (docs/observability.md)                   | a deployment                                                                                                 | Open   |
+| 33  | Branch protection is not applied: the CI checks are not yet _required_, so a red run advises rather than blocks                                                                                      | Phase 7   | It is a repository setting, not a file - it cannot be committed; docs/ci.md lists the checks to require                                             | repository owner - **blocked until `master` is fast-forwarded** (it has no workflow; review DX-1)            | Open   |
+| 34  | WebKit fetches the 1600 px `srcset` candidate for the first, eager image in the performance lab (Chromium and Firefox fetch 400/800)                                                                 | Phase 7   | Lab only; every lazy image is right; asserted with `test.fail` so a change in WebKit is reported                                                    | not planned - lab only (Phase 8 review: Low)                                                                 | Open   |
+| 35  | The email-availability check reads one row of a substring search (`search=<email>&size=1`): when another address containing it was updated more recently, a taken address is reported free           | Phase 8   | The server refuses the duplicate with 409, shown on the email control - no data is wrong; the fix needs an exact-match query in the contract        | with an exact `email` filter in `@ecm/contracts` and the mock API (review API-1)                             | Open   |
+| 36  | Timeout, retry and response validation live in `customers/data/request-policy.ts`; the session and health clients have no timeout, so a hung `GET /auth/session` leaves the first navigation pending | Phase 8   | Found by review; a move plus three call sites, but a refactor, not a defect fix                                                                     | next change to `core/http` or `core/api` (review API-2)                                                      | Open   |
+| 37  | `CustomerListPage` (768 lines, 13 injected dependencies) and `CustomerStore` (list, detail, audit, optimistic, file transfers) are the next units to split                                           | Phase 7   | No failing test; D1's fix touching five scattered methods was the first real cost                                                                   | before the feature grows a second list (review MAINT-1)                                                      | Open   |
+| 38  | "Caller went away" tests exist for store writes only; reads and transfers have their cancellation tested in places, not by convention                                                                | Phase 8   | The convention is new (docs/testing-strategy.md); D1's three tests are the template                                                                 | when the store is split (row 37)                                                                             | Open   |
+| 39  | A modal opened over a page not yet taller than the viewport is never scroll-locked, even after the page grows: CDK's block strategy declines and `lockScrollWhile` records it as locked              | Phase 8   | Found as a flaky E2E (3 in 10 on `phase-7`); the test now waits for content; the app gap is narrow (drawer opened during the first load on a phone) | when `scroll-lock.ts` is next changed (review A11Y-3)                                                        | Open   |
 
 ---
 

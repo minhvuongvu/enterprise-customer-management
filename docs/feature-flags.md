@@ -92,6 +92,8 @@ removal. Change both together.
   a server that knows the user - LaunchDarkly, Unleash, or an endpoint - and
   `FeatureFlags` would become its adapter; no call site changes.
 - **No live updates.** `config.json` is read at start-up; a change applies on the next
-  load. Enough for a kill switch measured in minutes, not seconds.
+  load. Enough for a kill switch measured in minutes, not seconds - **provided the file
+  is not cached**: the server sends it `no-cache` (ADR-0044). Until Phase 8 it was cached
+  for a year, and the kill switch reached only browsers that had never loaded the app.
 - **No flag for work in progress.** Unfinished work lives on a branch here, not behind a
   flag in `main` - there is no trunk-based workflow that would need one.

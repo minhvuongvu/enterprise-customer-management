@@ -21,6 +21,7 @@ import {
   finalize,
   map,
   of,
+  ReplaySubject,
   Subject,
   switchMap,
   tap,
@@ -327,6 +328,10 @@ export class CustomerStore {
   }
 
   // --------------------------------------------------------------- mutating
+  //
+  // Every write below runs to completion once started (`runToCompletion`):
+  // the caller's subscription decides who hears the outcome, not whether the
+  // store applies it. Reads are the opposite - cancelling them is the point.
 
   /**
    * Creates a customer, then drops every cached page.
@@ -339,14 +344,16 @@ export class CustomerStore {
   create(input: CreateCustomerRequest): Observable<Customer> {
     return (
       this.refuseUnless('CUSTOMER_CREATE') ??
-      this.api.create(input).pipe(
-        tap((created) => {
-          this.cache.invalidatePages();
-          this.cache.putEntity(created);
-          this.refreshList();
-          this.announce('created', created);
-          this.telemetry.track({ name: 'customer.created' });
-        }),
+      runToCompletion(
+        this.api.create(input).pipe(
+          tap((created) => {
+            this.cache.invalidatePages();
+            this.cache.putEntity(created);
+            this.refreshList();
+            this.announce('created', created);
+            this.telemetry.track({ name: 'customer.created' });
+          }),
+        ),
       )
     );
   }
@@ -355,20 +362,23 @@ export class CustomerStore {
   update(id: CustomerId, input: UpdateCustomerRequest): Observable<Customer> {
     return (
       this.refuseUnless('CUSTOMER_UPDATE') ??
-      this.api.update(id, input).pipe(
-        tap((updated) => {
-          this.cache.invalidatePages();
-          this.cache.putEntity(updated);
-          if (this.activeId === updated.id) {
-            // The response is the newest version there is, including the
-            // concurrency token. Setting it directly means the next edit starts
-            // from it rather than from whatever was fetched before the save.
-            this.detailState.set(success(updated));
-          }
-          this.refreshList();
-          this.announce('updated', updated);
-          this.telemetry.track({ name: 'customer.updated' });
-        }),
+      runToCompletion(
+        this.api.update(id, input).pipe(
+          tap((updated) => {
+            this.cache.invalidatePages();
+            this.cache.putEntity(updated);
+            if (this.activeId === updated.id) {
+              // The response is the newest version there is, including the
+              // concurrency token. Setting it directly means the next edit
+              // starts from it rather than from whatever was fetched before
+              // the save.
+              this.detailState.set(success(updated));
+            }
+            this.refreshList();
+            this.announce('updated', updated);
+            this.telemetry.track({ name: 'customer.updated' });
+          }),
+        ),
       )
     );
   }
@@ -378,18 +388,20 @@ export class CustomerStore {
     const removed = this.recordFor(id);
     return (
       this.refuseUnless('CUSTOMER_DELETE') ??
-      this.api.remove(id).pipe(
-        tap(() => {
-          this.cache.invalidatePages();
-          this.cache.dropEntity(id);
-          if (this.activeId === id) {
-            this.detailState.set(idle);
-            this.activeId = null;
-          }
-          this.refreshList();
-          this.announce('deleted', removed ?? { id, customerCode: null });
-          this.telemetry.track({ name: 'customer.deleted' });
-        }),
+      runToCompletion(
+        this.api.remove(id).pipe(
+          tap(() => {
+            this.cache.invalidatePages();
+            this.cache.dropEntity(id);
+            if (this.activeId === id) {
+              this.detailState.set(idle);
+              this.activeId = null;
+            }
+            this.refreshList();
+            this.announce('deleted', removed ?? { id, customerCode: null });
+            this.telemetry.track({ name: 'customer.deleted' });
+          }),
+        ),
       )
     );
   }
@@ -405,18 +417,20 @@ export class CustomerStore {
     const permission = action === 'DELETE' ? 'CUSTOMER_DELETE' : 'CUSTOMER_UPDATE';
     return (
       this.refuseUnless(permission) ??
-      this.api.bulk({ action, ids: [...ids] }).pipe(
-        tap((response) => {
-          this.cache.invalidatePages();
-          for (const result of response.results) {
-            if (result.outcome === 'SUCCEEDED') {
-              this.cache.dropEntity(result.id);
+      runToCompletion(
+        this.api.bulk({ action, ids: [...ids] }).pipe(
+          tap((response) => {
+            this.cache.invalidatePages();
+            for (const result of response.results) {
+              if (result.outcome === 'SUCCEEDED') {
+                this.cache.dropEntity(result.id);
+              }
             }
-          }
-          this.refreshList();
-          this.ownChanges.next({ change: 'many' });
-          this.telemetry.track({ name: 'customers.bulk_action', action, count: ids.length });
-        }),
+            this.refreshList();
+            this.ownChanges.next({ change: 'many' });
+            this.telemetry.track({ name: 'customers.bulk_action', action, count: ids.length });
+          }),
+        ),
       )
     );
   }
@@ -457,24 +471,29 @@ export class CustomerStore {
     this.show(optimistic);
     this.statusPendingState.update((pending) => new Set(pending).add(id));
 
-    return this.api.update(id, { status, version: before.version }).pipe(
-      tap((saved) => {
-        this.show(saved);
-        this.cache.invalidatePages();
-        this.refreshList();
-        this.announce('updated', saved);
-        this.telemetry.track({ name: 'customer.status_changed', status });
-      }),
-      catchError((error: unknown) => {
-        this.rollback(optimistic, before);
-        return throwError(() => error);
-      }),
-      finalize(() =>
-        this.statusPendingState.update((pending) => {
-          const next = new Set(pending);
-          next.delete(id);
-          return next;
+    // Run to completion above all here: an unsubscribe would skip both the
+    // confirmation and the rollback, and leave the optimistic status on
+    // screen with nothing left to settle it.
+    return runToCompletion(
+      this.api.update(id, { status, version: before.version }).pipe(
+        tap((saved) => {
+          this.show(saved);
+          this.cache.invalidatePages();
+          this.refreshList();
+          this.announce('updated', saved);
+          this.telemetry.track({ name: 'customer.status_changed', status });
         }),
+        catchError((error: unknown) => {
+          this.rollback(optimistic, before);
+          return throwError(() => error);
+        }),
+        finalize(() =>
+          this.statusPendingState.update((pending) => {
+            const next = new Set(pending);
+            next.delete(id);
+            return next;
+          }),
+        ),
       ),
     );
   }
@@ -677,6 +696,34 @@ export class CustomerStore {
       }),
     );
   }
+}
+
+/**
+ * Starts a write now and lets it finish whoever is still listening.
+ *
+ * A component subscribes to a write with `takeUntilDestroyed`, which is right
+ * for *listening* - a page that is gone has nothing to update. It is wrong
+ * for the write itself: unsubscribing aborts the request, and an aborted
+ * write is not an unsent one. The server may already have applied it, and
+ * the store's own `tap` and `catchError` - the cache update, the rollback,
+ * the news for other tabs - never run. Navigating away from a detail page a
+ * moment after toggling a status left the optimistic status on the list,
+ * confirmed by nothing, until something refetched it (Phase 8 review,
+ * docs/enterprise-review.md).
+ *
+ * So the store subscribes itself, once, and hands callers a replay of the
+ * outcome: the request is sent exactly once, every caller - early or late -
+ * gets the same result or the same error, and leaving the page only stops
+ * the page hearing about it. The same rule as `SessionService.refresh()`: a
+ * request whose effect the client cannot know, once started, completes.
+ *
+ * File transfers are deliberately not wrapped: the user can watch them and
+ * press cancel, and cancelling is their timeout (`customer.api.ts`).
+ */
+function runToCompletion<T>(write: Observable<T>): Observable<T> {
+  const outcome = new ReplaySubject<T>(1);
+  write.subscribe(outcome);
+  return outcome.asObservable();
 }
 
 /** Why the open record may be out of date. */

@@ -38,10 +38,10 @@ describe('provideRuntimeConfig', () => {
   it('applies what the file says over the compiled-in defaults', async () => {
     const store = TestBed.inject(AppConfigStore);
 
-    backend.expectOne('/config.json').flush({ apiBaseUrl: 'https://api.staging.test' });
+    backend.expectOne('/config.json').flush({ apiBaseUrl: '/staging/api' });
     await Promise.resolve();
 
-    expect(store.config().apiBaseUrl).toBe('https://api.staging.test');
+    expect(store.config().apiBaseUrl).toBe('/staging/api');
     // A partial file adds to the defaults rather than blanking what it omits.
     expect(store.config().defaultLanguage).toBe(DEFAULT_APP_CONFIG.defaultLanguage);
   });
@@ -88,6 +88,8 @@ describe('provideRuntimeConfig', () => {
     const logger = TestBed.inject(Logger) as SilentLogger;
     const report = logger.entries.find((entry) => entry.level === 'error');
     expect(report?.fields?.['issues']).toEqual([
+      // Another origin: the session cookies and the CSRF header would not reach it.
+      'apiBaseUrl: must be a same-origin path such as "/api"',
       'features.technicalLabs: Invalid input: expected boolean, received string',
       'features: Unrecognized key: "customerImprot"',
     ]);

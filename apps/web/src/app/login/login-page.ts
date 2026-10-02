@@ -15,7 +15,7 @@ import { Router } from '@angular/router';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { safeReturnUrl } from '../core/auth/return-url';
 import { SessionService } from '../core/auth/session.service';
-import { isAppError } from '../core/errors/app-error';
+import { isAppError, messageKeyOf } from '../core/errors/app-error';
 import { LanguageSwitcher } from '../layout/language-switcher';
 import { ThemeToggle } from '../layout/theme-toggle';
 import { Button } from '../shared/ui/button/button';
@@ -272,10 +272,14 @@ export class LoginPage {
           // The server answers 401 for both an unknown user and a wrong
           // password, deliberately, so that the response cannot be used to
           // find out which accounts exist. The client says the same thing.
+          // Anything else says what the taxonomy says: until Phase 8 every
+          // other failure read "network error" - including a 429 for too
+          // many attempts, the one message a person retrying a password
+          // most needs to see.
           this.failure.set(
             isAppError(error) && error.kind === 'authentication'
               ? 'pages.login.invalidCredentials'
-              : 'errors.network',
+              : messageKeyOf(error),
           );
         },
       });

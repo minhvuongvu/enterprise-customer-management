@@ -55,6 +55,19 @@ export const DEFAULT_APP_CONFIG: AppConfig = {
 };
 
 /**
+ * `/api`, `/gateway/api`: a path on this origin, no trailing slash.
+ *
+ * Not a style rule - two layers depend on it. The session lives in
+ * first-party `HttpOnly` cookies, which only a same-origin API (the reverse
+ * proxy, docs/configuration.md) receives; and `csrfInterceptor` stamps the
+ * CSRF header only on relative URLs, so that the token never leaves for
+ * another host. An absolute URL here passed validation once and refused every
+ * write with 403 (Phase 8 review). `//host` is another origin that looks
+ * relative.
+ */
+const SAME_ORIGIN_PATH = /^\/(?!\/).*[^/]$/;
+
+/**
  * What `config.json` may contain: any subset, flags included. A deployment
  * that predates a flag omits it, and gets the default.
  *
@@ -64,7 +77,10 @@ export const DEFAULT_APP_CONFIG: AppConfig = {
  * error that names itself rather than a flag that silently never turns off.
  */
 export const appConfigOverridesSchema = z.strictObject({
-  apiBaseUrl: z.string().min(1).optional(),
+  apiBaseUrl: z
+    .string()
+    .regex(SAME_ORIGIN_PATH, 'must be a same-origin path such as "/api"')
+    .optional(),
   defaultLanguage: z.string().min(2).max(10).optional(),
   logLevel: z.enum(LOG_LEVELS as [LogLevel, ...LogLevel[]]).optional(),
   features: z

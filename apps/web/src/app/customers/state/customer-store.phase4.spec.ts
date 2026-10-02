@@ -154,6 +154,58 @@ describe('CustomerStore (optimistic, realtime, files)', () => {
     });
   });
 
+  /**
+   * A page subscribes to a write with `takeUntilDestroyed`; leaving it must
+   * stop the page listening, not the write. Phase 8 found the opposite: the
+   * unsubscribe aborted the request, the rollback never ran, and the list kept
+   * an optimistic status nothing had confirmed.
+   */
+  describe('a write whose caller stopped listening', () => {
+    it('is not aborted, and still rolls back an optimistic change the server refuses', () => {
+      const release = showBoth();
+
+      store.changeStatus(customer.id, 'INACTIVE').subscribe().unsubscribe();
+
+      const write = backend.expectOne({ method: 'PATCH', url: `/api/customers/${customer.id}` });
+      expect(write.cancelled).toBe(false);
+      write.flush(null, { status: 500, statusText: 'Server Error' });
+
+      expect(shownStatus()).toEqual({ detail: 'ACTIVE', row: 'ACTIVE', cached: 'ACTIVE' });
+      expect(store.statusPending().size).toBe(0);
+      release();
+    });
+
+    it('still applies a delete the server accepted, and tells the other tabs', () => {
+      showBoth();
+      const announced: unknown[] = [];
+      store.ownChanges$.subscribe((change) => announced.push(change));
+
+      store.remove(customer.id).subscribe().unsubscribe();
+
+      backend
+        .expectOne({ method: 'DELETE', url: `/api/customers/${customer.id}` })
+        .flush(null, { status: 204, statusText: 'No Content' });
+
+      expect(cache.getEntity(customer.id)).toBeNull();
+      expect(store.detail().status).toBe('idle');
+      expect(announced).toEqual([
+        { change: 'deleted', customerId: customer.id, customerCode: customer.customerCode },
+      ]);
+      listRequest().flush(aPage([]));
+    });
+
+    it('sends the request once, and gives a late listener the same outcome', async () => {
+      const write = store.update(customer.id, { fullName: 'Renamed', version: 3 });
+
+      const request = backend.expectOne({ method: 'PATCH', url: `/api/customers/${customer.id}` });
+      request.flush({ ...customer, fullName: 'Renamed', version: 4 });
+
+      // Subscribed after the response: replayed, not re-sent (verify() checks).
+      const saved = await firstValueFrom(write);
+      expect(saved.version).toBe(4);
+    });
+  });
+
   describe('news from another user', () => {
     it('refetches the list on screen, and flags - never replaces - the open record', () => {
       showBoth();

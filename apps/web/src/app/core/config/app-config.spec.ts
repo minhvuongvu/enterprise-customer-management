@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { AppConfigStore, DEFAULT_APP_CONFIG } from './app-config';
+import { AppConfigStore, appConfigOverridesSchema, DEFAULT_APP_CONFIG } from './app-config';
 
 describe('AppConfigStore', () => {
   function store(): AppConfigStore {
@@ -13,9 +13,9 @@ describe('AppConfigStore', () => {
 
   it('applies overrides over the defaults', () => {
     const subject = store();
-    subject.apply({ apiBaseUrl: 'https://api.example.test' });
+    subject.apply({ apiBaseUrl: '/gateway/api' });
 
-    expect(subject.config().apiBaseUrl).toBe('https://api.example.test');
+    expect(subject.config().apiBaseUrl).toBe('/gateway/api');
     expect(subject.config().defaultLanguage).toBe(DEFAULT_APP_CONFIG.defaultLanguage);
   });
 
@@ -33,4 +33,25 @@ describe('AppConfigStore', () => {
 
     expect(subject.config().features.technicalLabs).toBe(false);
   });
+});
+
+describe('appConfigOverridesSchema', () => {
+  /**
+   * The API must be same-origin: the session cookies are first-party only
+   * through the reverse proxy, and the CSRF interceptor stamps only relative
+   * URLs. An absolute URL used to validate - and then every write was refused
+   * with 403, with nothing pointing at the configuration (Phase 8 review).
+   */
+  it.each(['/api', '/gateway/api'])('accepts the same-origin path %s', (apiBaseUrl) => {
+    expect(appConfigOverridesSchema.safeParse({ apiBaseUrl }).success).toBe(true);
+  });
+
+  it.each(['https://api.example.test', '//api.example.test', 'api', '/api/', '/'])(
+    'rejects %s, which the session and CSRF layers cannot work with',
+    (apiBaseUrl) => {
+      const parsed = appConfigOverridesSchema.safeParse({ apiBaseUrl });
+      expect(parsed.success).toBe(false);
+      expect(parsed.error?.issues[0]?.path).toEqual(['apiBaseUrl']);
+    },
+  );
 });

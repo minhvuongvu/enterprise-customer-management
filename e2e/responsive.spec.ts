@@ -126,6 +126,12 @@ test.describe('the customer list on a phone', () => {
 
   test('locks the page behind the open drawer', async ({ page }) => {
     await page.goto('/customers');
+    // CDK's block strategy locks only a page taller than the viewport. Opened
+    // over the loading skeleton the page is short, nothing is locked, and the
+    // test failed 3 times in 10 on a loaded machine (Phase 8). Wait for the
+    // cards: a scrollable page is the case this test is about. The opposite
+    // order is a real gap, recorded as debt row 39.
+    await expect(page.getByTestId('customer-card').first()).toBeVisible();
     await page.getByRole('button', { name: 'Navigation menu', exact: true }).click();
     await expect(page.getByRole('dialog', { name: 'Navigation menu' })).toBeVisible();
 

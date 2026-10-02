@@ -49,6 +49,13 @@ cannot silently change production), and production must keep the labs off and th
 How a deployment applies its file: copy `deploy/config.<env>.json` over
 `browser/config.json` in the built output (or mount it there). Nothing is rebuilt.
 
+**Caching** ([ADR-0044](decisions/0044-static-file-caching.md)). The SSR server sends
+`config.json` - like every file whose name survives a deployment - with
+`Cache-Control: no-cache`, so a browser revalidates it on every load (a 304 when it is
+unchanged). Only fingerprinted bundles are `immutable` for a year. Until Phase 8 the
+scaffold cached `config.json` for a year, and a new file never reached a browser that
+had seen the old one. A proxy or CDN in front must keep the same split.
+
 ## 3. Every setting
 
 **Web, build-time** (`environments/`):
@@ -60,12 +67,12 @@ How a deployment applies its file: copy `deploy/config.<env>.json` over
 
 **Web, runtime** (`config.json`, schema `appConfigOverridesSchema`):
 
-| Key               | Default | Meaning                                                             |
-| ----------------- | ------- | ------------------------------------------------------------------- |
-| `apiBaseUrl`      | `/api`  | Same origin behind a reverse proxy - what keeps cookies first-party |
-| `defaultLanguage` | `en`    | Before the user picks one (docs/i18n.md)                            |
-| `logLevel`        | `info`  | Lowest level any log sink receives                                  |
-| `features.*`      | on      | docs/feature-flags.md                                               |
+| Key               | Default | Meaning                                                                                                                                                                                                                                                    |
+| ----------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apiBaseUrl`      | `/api`  | Same origin behind a reverse proxy - what keeps cookies first-party. **Must be a same-origin path** (`/api`, `/gateway/api`): the schema rejects an absolute or `//host` URL, because the CSRF header and the session cookies would not reach it (Phase 8) |
+| `defaultLanguage` | `en`    | Before the user picks one (docs/i18n.md)                                                                                                                                                                                                                   |
+| `logLevel`        | `info`  | Lowest level any log sink receives                                                                                                                                                                                                                         |
+| `features.*`      | on      | docs/feature-flags.md                                                                                                                                                                                                                                      |
 
 **Mock API** (environment variables, all optional - `apps/mock-api/.env.example`):
 `MOCK_API_PORT`, `MOCK_API_SEED`, `MOCK_API_CUSTOMERS`, `MOCK_API_CORS_ORIGINS`,

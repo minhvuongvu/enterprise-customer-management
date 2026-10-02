@@ -1,7 +1,8 @@
 # Architecture
 
 What exists, and the rules later work builds inside. The phase-by-phase account is in
-`docs/PROGRESS.md`; the whole-repository review is [architecture-report.md](architecture-report.md).
+`docs/PROGRESS.md`; the whole-repository review is [enterprise-review.md](enterprise-review.md)
+(Phase 8, with the architecture maps), preceded by [architecture-report.md](architecture-report.md) (Phase 7).
 
 `ANGULAR_PROJECT_CONTEXT.md` is the authority on intent. This document describes the
 code.

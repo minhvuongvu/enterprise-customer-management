@@ -64,6 +64,17 @@ what this repository is for. The trigger to revisit: a second feature needing
 the same cache machinery, or several optimistic operations wanting a shared
 snapshot/rollback helper.
 
+## Writes run to completion (Phase 8)
+
+A read belongs to whoever asked: when they stop listening it is cancelled, which is what
+`switchMap` is for. A write belongs to the store: once sent, the client cannot know
+whether the server applied it, so it must hear the answer and settle the cache, the
+rollback and the other tabs whatever the caller does. `runToCompletion()` in
+`customer-store.ts` makes `create`, `update`, `remove`, `runBulk` and `changeStatus`
+eager and replayed; a page's `takeUntilDestroyed` now only stops the page listening.
+File transfers stay cancellable - the user has a cancel button. ADR-0043; the defect it
+fixes is docs/enterprise-review.md D1.
+
 ## Cache invalidation rules, complete
 
 | Event                                                | Pages           | Entity                                | List on screen | Open record                        |

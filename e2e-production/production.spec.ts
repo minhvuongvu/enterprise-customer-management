@@ -92,3 +92,37 @@ test.describe('route preloading', () => {
     expect(withPreloading).toBeGreaterThanOrEqual(without + 3);
   });
 });
+
+/**
+ * What a browser may keep without asking again. A file whose name survives a
+ * deployment must be revalidated, or the deployment never reaches a browser
+ * that has seen it once - Phase 8 found `config.json` cached for a year, which
+ * made every runtime flag, the import kill switch included, a no-op for
+ * returning users.
+ */
+test.describe('HTTP caching', () => {
+  test('runtime configuration and service-worker files are revalidated on every use', async ({
+    request,
+  }) => {
+    for (const path of ['/config.json', '/ngsw.json', '/ngsw-worker.js', '/favicon.ico']) {
+      const response = await request.get(path);
+      expect(response.status(), path).toBe(200);
+      expect(response.headers()['cache-control'], path).toBe('no-cache');
+    }
+  });
+
+  test('fingerprinted bundles are cached for a year', async ({ request }) => {
+    const html = await (await request.get('/login')).text();
+    const bundles = [...html.matchAll(/(?:src|href)="((?:main|styles)-[\w-]+\.(?:js|css))"/g)].map(
+      (match) => match[1],
+    );
+    expect(bundles.length).toBeGreaterThanOrEqual(2);
+
+    for (const bundle of bundles) {
+      const response = await request.get(`/${bundle}`);
+      expect(response.headers()['cache-control'], bundle).toBe(
+        'public, max-age=31536000, immutable',
+      );
+    }
+  });
+});

@@ -22,8 +22,9 @@ both sides joined by one correlation id and scrubbed by one redaction policy, an
 tracker and performance monitor, a CI pipeline on GitHub Actions whose every job is a
 gate - architecture, secrets, coverage, bundle and runtime budgets, axe, visual
 regression, Firefox and WebKit - and small, documented feature flags. Eleven technical
-labs, the newest on observability. `docs/architecture-report.md` is the whole-repository
-review.
+labs, the newest on observability. **`docs/enterprise-review.md`** is the final,
+staff-level review: what transfers to a real enterprise Angular project, what is
+simplified here, and what not to copy - with seven architecture maps.
 See `docs/PROGRESS.md` for what exists and what comes next.
 
 ## Quick start
@@ -85,6 +86,7 @@ prompts/             the phase prompts this repository is built from
 | `docs/accessibility.md`         | how accessibility is checked, what the audit found, what is still open    |
 | `docs/i18n.md`                  | languages, locale formatting, plurals, the time policy, RTL readiness     |
 | `docs/design-system.md`         | tokens, component states and APIs, responsive rules                       |
+| `docs/enterprise-review.md`     | **start here after the README**: what transfers, what not to copy, maps   |
 | `docs/architecture-report.md`   | the Phase 7 review: the architecture in eleven sections, debt, next steps |
 | `docs/observability.md`         | logs, correlation ids, redaction, error tracking, performance monitoring  |
 | `docs/ci.md`                    | the pipeline, its gates, and how each was shown to bite                   |

@@ -112,6 +112,26 @@ describe('LoginPage', () => {
     expect(TestBed.inject(Router).url).toBe('/login');
   });
 
+  it('says what went wrong when the failure is not the credentials', async () => {
+    const root = await open('/login');
+
+    // The mock API's rate limit covers sign-in: a person retrying a password
+    // must be told to wait, not that their network is down.
+    fillAndSubmit(root, 'admin', 'anything');
+    backend.expectOne('/api/auth/login').flush(
+      {
+        error: { code: 'RATE_LIMITED', message: 'Slow down.', correlationId: 'x' },
+      },
+      { status: 429, statusText: 'Too Many Requests', headers: { 'retry-after': '30' } },
+    );
+    harness.detectChanges();
+
+    const message = root.querySelector('[data-testid="login-error"]')?.textContent ?? '';
+    expect(message).toContain('Too many requests');
+    expect(message).not.toContain('were not accepted');
+    expect(message).not.toContain('Slow down.');
+  });
+
   it('explains why the user is here when their session ended', async () => {
     const root = await open('/login?returnUrl=%2Fcustomers&reason=expired');
 
