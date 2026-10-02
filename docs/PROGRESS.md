@@ -158,6 +158,13 @@ Newest entry first. One entry per phase, appended at the end of that phase.
 | Firefox + WebKit         | not run locally; CI runs them                                                                                                                      |
 | Import cycles            | none                                                                                                                                               |
 
+**CI runs** (GitHub Actions, `phase-8`):
+
+| Run                                                                                          | Commit    | Result                  | What it showed                                                                                                                                                                                      |
+| -------------------------------------------------------------------------------------------- | --------- | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [#6](https://github.com/minhvuongvu/enterprise-customer-management/actions/runs/36978222356) | `8ffc9ba` | **failed** - `quality`  | the dependency audit: GHSA-ff3f-86qr-9cv3 (high, `@angular/router <22.2.0`, SSR denial of service), published after `phase-7-complete`. Not caused by the change - the gate caught the world moving |
+| [#7](https://github.com/minhvuongvu/enterprise-customer-management/actions/runs/36980731989) | `df5d9d3` | **passed** - all 9 jobs | Angular 22.2.1; every gate green, Firefox and WebKit included                                                                                                                                       |
+
 **Findings worth carrying forward**
 
 - **An unsubscribe is not a cancel.** For a read it is; for a write the server may have
