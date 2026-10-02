@@ -24,7 +24,7 @@ finding's priority says how soon it should be acted on, and nothing more.
   section 4.2.
 
 **What it changed.** Four defects were fixed, each with a test that failed before the
-fix (section 3). Nothing else in production code was touched.
+fix, and Angular was moved to 22.2.1 for a security advisory that CI caught (section 3). Nothing else in production code was touched.
 
 ---
 
@@ -442,6 +442,17 @@ defects. These four qualify, and each has a test that fails without the fix.
 | **Priority**         | Medium                                                                                                                                                                                                                                           |
 
 ---
+
+### D5 — A high-severity advisory against the SSR router (found by CI, not by reading)
+
+|                      |                                                                                                                                                                                                                    |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Location**         | `apps/web/package.json`, `package-lock.json`                                                                                                                                                                       |
+| **Problem**          | GHSA-ff3f-86qr-9cv3: `@angular/router >=22.0.0 <22.2.0`, a denial of service through numeric URL matrix parameters during server-side rendering. It was published after `phase-7-complete`                         |
+| **Why it matters**   | This application server-renders. It is also the clearest evidence in the repository that the CI gates work: the code did not change, the world did, and the pipeline's `quality` job stopped everything downstream |
+| **Concrete example** | CI run #6 on `phase-8`: "Dependency audit" failed; `npm audit --omit=dev --audit-level=high` reproduced it locally                                                                                                 |
+| **Fix**              | All `@angular/*` packages to 22.2.1 together; the lockfile's Angular entries re-resolved (a plain `npm dedupe` broke module resolution for the test runner). Full verify re-run. ADR-0001, "Security update"       |
+| **Priority**         | High                                                                                                                                                                                                               |
 
 ## 4. Findings by area
 

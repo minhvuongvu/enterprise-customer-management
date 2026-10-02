@@ -97,6 +97,13 @@ Newest entry first. One entry per phase, appended at the end of that phase.
   - **D4 - sign-in said "network error" for everything but bad credentials**
     (`login-page.ts`) - a 429 from the rate limit included. Now the taxonomy's message.
     1 test.
+- **Angular 22.1.7 → 22.2.1** (all `@angular/*` together) - CI's dependency audit failed
+  the first `phase-8` run (run #6) on GHSA-ff3f-86qr-9cv3, a high-severity SSR denial of
+  service in `@angular/router <22.2.0`, published after `phase-7-complete`. The gate did
+  its job; recorded in ADR-0001 ("Security update"). Two follow-ons: `npm dedupe` broke
+  test-time module resolution (every web spec failed to load) - the lockfile's Angular
+  entries were re-resolved instead; and the build's metafile is now
+  `browser-stats.json`, so the two `perf/` scripts read it.
 
 **Architectural decisions**
 
@@ -137,18 +144,19 @@ Newest entry first. One entry per phase, appended at the end of that phase.
 
 **Checks**
 
-| Check                     | Result                                                                                                                                 |
-| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| `npm run format:check`    | clean                                                                                                                                  |
-| `npm run lint`            | clean - eslint, styles, architecture (333 files, 912 imports, 12 rules, 0 cycles), secrets (495 files); 0 errors, 0 warnings           |
-| `npm run typecheck`       | clean                                                                                                                                  |
-| `npm test` (coverage)     | 680 passed - 486 web (was 475), 133 mock API, 45 contracts, 16 lint tools; web 81.5 % lines, mock API 89.8 %, contracts 99.2 %         |
-| `npm run build`           | succeeded, browser + server; initial 520.6 kB                                                                                          |
-| `npm run perf:budgets`    | initial JS 511 / 520 kB; largest lazy 52 / 80 kB; nothing forbidden shipped                                                            |
-| `npm run e2e`             | 215 passed - after fixing a pre-existing flake (`responsive.spec.ts`, 3/10 failures on `phase-7`; first full run here: 214 + 1 failed) |
-| `npm run e2e:production`  | 9 passed (was 7) - incl. 2 HTTP caching tests                                                                                          |
-| Visual / Firefox / WebKit | not re-run locally: no visual change; CI runs them on push                                                                             |
-| Import cycles             | none                                                                                                                                   |
+| Check                    | Result                                                                                                                                             |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run format:check`   | clean                                                                                                                                              |
+| `npm run lint`           | clean - eslint, styles, architecture (333 files, 912 imports, 12 rules, 0 cycles), secrets (495 files); 0 errors, 0 warnings                       |
+| `npm run typecheck`      | clean                                                                                                                                              |
+| `npm test` (coverage)    | 680 passed (on Angular 22.2.1) - 486 web (was 475), 133 mock API, 45 contracts, 16 lint tools; web 81.4 % lines, mock API 89.8 %, contracts 99.2 % |
+| `npm run build`          | succeeded on Angular 22.2.1, browser + server; initial 520.2 kB                                                                                    |
+| `npm run perf:budgets`   | initial JS 510.7 / 520 kB; largest lazy 53 / 80 kB; nothing forbidden shipped                                                                      |
+| `npm run e2e`            | 215 passed - after fixing a pre-existing flake (`responsive.spec.ts`, 3/10 failures on `phase-7`; first full run here: 214 + 1 failed)             |
+| `npm run e2e:production` | 9 passed (was 7) - incl. 2 HTTP caching tests                                                                                                      |
+| visual (Docker)          | 14 passed on Angular 22.2.1 - no pixel change from the upgrade                                                                                     |
+| Firefox + WebKit         | not run locally; CI runs them                                                                                                                      |
+| Import cycles            | none                                                                                                                                               |
 
 **Findings worth carrying forward**
 
@@ -743,7 +751,7 @@ validation.
 | `npm run lint`         | clean - root + workspaces, 0 errors, 0 warnings                                   |
 | `npm run typecheck`    | clean across all three packages, templates included                               |
 | `npm test`             | 509 passed - 354 web, 122 mock-api, 33 contracts (was 447)                        |
-| `npm run build`        | succeeded, browser + server bundles, 1 route prerendered                          |
+| `npm run build`        | succeeded on Angular 22.2.1, browser + server; initial 520.2 kB                   |
 | `npm run e2e`          | 57 passed (was 45); stable across repeated runs after the last change             |
 | Import cycles          | none - `apps/web/src` 165 modules / 463 edges with specs (same method as Phase 3) |
 
@@ -888,7 +896,7 @@ check fails both reconnect tests; the seeded-audit test fails on the old mock.
 | `npm run lint`         | clean - root + workspaces, 0 errors, 0 warnings                                                                 |
 | `npm run typecheck`    | clean across all three packages, templates included                                                             |
 | `npm test`             | 447 passed - 303 web, 111 mock-api, 33 contracts (was 376)                                                      |
-| `npm run build`        | succeeded, browser + server bundles, 1 route prerendered                                                        |
+| `npm run build`        | succeeded on Angular 22.2.1, browser + server; initial 520.2 kB                                                 |
 | `npm run e2e`          | 45 passed (was 38), including login → protected route → permission-based UI → logout, expiry and failed refresh |
 | Import cycles          | none - see note below                                                                                           |
 
@@ -1024,15 +1032,15 @@ them, removing the generation check fails two others.
 
 **Checks**
 
-| Check                  | Result                                                   |
-| ---------------------- | -------------------------------------------------------- |
-| `npm run format:check` | clean                                                    |
-| `npm run lint`         | clean - root + workspaces, 0 errors, 0 warnings          |
-| `npm run typecheck`    | clean across all three packages                          |
-| `npm test`             | 376 passed - 248 web, 101 mock-api, 27 contracts         |
-| `npm run build`        | succeeded, browser + server bundles, 1 route prerendered |
-| `npm run e2e`          | 38 passed, including the full CRUD journey and axe       |
-| Import cycles          | none - 158 modules, 352 edges                            |
+| Check                  | Result                                                          |
+| ---------------------- | --------------------------------------------------------------- |
+| `npm run format:check` | clean                                                           |
+| `npm run lint`         | clean - root + workspaces, 0 errors, 0 warnings                 |
+| `npm run typecheck`    | clean across all three packages                                 |
+| `npm test`             | 376 passed - 248 web, 101 mock-api, 27 contracts                |
+| `npm run build`        | succeeded on Angular 22.2.1, browser + server; initial 520.2 kB |
+| `npm run e2e`          | 38 passed, including the full CRUD journey and axe              |
+| Import cycles          | none - 158 modules, 352 edges                                   |
 
 The bundle-budget warning is still there and still pre-existing: 797 kB against a
 500 kB budget, of which Phase 2 added 15 kB - every page of the feature is a lazy
@@ -1161,15 +1169,15 @@ chunk. Debt row 8, unchanged.
 
 **Checks**
 
-| Check                  | Result                                                   |
-| ---------------------- | -------------------------------------------------------- |
-| `npm run format:check` | clean                                                    |
-| `npm run lint`         | clean - root + workspaces, 0 errors, 0 warnings          |
-| `npm run typecheck`    | clean across all three packages                          |
-| `npm test`             | 247 passed - 123 web, 101 mock-api, 23 contracts         |
-| `npm run build`        | succeeded, browser + server bundles, 1 route prerendered |
-| `npm run e2e`          | 30 passed, including axe in both themes                  |
-| Import cycles          | none - 125 modules, 202 edges                            |
+| Check                  | Result                                                          |
+| ---------------------- | --------------------------------------------------------------- |
+| `npm run format:check` | clean                                                           |
+| `npm run lint`         | clean - root + workspaces, 0 errors, 0 warnings                 |
+| `npm run typecheck`    | clean across all three packages                                 |
+| `npm test`             | 247 passed - 123 web, 101 mock-api, 23 contracts                |
+| `npm run build`        | succeeded on Angular 22.2.1, browser + server; initial 520.2 kB |
+| `npm run e2e`          | 30 passed, including axe in both themes                         |
+| Import cycles          | none - 125 modules, 202 edges                                   |
 
 `npm run build` prints a bundle-budget warning. It is not new: the same warning exists
 at `phase-0.5-complete` (739 kB against a 500 kB budget), and Phase 1 added 42 kB of
@@ -1272,15 +1280,15 @@ it. Recorded as debt row 8 rather than silenced by raising the budget.
 
 **Checks**
 
-| Check                  | Result                                                   |
-| ---------------------- | -------------------------------------------------------- |
-| `npm run format:check` | clean                                                    |
-| `npm run lint`         | clean - root + workspaces, 0 errors, 0 warnings          |
-| `npm run typecheck`    | clean across all three packages                          |
-| `npm test`             | 167 passed - 43 web, 101 mock-api, 23 contracts          |
-| `npm run build`        | succeeded, browser + server bundles, 1 route prerendered |
-| `npm run e2e`          | 9 passed, including the real app-to-API wiring           |
-| Import cycles          | none                                                     |
+| Check                  | Result                                                          |
+| ---------------------- | --------------------------------------------------------------- |
+| `npm run format:check` | clean                                                           |
+| `npm run lint`         | clean - root + workspaces, 0 errors, 0 warnings                 |
+| `npm run typecheck`    | clean across all three packages                                 |
+| `npm test`             | 167 passed - 43 web, 101 mock-api, 23 contracts                 |
+| `npm run build`        | succeeded on Angular 22.2.1, browser + server; initial 520.2 kB |
+| `npm run e2e`          | 9 passed, including the real app-to-API wiring                  |
+| Import cycles          | none                                                            |
 
 **Findings worth carrying forward**
 
@@ -1375,14 +1383,14 @@ it. Recorded as debt row 8 rather than silenced by raising the budget.
 
 **Checks**
 
-| Check                  | Result                                                   |
-| ---------------------- | -------------------------------------------------------- |
-| `npm run format:check` | clean                                                    |
-| `npm run lint`         | clean — 0 errors, 0 warnings                             |
-| `npm run typecheck`    | clean (`ngc`, templates included)                        |
-| `npm test`             | 39 passed, 8 files                                       |
-| `npm run build`        | succeeded, browser + server bundles, 1 route prerendered |
-| `npm run e2e`          | 5 passed, including an axe scan with 0 violations        |
+| Check                  | Result                                                          |
+| ---------------------- | --------------------------------------------------------------- |
+| `npm run format:check` | clean                                                           |
+| `npm run lint`         | clean — 0 errors, 0 warnings                                    |
+| `npm run typecheck`    | clean (`ngc`, templates included)                               |
+| `npm test`             | 39 passed, 8 files                                              |
+| `npm run build`        | succeeded on Angular 22.2.1, browser + server; initial 520.2 kB |
+| `npm run e2e`          | 5 passed, including an axe scan with 0 violations               |
 
 **Findings worth carrying forward**
 

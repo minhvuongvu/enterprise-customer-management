@@ -111,3 +111,24 @@ Three assumptions behind the lock were checked rather than trusted:
 
 One thing the lock got wrong in the other direction: `@angular/cli` generates
 `vitest` as the default test runner in Angular 22, so choosing it cost nothing.
+
+## Security update - Phase 8, 2026-10-02
+
+CI's dependency audit (`npm audit --omit=dev --audit-level=high`, ADR-0042) failed the
+first `phase-8` run on an advisory published after `phase-7-complete`:
+**GHSA-ff3f-86qr-9cv3**, high - Angular SSR denial of service via numeric URL matrix
+parameters, in `@angular/router` `>=22.0.0 <22.2.0`. This application server-renders,
+so it is exposed.
+
+Every `@angular/*` package moved together to **22.2.1** (framework, CDK, service worker,
+SSR, build, CLI, compiler-cli). A plain `npm install` kept a stale 22.1.7 copy hoisted, and
+`npm dedupe` then left `@angular/compiler` nested under `apps/web` where
+`@angular/core/testing` could not resolve it (every web spec failed to load). What worked:
+the previous lockfile with only its `@angular/*` entries removed, re-resolved by
+`npm install`, checked with `npm ci`. One visible change: the build now writes `browser-stats.json` and
+`server-stats.json` instead of one `stats.json`; `perf/check-budgets.ts` and
+`perf/bundle-report.ts` read the browser one. `@angular/build` 22.2.1 brings its own pinned toolchain
+(vite 8.3, rolldown 1.2, sass 1.104, beasties 0.5). TypeScript 6.0 and Vitest 4.1
+stay inside its peer ranges. The lock is on **Angular 22**, not on a patch: a minor
+update within the major, for a security fix, does not need a superseding ADR - it needs
+this record and a full verify (PROGRESS, Phase 8).

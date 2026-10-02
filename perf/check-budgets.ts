@@ -37,7 +37,11 @@ interface Budgets {
 
 const ROOT = join(import.meta.dirname, '..');
 const budgets = JSON.parse(readFileSync(join(ROOT, 'perf/budgets.json'), 'utf8')) as Budgets;
-const metafile = JSON.parse(readFileSync(join(ROOT, 'apps/web/dist/web/stats.json'), 'utf8')) as {
+// The browser build's esbuild metafile. Angular 22.2 writes one per build
+// (`browser-stats.json`, `server-stats.json`); 22.1 wrote a single `stats.json`.
+const metafile = JSON.parse(
+  readFileSync(join(ROOT, 'apps/web/dist/web/browser-stats.json'), 'utf8'),
+) as {
   outputs: Record<string, MetafileOutput>;
 };
 
@@ -48,7 +52,7 @@ const browser = new Map(
 );
 const entry = [...browser].find(([, output]) => output.entryPoint === 'src/main.ts');
 if (!entry) {
-  throw new Error('No browser entry point in stats.json - was the production build run?');
+  throw new Error('No browser entry point in browser-stats.json - was the production build run?');
 }
 
 function staticClosure(start: string, seen = new Set<string>()): Set<string> {

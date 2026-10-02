@@ -27,7 +27,8 @@ interface Metafile {
   outputs: Record<string, MetafileOutput>;
 }
 
-const STATS = join(import.meta.dirname, '../apps/web/dist/web/stats.json');
+// `browser-stats.json` since Angular 22.2 (a single `stats.json` before).
+const STATS = join(import.meta.dirname, '../apps/web/dist/web/browser-stats.json');
 const metafile = JSON.parse(readFileSync(STATS, 'utf8')) as Metafile;
 
 /** Browser outputs only - the server bundle has its own entry points. */
