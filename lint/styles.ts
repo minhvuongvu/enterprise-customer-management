@@ -65,8 +65,14 @@ const RULES: readonly Rule[] = [
   },
 ];
 
-const ROOT = new URL('..', import.meta.url).pathname;
-const SOURCE = join(ROOT, 'apps/web/src');
+// `import.meta.dirname`, not `new URL('..', import.meta.url).pathname`. The
+// URL form is a URL path: on Windows it keeps the drive letter and
+// percent-encodes the spaces, so joining it produced
+// `E:\E:\Enterprise%20Customer%20Management\...` and the scan died with ENOENT
+// before checking anything. Every sibling script already uses this form.
+const ROOT = join(import.meta.dirname, '..');
+/** Exported so `styles.test.ts` can assert it is a directory that exists. */
+export const SOURCE = join(ROOT, 'apps/web/src');
 /** The one file allowed to define colours. */
 const TOKEN_FILE = join(SOURCE, 'styles/_tokens.scss');
 
@@ -147,15 +153,24 @@ function files(directory: string): string[] {
   });
 }
 
-const violations = files(SOURCE).flatMap((path) => check(path, readFileSync(path, 'utf8')));
+function main(): void {
+  const violations = files(SOURCE).flatMap((path) => check(path, readFileSync(path, 'utf8')));
 
-for (const violation of violations) {
-  console.error(
-    `${violation.file}:${violation.line}  ${violation.rule}  ${violation.message}\n    ${violation.text}`,
-  );
+  for (const violation of violations) {
+    console.error(
+      `${violation.file}:${violation.line}  ${violation.rule}  ${violation.message}\n    ${violation.text}`,
+    );
+  }
+  if (violations.length > 0) {
+    console.error(`\n${violations.length} style violation(s). See lint/styles.ts for the rules.`);
+    process.exit(1);
+  }
+  console.log('Styles: semantic tokens only, logical directions only, focus outline intact.');
 }
-if (violations.length > 0) {
-  console.error(`\n${violations.length} style violation(s). See lint/styles.ts for the rules.`);
-  process.exit(1);
+
+// Behind the guard so `styles.test.ts` can import `check` without the import
+// scanning the repository - and, on a violation, calling `process.exit(1)` in
+// the middle of the test run. Both sibling checks are structured this way.
+if (import.meta.main) {
+  main();
 }
-console.log('Styles: semantic tokens only, logical directions only, focus outline intact.');
