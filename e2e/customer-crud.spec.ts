@@ -219,9 +219,19 @@ test.describe('bulk operations', () => {
       });
     });
 
-    // The last records by code, which nothing else in the suite touches: the
+    // A window in the middle of the dataset, because this test *writes* and the
     // whole suite runs in parallel against one dataset.
-    await page.goto('/customers?size=10&sort=customerCode,desc');
+    //
+    // Not the last records by code, which is what this used to ask for: a
+    // created customer takes the next code after the 50,000 seeded ones, so
+    // "last by code" is precisely the record the journey test above has just
+    // created and is about to save. That collision made the journey fail with a
+    // 409 - a real conflict, reported correctly, on a record nobody had
+    // knowingly shared.
+    //
+    // Nothing reaches page 500: `anyCustomer` hands out positions under 50, and
+    // creation appends past 50,000.
+    await page.goto('/customers?page=500&size=10&sort=customerCode,asc');
     await expect(page.getByTestId('list-summary')).toBeVisible();
 
     await page.getByTestId('select-all').click();
