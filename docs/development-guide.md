@@ -20,7 +20,17 @@ stops an incompatible version from being installed silently.
 nvm use            # or otherwise select the version in .nvmrc
 npm install        # installs every workspace from the root
 npx playwright install chromium
+npm run build:contracts
 ```
+
+That last line is not optional, and it is the one step a fresh clone gets wrong.
+`packages/contracts` is a compiled library (ADR-0008), `dist/` is not tracked, and
+nothing in `npm install` builds it.
+
+**Build it again after switching branches.** `dist/` keeps whatever the previous
+branch produced, and `npm start` / `npm run start:api` do not rebuild it — only
+`typecheck`, `test`, `build` and `e2e` do. A stale `dist/` does not announce itself as
+stale; it fails as a missing export. See Troubleshooting.
 
 ## Scripts
 
@@ -30,14 +40,28 @@ Run from the repository root.
 | --------------------------------- | ----------------------------------------------------------------------------------------------- |
 | `npm start`                       | dev server on http://localhost:4200                                                             |
 | `npm run start:api`               | mock API on http://localhost:4300                                                               |
+| `npm run build:contracts`         | compiles `packages/contracts`; needed before the first run and after switching branches         |
 | `npm run build`                   | production build, browser **and** server bundles                                                |
-| `npm test`                        | unit and component tests (Vitest), single run                                                   |
-| `npm run lint`                    | ESLint over TypeScript and templates                                                            |
+| `npm test`                        | unit and component tests (Vitest) plus `test:lint`, single run                                  |
+| `npm run test:coverage`           | the same tests with the coverage gates CI applies — this is what `verify` runs                  |
+| `npm run lint`                    | ESLint, **and** the three checks no off-the-shelf linter covers (below)                         |
 | `npm run typecheck`               | `ngc --noEmit` — includes template type checking                                                |
 | `npm run format` / `format:check` | Prettier                                                                                        |
-| `npm run e2e`                     | Playwright; starts the dev server itself                                                        |
+| `npm run e2e`                     | Playwright; starts both servers itself                                                          |
 | `npm run e2e:production`          | Playwright against the production build (service worker, preloading); run `npm run build` first |
+| `npm run perf:budgets`            | asserts the bundle budgets in `perf/budgets.json`; run `npm run build` first                    |
+| `npm run e2e:visual`              | visual regression in the Playwright Docker image — needs the Docker **daemon** running          |
 | `npm run verify`                  | everything above, in the order CI runs it                                                       |
+
+`npm run lint` is a chain, and it stops at the first failure: `eslint`, then
+`lint:styles` (semantic tokens and logical directions only), `lint:architecture`
+(dependency direction and import cycles), `lint:secrets`, then each workspace's own
+lint. Each is runnable on its own — `npm run lint:architecture` — which is how to
+re-check one without paying for the rest.
+
+Two Playwright suites, two configurations: `e2e/` runs against the dev server,
+`e2e-production/` against the built SSR server on port 4400. `e2e:visual` is separate
+again, because pixel comparison is only meaningful on one fixed platform.
 
 Measurement scripts (Phase 5), run with `node` from the root after `npm run build`:
 
@@ -48,7 +72,15 @@ Measurement scripts (Phase 5), run with `node` from the root after `npm run buil
 | `node perf/measure-production.ts`  | route preloading and the performance lab's before/after pairs               |
 | `node perf/generate-lab-images.ts` | regenerates the performance lab's images                                    |
 
-`npm run verify` is the one to run before calling a phase done.
+**Do not run the measurement scripts beside anything else.** A number taken while the
+E2E suite is using the same machine is noise, and it is noise that looks like a
+regression.
+
+`npm run verify` is the one to run before calling a phase done. Running its steps
+individually — `format:check`, `lint`, `typecheck`, `test:coverage`, `build`,
+`perf:budgets`, `e2e`, `e2e:production` — is worth it the first time on a new machine,
+because a failure then names its own step instead of appearing at the end of a
+twenty-minute chain.
 
 Inside `apps/web`, `npm run test:watch` re-runs tests on change.
 
@@ -65,6 +97,11 @@ npm start             # terminal 2
 
 `npm run e2e` starts both itself, so it needs neither.
 
+Sign in as `admin`, `manager` or `viewer` with **any** password. The mock backend does
+not verify one — which is the reason there is no credential anywhere in this
+repository — and the three users differ in what they are allowed to do, which is the
+point of having three (`docs/security.md`).
+
 `packages/contracts` is a compiled library (ADR-0008). Editing it requires a build
 before the apps see the change:
 
@@ -73,8 +110,9 @@ npm run build:contracts               # once
 npm run watch --workspace @ecm/contracts   # or keep it running
 ```
 
-The root `typecheck`, `test`, `build` and `e2e` scripts build it first, so this only
-affects the inner loop.
+The root `typecheck`, `test`, `build` and `e2e` scripts build it first. `npm start`
+and `npm run start:api` do **not** — which is why Setup builds it once by hand, and
+why switching branches needs it again.
 
 ## Working on the mock API
 
@@ -175,6 +213,31 @@ measurement scripts do.
 cached shell until the new version is installed and the page reloaded. In
 DevTools → Application → Service workers, "Update on reload" or "Unregister".
 
-**`npm run e2e` cannot reach the server.** Playwright starts the dev server itself and
-reuses one that is already running. A stale process on port 4200 that is serving
-something else will produce confusing failures.
+**Something fails with `does not provide an export named '…'`.** `packages/contracts`
+is compiled and `dist/` is not tracked, so it holds whatever the last branch you were
+on produced. Run `npm run build:contracts`. This is the usual first failure after
+`git checkout` of another phase, and it is loudest in `npm run start:api`, which does
+not build contracts itself.
+
+**The dev server still fails on a contracts export you have just built.** The Angular
+dev server pre-bundles dependencies and caches them. After the _exports_ of
+`@ecm/contracts` change, delete `apps/web/.angular/cache` before `npm start` or the
+E2E suite.
+
+**`npm run e2e:visual` fails and Docker is installed.** The CLI is not enough; the
+daemon has to be running. `docker info` answers in one line whether it is. The suite
+only runs in the Playwright image on purpose — a screenshot taken on another platform
+compares against nothing useful.
+
+**`npm run e2e` cannot reach the server.** Playwright starts both servers itself and
+reuses ones that are already running. A stale process on port 4200 or 4300 serving
+something else produces failures that look like application bugs. On Windows, find and
+stop it with:
+
+```bash
+netstat -ano | grep LISTENING | grep ':4200 '   # the PID is the last column
+taskkill //PID <pid> //F                        # two slashes: Git Bash eats one
+```
+
+`fuser -k 4200/tcp` is the equivalent elsewhere. Stop the dev servers before a full
+E2E run, so Playwright starts ones that are serving the code you are testing.

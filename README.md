@@ -33,6 +33,7 @@ See `docs/PROGRESS.md` for what exists and what comes next.
 nvm use                          # Node 24.21.0, see .nvmrc
 npm install
 npx playwright install chromium
+npm run build:contracts          # not optional - packages/contracts is compiled
 
 npm run start:api                # mock API on http://localhost:4300
 npm start                        # the app on http://localhost:4200
